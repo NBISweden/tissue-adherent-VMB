@@ -1,0 +1,492 @@
+---
+title: "`r params$project_title`"
+editor_options:
+  chunk_output_type: console
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_float:
+      collapsed: no
+params:
+  organisation: Karolinska Institutet
+  pi_mail: prin.cipal@ki.se
+  pi_name: Prin Cipal
+  project_title: Broliden_5325
+  redmine_issue: '#5325'
+  requester_mail: kristina.broliden@ki.se
+  requester_name: Kristina Broliden
+  staff_mail: supp.ortstaff@nbis.se
+  staff_name: Supp Ortstaff
+  staff_web: https://nbis.se/about/staff/supp-ortstaff/
+---
+
+```{r Setup, echo = FALSE}
+knitr::opts_chunk$set(fig.width  = 10,
+                      results    = "hold",
+                      message    = FALSE,
+                      warning    = FALSE)
+```
+
+#Load libraries and other scripts
+
+```{r, echo = FALSE}
+library(igraph)
+library(rafalib)
+library(sva)
+library(batchelor)
+source("~/repos/niceRplots/R/plotting_functions.R")
+source("~/repos/niceRplots/R/add_fig_label.R")
+source("~/repos/niceRplots/R/helper_functions.R")
+
+```
+
+#Defining some variables for the analysis
+
+```{r, echo = FALSE}
+PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325/data/" #Path to the data
+
+#color palettes
+pal <- RColorBrewer::brewer.pal(8,"Set1") #color pallete for plots
+heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
+cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
+```
+
+# Loading data and metadata
+
+```{r, echo = FALSE}
+# Load metadata
+metadata <- read.csv(paste0(PATH,"/Clinical_visit_2_3_updatesept28.csv"))
+rownames(metadata) <- as.character(metadata$ID)
+
+# Load datasets
+dataset_names <- c("ASV_tissue_B2.csv",
+                     "ASV_tissue_B1.csv",
+                     "ASV_CVL_V2_B1.csv",
+                     "ASV_CVL_V2_B2.csv",
+                     "ASV_CVL_V2_C.csv",
+                     "ASV_CVL_V3.csv")
+
+#import datasets and return matrix with taxa-level resolution
+datasets <- lapply(dataset_names, function(x){
+  x <- read.csv( paste0(PATH,"/",x))
+  temp <- as.matrix(x[,c((ncol(x)-6):ncol(x))])
+  temp[is.na(temp)] <- "NA"
+  sps <- apply( temp[,6:7] ,1,function(x) paste(x,collapse ="_"))
+  not_complete <- grepl("_NA",sps)
+  
+  taxa <- apply( temp ,1,function(x) paste(x,collapse ="_"))
+  taxa[not_complete] <- sub("_NA.*","",taxa[not_complete])
+  taxa[not_complete] <- sub(".*_","other ",taxa[not_complete])
+  taxa[!not_complete] <- sps[!not_complete]
+  taxa <- sub("_"," ",taxa)
+  use <- !is.na(taxa) & (taxa != "NA")
+
+  temp <- as.matrix( x[,-c(1,(ncol(x)-7):ncol(x))] )
+  temp <- rowsum(temp[use,],taxa[use])
+  colnames(temp) <- colnames(x)[-c(1,(ncol(x)-7):ncol(x))]
+  return(temp)
+})
+names(datasets) <- dataset_names
+lapply(datasets,dim)
+lapply(datasets,colnames)
+
+
+#arrange all datasets to have the same rownames with all bacteria
+common_microbes <- unique(unlist(lapply(datasets,rownames)))
+datasets <- lapply(datasets, function(x) {
+  temp <- matrix(0,nrow = length(common_microbes),
+                 ncol = ncol(x),
+                 dimnames = list(common_microbes,colnames(x)))
+  temp[rownames(x),colnames(x)] <- x
+  return(temp)
+})
+lapply(datasets,dim)
+
+# datasets <- datasets[3] #in case you wanna test in 1 dataset
+
+# Transform phyloseq data into normalized matricies ( log2[CP1K] )
+# datasets <- lapply(datasets,function(x){
+#     x <- t(log2( t(x) / colSums(x) * 1000 + 1))
+# })
+# lapply(datasets,dim)
+```
+
+
+# Merging, renaming and correcting batch effects on datasets
+
+```{r, echo = FALSE}
+#No batch correction needed in tissue_V3 dataset, only add it to the other samples
+datasets[["ASV_tissue_V3"]] <- cbind( datasets[["ASV_tissue_B2.csv"]],datasets[["ASV_tissue_B1.csv"]] )
+
+datasets <- datasets[-c(1,2)]
+lapply(datasets,dim)
+
+#Batch correction for the sample CVL_V2
+batch1 <- cbind( datasets[["ASV_CVL_V2_B1.csv"]],datasets[["ASV_CVL_V2_B2.csv"]] )
+batch1 <- t( log2( t(batch1) / colSums(batch1) * 1000 + 1 ))
+batch2 <- datasets[["ASV_CVL_V2_C.csv"]]
+batch2 <- t( log2( t(batch2) / colSums(batch2) * 1000 + 1 ))
+
+common_samples <- sort(colnames(batch1) [ colnames(batch1) %in% colnames(batch2) ])
+colnames(batch1) <- paste0("boston_",colnames(batch1))
+colnames(batch2) <- paste0("CTMR_",colnames(batch2))
+
+
+merged <- cbind(batch1,batch2)
+batch <- factor(sub("_.*","",colnames(merged)))
+common_samples2 <- sort(colnames(merged) [ sub(".*_","",colnames(merged)) %in% common_samples])
+
+nonzeros <- rowSums(merged)>0
+merged <- merged[nonzeros,]
+
+PC_raw <- prcomp(round(t(batch1[nonzeros, paste0("boston_",common_samples)]),4) )
+```
+
+# Batch correction with different approaches
+
+```{r, echo = FALSE}
+mypar(3,3)
+PC_raw <- prcomp(round(t(batch1[nonzeros, paste0("boston_",common_samples)]),4) )
+
+#COMBAT
+mod0 <- model.matrix(~1,data = data.frame(colnames(merged),row.names = colnames(merged)))
+corrected_combat <- ComBat(dat=merged, batch=batch, mod=mod0)
+
+#mnnCorrect
+corrected_mnnCorrect <- batchelor::mnnCorrect( batch2[nonzeros,],
+                                               batch1[nonzeros,] ,
+                                               cos.norm.out = F,cos.norm.in = F,
+                                         restrict = list((1:ncol(batch2)) [ colnames(batch2) %in% common_samples2 ],
+                                                         (1:ncol(batch1)) [ colnames(batch1) %in% common_samples2 ]))
+corrected_mnnCorrect <- corrected_mnnCorrect@assays@data$corrected
+
+#regressBatches
+corrected_regressBatches <- batchelor::regressBatches( batch1[nonzeros,] ,
+                                         batch2[nonzeros,],
+                                         restrict = list((1:ncol(batch1)) [ colnames(batch1) %in% common_samples2 ],
+                                                         (1:ncol(batch2)) [ colnames(batch2) %in% common_samples2 ]) )
+corrected_regressBatches <- corrected_regressBatches@assays@data$corrected
+
+
+
+#rescaleBatches
+corrected_rescaleBatches <- batchelor::rescaleBatches( batch1[nonzeros,] ,
+                                         batch2[nonzeros,],
+                                         restrict = list((1:ncol(batch1)) [ colnames(batch1) %in% common_samples2 ],
+                                                         (1:ncol(batch2)) [ colnames(batch2) %in% common_samples2 ]) )
+corrected_rescaleBatches <- corrected_rescaleBatches@assays@data$corrected
+```
+
+# Batch correction with Autoencoder
+
+```{r, echo = FALSE}
+library(keras)
+library(caret)
+
+xtrain <- t(batch1[nonzeros,paste0("boston_",sort(common_samples))])
+xtrain <- xtrain/max(xtrain)
+ytrain <- t(batch2[nonzeros,paste0("CTMR_",sort(common_samples))])
+ytrain <- ytrain/max(ytrain)
+dim(xtrain)
+
+input_size = dim(xtrain)[2]
+latent_size = 10
+print(input_size) 
+ 
+x_train = array_reshape(xtrain, dim=c(dim(xtrain)[1], input_size))
+y_train = array_reshape(ytrain, dim=c(dim(ytrain)[1], input_size))
+ 
+print(dim(x_train))
+print(dim(y_train)) 
+ 
+
+if(file.exists(paste0(PATH,"../results/encoder.h5")) & 
+  file.exists(paste0(PATH,"../results/decoder.h5")) & 
+  file.exists(paste0(PATH,"../results/aen.h5")) ){
+  encoder <- load_model_hdf5(paste0(PATH,"../results/encoder.h5"))
+  decoder <- load_model_hdf5(paste0(PATH,"../results/decoder.h5"))
+  aen <- load_model_hdf5(paste0(PATH,"../results/aen.h5"))
+  
+} else {
+  enc_input = layer_input(shape = input_size)
+  enc_output = enc_input %>% 
+    layer_dense(units=200, activation = "relu") %>% 
+    layer_activation_leaky_relu() %>% 
+    layer_dense(units=latent_size,activation = "sigmoid") %>% 
+    layer_activation_leaky_relu()
+  
+  encoder = keras_model(enc_input, enc_output)
+  summary(encoder) 
+   
+  dec_input = layer_input(shape = latent_size)
+  dec_output = dec_input %>% 
+    layer_dense(units=200, activation = "relu") %>% 
+    layer_activation_leaky_relu() %>% 
+    layer_dense(units = input_size, activation = "sigmoid") %>% 
+    layer_activation_leaky_relu()
+  
+  decoder = keras_model(dec_input, dec_output)
+  summary(decoder) 
+   
+  aen_input = layer_input(shape = input_size)
+  aen_output = aen_input %>% 
+    encoder() %>% 
+    decoder()
+     
+  aen = keras_model(aen_input, aen_output)
+  summary(aen)
+    
+  aen %>% compile(optimizer="rmsprop", loss="binary_crossentropy")
+  
+  aen %>% fit( y_train , x_train , epochs=2000, batch_size=round(dim(y_train)[1]/2) ) 
+  
+  save_model_hdf5(encoder, paste0(PATH,"../results/encoder.h5") )
+  save_model_hdf5(decoder, paste0(PATH,"../results/decoder.h5"))
+  save_model_hdf5(aen, paste0(PATH,"../results/aen.h5"))
+}
+
+encoded_imgs = encoder %>% predict(y_train)
+decoded_imgs = decoder %>% predict(encoded_imgs)
+
+# plot( x_train , decoded_imgs , cex=.3)
+# abline(0,1,col="red")
+# plot( x_train, y_train , cex=.3 )
+# abline(0,1,col="red")
+```
+
+# Plotting the batch-corrected data for comparisson
+
+```{r, echo = FALSE,fig.height=7*2,fig.width=7}
+layout(matrix(c(1,1,1,1,     
+                2,2,2,3,
+                4,4,4,5,
+                6,6,6,7,
+                8,8,8,9,
+                10,10,10,11,
+                12,12,12,13
+                ) , ncol= 4,byrow = T),heights = c(1))
+
+fig_letters <- letters
+par(mar=c(3,3,3,1))
+pc_var <- PC_raw$sdev^2 / sum(PC_raw$sdev^2) * 100
+barplot(pc_var,ylim=c(0,60),las=2,names.arg = paste0("PC",1:length(pc_var)),
+        border = NA,col="grey20",ylab="% variance explained")
+abline(h=0,lwd=2)
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+legend("topright",legend = c("batch1","batch2"),col = c("firebrick","navy"),pch=c(15,16),bty = "n")
+
+
+plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="uncorrected") ; axis(2)
+abline(h=0,col="grey90",lty=1)
+lines(c(par("usr")[1],par("usr")[1]),c(par("usr")[3],par("usr")[4]),xpd=T)
+b2_projection <- scale(round(t(batch2[nonzeros, paste0("CTMR_",common_samples)]),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:20){
+  abline(v=i,col="grey90",lty=1)
+  x <- range(PC_raw$x[,i])
+  points(rep(i-.2,nrow(PC_raw$x)), (PC_raw$x[,i]-x[1]) / (x[2]-x[1]),cex=.5, pch=1,col= "firebrick" )
+  for(j in 1:nrow(b2_projection)){ lines( c(i-.2,i+.2) , c((PC_raw$x[j,i]-x[1]) / (x[2]-x[1]), (b2_projection[j,i]-x[1])/(x[2]-x[1])) , col="grey50") }
+  points(rep(i+.2,nrow(b2_projection)), (b2_projection[,i]-x[1])/(x[2]-x[1]),cex=.5, pch=1,col= "navy" )
+  text(i,par("usr")[3],labels = paste0("PC",i),xpd=T,srt=90,adj=c(1,.5))
+  # wt <- t.test(PC_raw$x[,i],b2_projection[,i], paired = T)
+  # text(i,par("usr")[4],labels = wt$p.value,xpd=T,srt=90,adj=c(0,.5))
+}
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", xlim=c(-20,15),ylim=c(-15,15))
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey50") }
+points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
+
+
+plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="ComBat") ; axis(2)
+# abline(h=0,col="grey90",lty=1)
+lines(c(par("usr")[1],par("usr")[1]),c(par("usr")[3],par("usr")[4]),xpd=T)
+b2_projection <- scale(round(t(corrected_combat[, paste0("CTMR_",common_samples)]),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:20){
+  abline(v=i,col="grey90",lty=1)
+  x <- range(PC_raw$x[,i])
+  points(rep(i-.2,nrow(PC_raw$x)), (PC_raw$x[,i]-x[1]) / (x[2]-x[1]),cex=.5, pch=1,col= "firebrick" )
+  for(j in 1:nrow(b2_projection)){ lines( c(i-.2,i+.2) , c((PC_raw$x[j,i]-x[1]) / (x[2]-x[1]), (b2_projection[j,i]-x[1])/(x[2]-x[1])) , col="grey50") }
+  points(rep(i+.2,nrow(b2_projection)), (b2_projection[,i]-x[1])/(x[2]-x[1]),cex=.5, pch=1,col= "navy" )
+  text(i,par("usr")[3],labels = paste0("PC",i),xpd=T,srt=90,adj=c(1,.5))
+  # wt <- t.test(PC_raw$x[,i],b2_projection[,i], paired = T)
+  # text(i,par("usr")[4],labels = wt$p.value,xpd=T,srt=90,adj=c(0,.5))
+}
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", xlim=c(-20,15),ylim=c(-15,15))
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey50") }
+points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
+
+
+
+plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="mnnCorrect") ; axis(2)
+# abline(h=0,col="grey90",lty=1)
+lines(c(par("usr")[1],par("usr")[1]),c(par("usr")[3],par("usr")[4]),xpd=T)
+b2_projection <- scale(round(t(corrected_mnnCorrect[, paste0("CTMR_",common_samples)]),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:20){
+  abline(v=i,col="grey90",lty=1)
+  x <- range(PC_raw$x[,i])
+  points(rep(i-.2,nrow(PC_raw$x)), (PC_raw$x[,i]-x[1]) / (x[2]-x[1]),cex=.5, pch=1,col= "firebrick" )
+  for(j in 1:nrow(b2_projection)){ lines( c(i-.2,i+.2) , c((PC_raw$x[j,i]-x[1]) / (x[2]-x[1]), (b2_projection[j,i]-x[1])/(x[2]-x[1])) , col="grey50") }
+  points(rep(i+.2,nrow(b2_projection)), (b2_projection[,i]-x[1])/(x[2]-x[1]),cex=.5, pch=1,col= "navy" )
+  text(i,par("usr")[3],labels = paste0("PC",i),xpd=T,srt=90,adj=c(1,.5))
+  # wt <- t.test(PC_raw$x[,i],b2_projection[,i], paired = T)
+  # text(i,par("usr")[4],labels = wt$p.value,xpd=T,srt=90,adj=c(0,.5))
+}
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", xlim=c(-20,15),ylim=c(-15,15))
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey50") }
+points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
+
+
+
+plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="regressBatches") ; axis(2)
+abline(h=0,col="grey90",lty=1)
+lines(c(par("usr")[1],par("usr")[1]),c(par("usr")[3],par("usr")[4]),xpd=T)
+b2_projection <- scale(round(t(corrected_regressBatches[, paste0("CTMR_",common_samples)]),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:20){
+  abline(v=i,col="grey90",lty=1)
+  x <- range(PC_raw$x[,i])
+  points(rep(i-.2,nrow(PC_raw$x)), (PC_raw$x[,i]-x[1]) / (x[2]-x[1]),cex=.5, pch=1,col= "firebrick" )
+  for(j in 1:nrow(b2_projection)){ lines( c(i-.2,i+.2) , c((PC_raw$x[j,i]-x[1]) / (x[2]-x[1]), (b2_projection[j,i]-x[1])/(x[2]-x[1])) , col="grey50") }
+  points(rep(i+.2,nrow(b2_projection)), (b2_projection[,i]-x[1])/(x[2]-x[1]),cex=.5, pch=1,col= "navy" )
+  text(i,par("usr")[3],labels = paste0("PC",i),xpd=T,srt=90,adj=c(1,.5))
+  # wt <- t.test(PC_raw$x[,i],b2_projection[,i], paired = T)
+  # text(i,par("usr")[4],labels = wt$p.value,xpd=T,srt=90,adj=c(0,.5))
+}
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", xlim=c(-20,15),ylim=c(-15,15))
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey50") }
+points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
+
+
+
+
+plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="rescaleBatches") ; axis(2)
+abline(h=0,col="grey90",lty=1)
+lines(c(par("usr")[1],par("usr")[1]),c(par("usr")[3],par("usr")[4]),xpd=T)
+b2_projection <- scale(round(t(corrected_rescaleBatches[, paste0("CTMR_",common_samples)]),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:20){
+  abline(v=i,col="grey90",lty=1)
+  x <- range(PC_raw$x[,i])
+  points(rep(i-.2,nrow(PC_raw$x)), (PC_raw$x[,i]-x[1]) / (x[2]-x[1]),cex=.5, pch=1,col= "firebrick" )
+  for(j in 1:nrow(b2_projection)){ lines( c(i-.2,i+.2) , c((PC_raw$x[j,i]-x[1]) / (x[2]-x[1]), (b2_projection[j,i]-x[1])/(x[2]-x[1])) , col="grey50") }
+  points(rep(i+.2,nrow(b2_projection)), (b2_projection[,i]-x[1])/(x[2]-x[1]),cex=.5, pch=1,col= "navy" )
+  text(i,par("usr")[3],labels = paste0("PC",i),xpd=T,srt=90,adj=c(1,.5))
+  # wt <- t.test(PC_raw$x[,i],b2_projection[,i], paired = T)
+  # text(i,par("usr")[4],labels = wt$p.value,xpd=T,srt=90,adj=c(0,.5))
+}
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", xlim=c(-20,15),ylim=c(-15,15))
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey50") }
+points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
+
+
+
+
+
+plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="AutoEncoder") ; axis(2)
+# abline(h=0,col="grey90",lty=1)
+lines(c(par("usr")[1],par("usr")[1]),c(par("usr")[3],par("usr")[4]),xpd=T)
+b2_projection <- scale(round(t(t(decoded_imgs*max(t(batch1[nonzeros,paste0("boston_",sort(common_samples))])))),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:20){
+  abline(v=i,col="grey90",lty=1)
+  x <- range(PC_raw$x[,i])
+  points(rep(i-.2,nrow(PC_raw$x)), (PC_raw$x[,i]-x[1]) / (x[2]-x[1]),cex=.5, pch=1,col= "firebrick" )
+  for(j in 1:nrow(b2_projection)){ lines( c(i-.2,i+.2) , c((PC_raw$x[j,i]-x[1]) / (x[2]-x[1]), (b2_projection[j,i]-x[1])/(x[2]-x[1])) , col="grey50") }
+  points(rep(i+.2,nrow(b2_projection)), (b2_projection[,i]-x[1])/(x[2]-x[1]),cex=.5, pch=1,col= "navy" )
+  text(i,par("usr")[3],labels = paste0("PC",i),xpd=T,srt=90,adj=c(1,.5))
+  # wt <- t.test(PC_raw$x[,i],b2_projection[,i], paired = T)
+  # text(i,par("usr")[4],labels = wt$p.value,xpd=T,srt=90,adj=c(0,.5))
+}
+add_letter(fig_letters); fig_letters <- fig_letters[-1]
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", xlim=c(-20,15),ylim=c(-15,15))
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey50") }
+points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
+
+
+```
+
+
+As we can observe above, when using enough epochs (between 1000 and 2000), the autoencoder fits the data and learns the structure of the data.
+
+
+```{r, echo = FALSE}
+batch2_all <- t(batch2[nonzeros,])
+batch2_all <- batch2_all/max(batch2_all)
+
+batch2_encoded_data <- encoder %>% predict(batch2_all)
+batch2_decoded_data <- decoder %>% predict(batch2_encoded_data)
+batch2_decoded_data <- t(round(t(t(batch2_decoded_data*max(t(batch1[nonzeros,paste0("boston_",sort(common_samples))])))),4))
+rownames(batch2_decoded_data) <- colnames(batch2_all) ; colnames(batch2_decoded_data) <- rownames(batch2_all)
+
+mypar()
+plot(PC_raw$x[,1:2], cex=.5, pch=1, col= "firebrick", main="AutoEncoder",xlim=c(-20,15),ylim=c(-15,15),type="n")
+b2_batch_projection <- scale(t(batch2_decoded_data), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+b1_projection <- scale(round(t(batch1[nonzeros,]),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+
+b2_projection <- scale(round(t(t(decoded_imgs*max(t(batch1[nonzeros,paste0("boston_",sort(common_samples))])))),4), PC_raw$center, PC_raw$scale) %*% PC_raw$rotation
+for(i in 1:nrow(b2_projection)){ lines( c(PC_raw$x[i,1],b2_projection[i,1]) , c(PC_raw$x[i,2], b2_projection[i,2]) , col="grey20") }
+
+points(b2_batch_projection[,1:2], cex=.8, pch=15, col= "navy")
+points(b1_projection[,1:2], cex=.8, pch=16, col= "firebrick")
+legend("topright",legend = c("batch1","batch2"),col = c("firebrick","navy"),pch=c(15,16),bty = "n")
+
+
+samples_not_batch1 <- sort(colnames(batch2_decoded_data) [! colnames(batch2_decoded_data) %in% common_samples2])
+datasets[["ASV_CVL_V2"]] <- cbind( batch1[nonzeros,] , batch2_decoded_data[,samples_not_batch1] )
+datasets <- datasets[-c(1,2,3)]
+colnames(datasets[["ASV_CVL_V2"]]) <- sub(".*_","",colnames(datasets[["ASV_CVL_V2"]]))
+lapply(datasets,dim)
+lapply(datasets,colnames)
+
+common_microbes <- unique(unlist(lapply(datasets,rownames)))
+all_samples <- rownames(metadata)
+
+datasets <- lapply(datasets, function(x) {
+  temp <- matrix(0,nrow = length(common_microbes),
+                 ncol = ncol(x),
+                 dimnames = list(common_microbes,colnames(x)))
+  temp[rownames(x),colnames(x)] <- x
+  return(temp)
+})
+lapply(datasets,dim)
+
+
+datasets <- lapply(datasets,function(x){
+  x <- x[,sort(colnames(x))]
+  return(x)
+})
+
+datasets[["ASV_CVL_V3.csv"]] <- round( t(log2( t(datasets[["ASV_CVL_V3.csv"]]) / colSums(datasets[["ASV_CVL_V3.csv"]]) * 1000 + 1 )),4)
+datasets[["ASV_tissue_V3"]] <- round(t( log2( t(datasets[["ASV_tissue_V3"]]) / colSums(datasets[["ASV_tissue_V3"]]) * 1000 + 1 )),4)
+datasets[["ASV_CVL_V2"]] <- round( datasets[["ASV_CVL_V2"]] ,4)
+
+write.csv( datasets[["ASV_CVL_V2"]] , paste0(PATH,"../results/ASV_CVL_V2_normalized_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_tissue_V3"]] , paste0(PATH,"../results/ASV_tissue_V3_normalized_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_CVL_V3.csv"]] , paste0(PATH,"../results/ASV_CVL_V3_normalized_batch_corrected.csv"),row.names = T )
+
+```
+
+
+
+```{r, echo = FALSE}
+trx <- read.csv(paste0(PATH,"/TRX_rawcounts.csv"),row.names = 1)
+trx <- rowsum(trx[,-c(1,2)],trx$symbol)
+colnames(trx) <- sub("ML","",colnames(trx))
+trx  <- trx[ rownames(trx) != "" , ]
+colnames(trx) <- as.character(metadata$ID)[ match(colnames(trx) , as.character(metadata$PatID) ) ]
+trx <- trx[ rowSums(trx > 5) >= 3 , ]
+trx <- t( log2( t( trx ) / colSums(trx) * 1e6 + 1 ) )
+write.csv( trx , paste0(PATH,"../results/Tissue_RNAseq_V3_normalized.csv"),row.names = T )
+```
+
+
+
+
+
+
+
+

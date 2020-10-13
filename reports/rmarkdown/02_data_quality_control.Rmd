@@ -1,0 +1,130 @@
+---
+title: "`r params$project_title`"
+editor_options:
+  chunk_output_type: console
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_float:
+      collapsed: no
+params:
+  organisation: Karolinska Institutet
+  pi_mail: prin.cipal@ki.se
+  pi_name: Prin Cipal
+  project_title: Broliden_5325
+  redmine_issue: '#5325'
+  requester_mail: kristina.broliden@ki.se
+  requester_name: Kristina Broliden
+  staff_mail: supp.ortstaff@nbis.se
+  staff_name: Supp Ortstaff
+  staff_web: https://nbis.se/about/staff/supp-ortstaff/
+---
+
+```{r Setup, echo = FALSE}
+knitr::opts_chunk$set(fig.width  = 10,
+                      results    = "hold",
+                      message    = FALSE,
+                      warning    = FALSE)
+```
+
+#Load libraries and other scripts
+
+```{r, echo = FALSE}
+library(igraph)
+library(rafalib)
+library(sva)
+library(batchelor)
+source("~/repos/niceRplots/R/plotting_functions.R")
+source("~/repos/niceRplots/R/add_fig_label.R")
+source("~/repos/niceRplots/R/helper_functions.R")
+
+```
+
+#Defining some variables for the analysis
+
+```{r, echo = FALSE}
+PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325/" #Path to the data
+
+#color palettes
+pal <- RColorBrewer::brewer.pal(8,"Set1") #color pallete for plots
+heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
+cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
+```
+
+# Loading data and metadata
+
+```{r, echo = FALSE}
+# Load metadata
+metadata <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatesept28.csv"))
+rownames(metadata) <- as.character(metadata$ID)
+
+# Load datasets
+dataset_names <- c("Tissue_RNAseq_V3_normalized",
+                     "ASV_tissue_V3_normalized_batch_corrected",
+                     "ASV_CVL_V3_normalized_batch_corrected",
+                     "ASV_CVL_V2_normalized_batch_corrected")
+
+#import datasets and return matrix with taxa-level resolution
+datasets <- lapply(dataset_names, function(x){
+  x <- read.csv( paste0(PATH,"results/",x,".csv"),row.names = 1)
+  return(as.matrix(x)) })
+names(datasets) <- dataset_names
+
+
+#fill all samples with 0s to make plotting easier
+datasets_all_samples <- lapply(datasets, function(x) {
+  temp <- matrix(0,nrow = nrow(x),
+                 ncol = nrow(metadata),
+                 dimnames = list(rownames(x),rownames(metadata)))
+  temp[rownames(x),colnames(x)] <- x
+  return(temp)
+})
+lapply(datasets_all_samples,dim)
+
+
+```
+
+# Calculate QC metrics
+
+```{r, echo = FALSE}
+counts <- t(as.data.frame( lapply(datasets_all_samples,colSums) ))
+counts[is.na(counts)] <- 0
+detected_counts <- t(as.data.frame( lapply(datasets_all_samples,function(x) colSums( x > 0 )) ))
+detected_counts[is.na(detected_counts)] <- 0
+rownames(detected_counts) <- paste0(rownames(detected_counts),">0")
+
+mypar(mar=c(2,20,2,1))
+barlist( data = rbind( counts , detected_counts),
+         genes = c(rownames(counts),rownames(detected_counts)),
+         clustering = rep(1,nrow(metadata)),
+         col=ifelse( (colSums(counts == 0)>=3)*1,"red","grey" ),draw_mean_lines=F)
+
+sum((colSums(counts == 0)>=3)*1)
+```
+
+
+# Calculate QC metrics
+
+```{r, echo = FALSE}
+counts <- t(as.data.frame( lapply(datasets_all_samples,colSums) ))
+counts[is.na(counts)] <- 0
+detected_counts <- t(as.data.frame( lapply(datasets_all_samples,function(x) colSums( x > 0 )) ))
+detected_counts[is.na(detected_counts)] <- 0
+rownames(detected_counts) <- paste0(rownames(detected_counts),">0")
+
+mypar(mar=c(2,20,2,1))
+barlist( data = rbind( counts , detected_counts),
+         genes = c(rownames(counts),rownames(detected_counts)),
+         clustering = rep(1,nrow(metadata)),
+         col=ifelse( (colSums(counts == 0)>=3)*1,"red","grey" ),draw_mean_lines=F)
+
+sum((colSums(counts == 0)>=3)*1)
+```
+
+
+
+
