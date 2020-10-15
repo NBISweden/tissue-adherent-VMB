@@ -57,7 +57,7 @@ cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
 
 #Graph construction  
 k <- 10 # k for KNN
-P <- 0.4 # prunning threshold of SNN
+P <- 0.35 # prunning threshold of SNN
 
 
 #Graph construction  
@@ -86,7 +86,8 @@ rownames(metadata) <- as.character(metadata$ID)
 # Load datasets
 dataset_names <- c("ASV_tissue_V3_normalized_batch_corrected.csv",
                    "ASV_CVL_V3_normalized_batch_corrected.csv",
-                   "ASV_CVL_V2_normalized_batch_corrected.csv")
+                   "ASV_CVL_V2_normalized_batch_corrected.csv",
+                   "ASV_CVL_V2_normalized_NOT_batch_corrected.csv")
 
 #import datasets and return matrix with taxa-level resolution
 datasets <- lapply(dataset_names, function(x){
@@ -125,7 +126,7 @@ common_microbes <- sort(unique(unlist(lapply(datasets,rownames))))
 sample_names <- sort(unique(unlist(lapply(datasets,colnames))))
 
 # Create empty matrix for the full dataset
-microbiome <- as.matrix(datasets[[3]])
+microbiome <- as.matrix(datasets[[4]])
 microbiome <- microbiome[ rowSums(microbiome>0)>=2 , colSums(microbiome>0)>=2 ]
   
 dataset_origin <- factor(rep(sub("_norma.*","",names(datasets)[2]),ncol(datasets[[2]])))

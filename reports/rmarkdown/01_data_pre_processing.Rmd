@@ -410,10 +410,13 @@ points(b2_projection[,1:2], cex=.5, pch=2, col= "navy")
 ```
 
 
-As we can observe above, when using enough epochs (between 1000 and 2000), the autoencoder fits the data and learns the structure of the data.
+As we can observe above, when using enough epochs (between 1000 and 2000), the autoencoder fits and learns the structure of the data.
 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE,fig.height=5,fig.width=5}
+datasets[["ASV_CVL_V2_raw"]] <- cbind( datasets[["ASV_CVL_V2_B2.csv"]] , datasets[["ASV_CVL_V2_B1.csv"]], datasets[["ASV_CVL_V2_C.csv"]][,! colnames(datasets[["ASV_CVL_V2_C.csv"]]) %in% common_samples] )
+
+
 batch2_all <- t(batch2[nonzeros,])
 batch2_all <- batch2_all/max(batch2_all)
 
@@ -462,12 +465,17 @@ datasets <- lapply(datasets,function(x){
 
 datasets[["ASV_CVL_V3.csv"]] <- round( t(log2( t(datasets[["ASV_CVL_V3.csv"]]) / colSums(datasets[["ASV_CVL_V3.csv"]]) * 1000 + 1 )),4)
 datasets[["ASV_tissue_V3"]] <- round(t( log2( t(datasets[["ASV_tissue_V3"]]) / colSums(datasets[["ASV_tissue_V3"]]) * 1000 + 1 )),4)
+datasets[["ASV_CVL_V2_raw"]] <- round(t( log2( t(datasets[["ASV_CVL_V2_raw"]]) / colSums(datasets[["ASV_CVL_V2_raw"]]) * 1000 + 1 )),4)
 datasets[["ASV_CVL_V2"]] <- round( datasets[["ASV_CVL_V2"]] ,4)
 
 write.csv( datasets[["ASV_CVL_V2"]] , paste0(PATH,"../results/ASV_CVL_V2_normalized_batch_corrected.csv"),row.names = T )
 write.csv( datasets[["ASV_tissue_V3"]] , paste0(PATH,"../results/ASV_tissue_V3_normalized_batch_corrected.csv"),row.names = T )
 write.csv( datasets[["ASV_CVL_V3.csv"]] , paste0(PATH,"../results/ASV_CVL_V3_normalized_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_CVL_V2_raw"]] , paste0(PATH,"../results/ASV_CVL_V2_normalized_NOT_batch_corrected.csv"),row.names = T )
 
+batches_CVL2 <- ifelse( colnames(datasets[["ASV_CVL_V2_raw"]]) %in% sub(".*_","",colnames(batch1)),"boston","CTMR" )
+batches_CVL2 <- t(t(setNames(batches_CVL2 , colnames(datasets[["ASV_CVL_V2_raw"]]))))
+write.csv( batches_CVL2 , paste0(PATH,"../results/batches_CVL2.csv"),row.names = T )
 ```
 
 
