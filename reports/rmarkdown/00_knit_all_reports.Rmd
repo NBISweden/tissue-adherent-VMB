@@ -1,0 +1,62 @@
+---
+title: "`r params$project_title`"
+editor_options:
+  chunk_output_type: console
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_float:
+      collapsed: no
+params:
+  organisation: Karolinska Institutet
+  pi_mail: prin.cipal@ki.se
+  pi_name: Prin Cipal
+  project_title: Broliden_5325
+  redmine_issue: '#5325'
+  requester_mail: kristina.broliden@ki.se
+  requester_name: Kristina Broliden
+  staff_mail: supp.ortstaff@nbis.se
+  staff_name: Supp Ortstaff
+  staff_web: https://nbis.se/about/staff/supp-ortstaff/
+---
+
+```{r, echo = T}
+PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325" #Path to the data
+```
+
+```{r, echo = T}
+rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/01_data_pre_processing.Rmd"),
+                  output_format = "pdf_document")
+```
+
+```{r, echo = T}
+rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/02_data_quality_control.Rmd"),
+                  output_format = "pdf_document")
+```
+
+```{r, echo = T}
+dataset_names <- c("ASV_tissue_V3_normalized_batch_corrected.csv",
+                   "ASV_CVL_V3_normalized_batch_corrected.csv",
+                   "ASV_CVL_V2_normalized_batch_corrected.csv",
+                   "ASV_CVL_V2_normalized_NOT_batch_corrected.csv")
+
+for(i in dataset_names){
+  rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/03_individual_reports.Rmd"),
+                    output_format = "pdf_document",
+                    params = list(dataset=i),
+                    output_file = paste0(PATH,"/reports/rmarkdown/report_",sub(".csv","",i)))
+}
+```
+
+
+
+
+
+
+
+
+

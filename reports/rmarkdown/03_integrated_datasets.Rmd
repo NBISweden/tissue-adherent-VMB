@@ -1,0 +1,630 @@
+---
+title: "`r params$project_title`"
+editor_options:
+  chunk_output_type: console
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_float:
+      collapsed: no
+params:
+  organisation: Karolinska Institutet
+  pi_mail: prin.cipal@ki.se
+  pi_name: Prin Cipal
+  project_title: Broliden_5325
+  redmine_issue: '#5325'
+  requester_mail: kristina.broliden@ki.se
+  requester_name: Kristina Broliden
+  staff_mail: supp.ortstaff@nbis.se
+  staff_name: Supp Ortstaff
+  staff_web: https://nbis.se/about/staff/supp-ortstaff/
+---
+
+```{r Setup, echo = FALSE}
+knitr::opts_chunk$set(fig.width  = 10,
+                      results    = "hide",
+                      message    = FALSE,
+                      warning    = FALSE)
+```
+
+#Load libraries and other scripts
+
+```{r, echo = FALSE}
+library(igraph)
+library(rafalib)
+library(fgsea)
+source("~/repos/niceRplots/R/plotting_functions.R")
+source("~/repos/niceRplots/R/add_fig_label.R")
+source("~/repos/niceRplots/R/helper_functions.R")
+
+```
+
+#Defining some variables for the analysis
+
+```{r, echo = FALSE}
+PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325/" #Path to the data
+
+#color palettes
+pal <- RColorBrewer::brewer.pal(8,"Set1") #color pallete for plots
+heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
+cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
+
+
+#Graph construction  
+fct <- .25 # FC threshold for differential expression
+pvt <- 0.01 # Pvalue threshold for differential expression
+min_pct <- .1 # minimun level of detected bacteria in each sample group
+
+```
+
+# Loading data and metadata
+
+```{r, echo = FALSE}
+# Load metadata
+metadata <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatesept28.csv"))
+rownames(metadata) <- as.character(metadata$ID)
+
+# Load datasets
+dataset_names <- c("Tissue_RNAseq_V3_normalized",
+                     "ASV_tissue_V3_normalized_batch_corrected",
+                     "ASV_CVL_V3_normalized_batch_corrected",
+                     "ASV_CVL_V2_normalized_NOT_batch_corrected")
+
+#import datasets and return matrix with taxa-level resolution
+datasets <- lapply(dataset_names, function(x){
+  x <- read.csv( paste0(PATH,"results/",x,".csv"),row.names = 1)
+  return(as.matrix(x)) })
+names(datasets) <- dataset_names
+
+
+#fill all samples with 0s to make plotting easier
+datasets_all_samples <- lapply(datasets, function(x) {
+  temp <- matrix(0,nrow = nrow(x),
+                 ncol = nrow(metadata),
+                 dimnames = list(rownames(x),rownames(metadata)))
+  temp[rownames(x),colnames(x)] <- x
+  return(temp)
+})
+lapply(datasets_all_samples,dim)
+```
+
+# Calculate QC metrics
+
+\clearpage
+
+```{r, echo = FALSE,fig.width=10,fig.height=5}
+counts <- t(as.data.frame( lapply(datasets_all_samples,colSums) ))
+counts[is.na(counts)] <- 0
+detected_counts <- t(as.data.frame( lapply(datasets_all_samples,function(x) colSums( x > 0 )) ))
+detected_counts[is.na(detected_counts)] <- 0
+rownames(detected_counts) <- paste0(rownames(detected_counts),">0")
+
+mypar(2,1,mar=c(2,10,2,1))
+barlist( data = rbind( counts ),main = "total counts",
+         genes = c(rownames(counts)), labels = sub("_norm.*","",rownames(counts)),
+         clustering = rep(1,nrow(metadata)),
+         col=ifelse( (colSums(counts == 0)==3)*1,"red", ifelse( (colSums(counts == 0)==2)*1,"orange3","grey" ) ),draw_mean_lines=F)
+add_letter("a")
+
+barlist( data = rbind( detected_counts),main = "detected features",
+         genes = c(rownames(detected_counts)),labels = sub("_norm.*","",rownames(counts)),
+         clustering = rep(1,nrow(metadata)),
+         col=ifelse( (colSums(counts == 0)==3)*1,"red", ifelse( (colSums(counts == 0)==2)*1,"orange3","grey" ) ),draw_mean_lines=F)
+add_letter("b")
+
+sum((colSums(counts == 0)>=3)*1)
+colnames(counts)[(colSums(counts == 0)==3)]
+paste0(colnames(counts)[(colSums(counts == 0)==3)],collapse = ",")
+
+metadata[colnames(counts)[(colSums(counts == 0)>=3)],]
+```
+
+**Figure 1.** Comparative barplot for the **a)** total counts and **b)** number of non-zero detected features (genes / bacteria) for each of the sequencing datasets. Samples are ordered alfabetically according to the patient ID. Samples that are present in exactly two datasets are shown in orange (`r paste0(colnames(counts)[(colSums(counts == 0)==3)],collapse = ",")`). Samples that are present in exactly two datasets are shown in red (`r paste0(colnames(counts)[(colSums(counts == 0)==2)],collapse = ",")`).
+
+\clearpage
+
+```{r, echo = FALSE,fig.width=10,fig.height=9}
+all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
+datasets <- factor(c( rep("tissue_v3",121) , rep("CVL_v3",121) , rep("CVL_v2",121) ))
+datasets <- datasets[ colSums(all_microbiome)>0 ]
+all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
+
+NN <- min(table(datasets))
+
+
+res <- data.frame( matrix(0,nrow = 1,ncol = 6) )
+for(i in levels(datasets)){
+  for(j in rownames(all_microbiome) ){
+    
+    a <- all_microbiome[j,datasets == i]
+    b <- all_microbiome[j,datasets != i]
+    
+    perc1 <- sum(all_microbiome[j,datasets == i]>0) / sum(datasets == i)
+    perc2 <- sum(all_microbiome[j,datasets != i]>0) / sum(datasets != i)
+    
+    temp <- wilcox.test(x=a, y=b)
+    
+    fc <- log2( (mean(a)+1e-3) / (mean(b)+1e-3) )
+    
+    res <- rbind(res, setNames(c(j,i,fc,perc1,perc2,unlist(temp)[2] ),
+                          c("bacteria","cluster","fc","perc.1","perc.2","pvalue")) )
+    colnames(res) <- c("bacteria","cluster","fc","perc.1","perc.2","pvalue")
+  }
+}
+res <- res[-1,]
+res$pvalue <- as.numeric(res$pvalue)
+res$perc.1 <- as.numeric(res$perc.1)
+res$perc.2 <- as.numeric(res$perc.2)
+res$perc.diff <- res$perc.1 - res$perc.2
+
+res$fc <- as.numeric(res$fc)
+res$FDR <- p.adjust(res$pvalue)
+res <- res[order(res$pvalue),]
+res <- res[abs(res$fc) > fct,]
+res <- res[abs(res$pvalue) < pvt,]
+res <- res[ (res$perc.1 > min_pct) | (res$perc.2 > min_pct) ,]
+dim(res)
+
+ord <- factor(sapply(unique(as.character(res$bacteria)),function(x){getcluster(all_microbiome, x, datasets)}))
+
+mypar(1,2,mar=c(2,15,1,1))
+plot_dots( all_microbiome , names(sort(ord)) , clustering = datasets,show_grid = T,cex.main=1,font.main=1,
+          cex.row = .8,cex.col = .8,srt = 0)
+add_letter("a")
+barlist( all_microbiome , names(sort(ord)) , clustering = datasets,show_grid = T,cex.main=1,font.main=1,
+          cex.axis = .8,srt = 0)
+add_letter("b")
+```
+
+**Figure 2.** Differential bacterial abundance across microbiome datasets. The results are shown both as **a)** Dot plots and **b)** barplots Bacteria with log2FC above `r fct` and p-value below `r pvt` were considered significant and were sorted by the highest expression.
+
+
+\clearpage
+
+```{r, echo = FALSE}
+groupings <- lapply( names(datasets_all_samples)[-1] ,function(x){
+  x <- read.csv2( paste0(PATH,"results/Sample_Louvain_clusters_",x,".csv"),row.names = 1 ) })
+names(groupings) <- names(datasets_all_samples)[-1]
+
+groupings_all_samples <- lapply(groupings,function(x){
+  df <- data.frame(group=rep("NA",nrow(metadata)), row.names = rownames(metadata),stringsAsFactors = F)
+  df[rownames(x),1] <- as.character(x[,1])
+  return(df)
+})
+names(groupings_all_samples) <- names(groupings)
+
+df <- as.data.frame(groupings_all_samples)
+colnames(df) <- paste0( "louvain_",sub( "ASV_","",  sub( "_norma.*","", names(groupings_all_samples) )))
+metadata <- cbind(metadata,df)
+```
+
+# Computing differential expression across microbiome datasets
+
+```{r, echo = FALSE,fig.width=10,fig.height=9}
+all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
+datasets <- c( rep("tissue_v3",121) , rep("CVL_v3",121) , rep("CVL_v2",121) )
+datasets <- paste0(datasets, "_",c(metadata$louvain_tissue_V3,metadata$louvain_CVL_V3,metadata$louvain_CVL_V2))
+
+datasets <- factor( datasets[ colSums(all_microbiome)>0 ])
+all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
+
+NN <- min(table(datasets))
+```
+
+```{r, echo = FALSE,fig.width=10,fig.height=10}
+mypar(2,2)
+group_means <- sapply( levels(datasets), function(x) rowMeans( all_microbiome[,datasets==x] ) )
+cors <- cor(group_means)
+h <- hclust( as.dist( (1-cors)/2 ),method = "ward.D2" )
+o <- h$order
+
+par(mar=c(6,6,2,2))
+image(t(cors[o,o][nrow(cors):1,]),col=cor_pal,axes=F,border=NA,
+      main="correlation matrix",xlab="",ylab="",line=.4,cex.main=1,font.main=1)
+text(  rep(par("usr")[c(1)]-.01*diff(par("usr")[c(1,2)]),length(h$labels)),
+        rev((0:(length(h$labels)-1) )/(length(h$labels)-1)),
+            labels = h$labels[o], srt = 0, adj = c(1,.5), xpd = TRUE, cex=1)
+text(  (0:(length(h$labels)-1) )/(length(h$labels)-1),
+        rep(par("usr")[c(3)]-.01*diff(par("usr")[c(3,4)]),length(h$labels)),
+            labels = h$labels[o], srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+add_letter("a")
+
+par(mar=c(6,4,2,2))
+plot(as.dendrogram(h),las=1,ylab="height")
+add_letter("b")
+```
+
+**Figure 3.** Comparrisson among patient groups across datasets. **(a)** Correlation matrix across sample groups. **(b)** Hierachical clustering of sample groups.
+
+
+```{r, echo = FALSE,fig.width=10,fig.height=14}
+res <- data.frame( matrix(0,nrow = 1,ncol = 6) )
+for(i in levels(datasets)){
+  for(j in rownames(all_microbiome) ){
+    
+    a <- all_microbiome[j,datasets == i]
+    b <- all_microbiome[j,datasets != i]
+    
+    perc1 <- sum(all_microbiome[j,datasets == i]>0) / sum(datasets == i)
+    perc2 <- sum(all_microbiome[j,datasets != i]>0) / sum(datasets != i)
+    
+    temp <- wilcox.test(x=a, y=b)
+    
+    fc <- log2( (mean(a)+1e-3) / (mean(b)+1e-3) )
+    
+    res <- rbind(res, setNames(c(j,i,fc,perc1,perc2,unlist(temp)[2] ),
+                          c("bacteria","cluster","fc","perc.1","perc.2","pvalue")) )
+    colnames(res) <- c("bacteria","cluster","fc","perc.1","perc.2","pvalue")
+  }
+}
+res <- res[-1,]
+res$pvalue <- as.numeric(res$pvalue)
+res$perc.1 <- as.numeric(res$perc.1)
+res$perc.2 <- as.numeric(res$perc.2)
+res$perc.diff <- res$perc.1 - res$perc.2
+
+res$fc <- as.numeric(res$fc)
+res$FDR <- p.adjust(res$pvalue)
+res <- res[order(res$pvalue),]
+res <- res[abs(res$fc) > fct,]
+res <- res[abs(res$pvalue) < pvt,]
+res <- res[ (res$perc.1 > min_pct) | (res$perc.2 > min_pct) ,]
+dim(res)
+
+ord <- factor(sapply(unique(as.character(res$bacteria)),function(x){getcluster(all_microbiome, x, datasets)}))
+
+mypar(1,1,mar=c(5,15,1,1))
+plot_dots( all_microbiome , names(sort(ord)) , clustering = datasets,show_grid = T,cex.main=1,font.main=1,
+          cex.row = .7,cex.col = .8,srt = 30)
+add_letter("a")
+```
+
+**Figure 4.** Differential bacterial abundance across all groups and all microbiome datasets. The results are shown both as **a)** Dot plots and **b)** barplots Bacteria with log2FC above `r fct` and p-value below `r pvt` were considered significant and were sorted by the highest expression.
+
+
+
+```{r, eval=F, echo = FALSE,fig.width=10, fig.height=10}
+sample_order <- order(df$louvain_CVL_V3)
+
+# zscore_datasets_all_samples <- lapply(datasets_all_samples,function(x){
+#   zscore <- t(apply(x,1,function(i){scale(i,T,T)}))
+#   zscore[ zscore > 6 ] <- 6
+#   zscore[ zscore < -6 ] <- -6
+#   rownames(zscore) <- rownames(x); colnames(zscore) <- colnames(x)
+#   zscore[is.nan(zscore)] <- -6
+#   return(zscore)
+# })
+
+
+mypar(3,1,mar=c(1,2,1,0.5))
+
+image(t(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]]
+        [ names(sort(ord)),sample_order]),
+      col=heat_pal,axes=F,border=NA,
+      main="tissue week 3",xlab=" ",ylab="",line=.4,cex.main=1,font.main=1)
+points( (0:(length(df$louvain_tissue_V3)-1) )/(length(df$louvain_tissue_V3)-1),
+        rep(par("usr")[c(3)]-.01*diff(par("usr")[c(3,4)]),
+            length(df$louvain_tissue_V3)), pch=16,
+        col=pal[factor(df$louvain_tissue_V3)][sample_order] ,xpd=T)
+points( (0:(length(df$louvain_tissue_V3)-1) )/(length(df$louvain_tissue_V3)-1),
+        rep(par("usr")[c(4)]+.01*diff(par("usr")[c(3,4)]),
+            length(df$louvain_tissue_V3)), pch=16,
+        col=pal[factor(df$louvain_tissue_V3)][sample_order] ,xpd=T)
+
+
+image(t(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+        [ names(sort(ord)),sample_order]),
+      col=heat_pal,axes=F,border=NA,
+      main="CVL week 3",xlab=" ",ylab="",line=.4,cex.main=1,font.main=1)
+points( (0:(length(df$louvain_CVL_V3)-1) )/(length(df$louvain_CVL_V3)-1),
+        rep(par("usr")[c(3)]-.01*diff(par("usr")[c(3,4)]),
+            length(df$louvain_CVL_V3)), pch=16,
+        col=pal[factor(df$louvain_CVL_V3)][sample_order] ,xpd=T)
+points( (0:(length(df$louvain_CVL_V3)-1) )/(length(df$louvain_CVL_V3)-1),
+        rep(par("usr")[c(4)]+.01*diff(par("usr")[c(3,4)]),
+            length(df$louvain_CVL_V3)), pch=16,
+        col=pal[factor(df$louvain_CVL_V3)][sample_order] ,xpd=T)
+
+
+image(t(datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]]
+        [ names(sort(ord)),sample_order]),
+      col=heat_pal,axes=F,border=NA,
+      main="CVL week 2",xlab=" ",ylab="",line=.4,cex.main=1,font.main=1)
+points( (0:(length(df$louvain_CVL_V2)-1) )/(length(df$louvain_CVL_V2)-1),
+        rep(par("usr")[c(3)]-.01*diff(par("usr")[c(3,4)]),
+            length(df$louvain_CVL_V2)), pch=16,
+        col=pal[factor(df$louvain_CVL_V2)][sample_order] ,xpd=T)
+points( (0:(length(df$louvain_CVL_V2)-1) )/(length(df$louvain_CVL_V2)-1),
+        rep(par("usr")[c(4)]+.01*diff(par("usr")[c(3,4)]),
+            length(df$louvain_CVL_V2)), pch=16,
+        col=pal[factor(df$louvain_CVL_V2)][sample_order] ,xpd=T)
+```
+
+**Figure 5.** Comparisson of microbiome datasets, showing only the significant bacteria. Samples are ordered by the CVL3 groupings. The colors represent their respective bacterial groupings for each dataset. 
+
+
+\clearpage
+
+```{r, echo = FALSE,fig.width=8,fig.height=8}
+metadata_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
+                         "Bacterio_KOH_v2","Bacterio_KOH_v3","Bacterio_TV_v3",
+                         "BV_Clue_Cells_v2","BV_Clue_Cells_v3",
+                         "BV_Diagnosis_v2","BV_Diagnosis_v3",
+                         "BV_Lactobacillus_v2","BV_Lactobacillus_v3",
+                         "BV_Monbilicus_v2","BV_Monbilicus_v3",
+                         "BV_Vaginal_Garda_v2","BV_Vaginal_Garda_v3",
+                         "blood_cervix_v2","blood_cervix_v3",
+                         "cervical_inflammation_v2","cervical_inflammation_v3",
+                         "HIVstatus","Contraception",
+                         "CT_v2","CT_v3","regular_partner",
+                         "vaginal_douching_v2","vaginal_douching_v3",
+                         "louvain_tissue_V3","louvain_CVL_V2","louvain_CVL_V3")
+as.character(metadata$group_M9_CVLv3)
+
+Ftest <- sapply(metadata_parameters,function(x){
+  temp <- sapply(metadata_parameters,x=x,function(x,y){
+    if (x==y){
+      return( 1 )
+    } else {
+    f1 <- as.character(metadata[,x])
+    f1[is.na(f1)] <- "NA"
+    f1[f1==""] <- "NA"
+    f2 <- as.character(metadata[,y])
+    f2[f2==""] <- "NA"
+    contT1  <- table(f1,f2)
+    print(x)
+    print(y)
+    return( fisher.test(contT1,simulate.p.value = T)$p.value )
+    # return( chisq.test(contT1,simulate.p.value = T)$p.value )
+    }
+  })
+  return(temp)
+})
+
+clean_Ftest <- Ftest
+# clean_Ftest <- ( clean_Ftest + t(clean_Ftest) ) / 2
+clean_Ftest <- -log10(clean_Ftest)
+clean_Ftest[clean_Ftest > 4] <- 4
+# clean_Ftest[ clean_Ftest > 0.05 ] <- 1
+
+mypar(1,1,mar=c(12,1,1,12))
+image( t(clean_Ftest [nrow(Ftest):1,]),axes=F,
+       col=colorRampPalette(c("grey95","grey70","orange3","firebrick"))(90) )
+text(  par("usr")[2]+.02 ,seq(1,0,length.out = nrow(Ftest)) , 
+       labels = rownames(Ftest), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+text( seq(0,1,length.out = nrow(Ftest)) , par("usr")[3]-.02 , 
+      labels = rownames(Ftest), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+```
+
+
+**Figure 6.** Association analysis across several patient categorical metadata parameters, including patient groupings annotations from microbiome.
+
+\clearpage
+
+
+```{r, echo = FALSE,fig.width=10,fig.height=10}
+mypar(6,4,mar=c(1,4,1,4) )
+x <- as.character(metadata[,"Contraception"])
+x[is.na(x)] <- "NA"
+y <- as.character(metadata[,"Antibiotics"])
+y[is.na(y)] <- "NA"
+plot_sankey( data.frame(x,y),color_by = 2,
+             plot_labels = T, plot_weights = F,order_1_by = "total",
+             order_2_by = "total",use_w1 = T,use_w2 = T,gap2v = 0,smoothing = .1,
+             pal=hue_pal()(10))
+text(c(0,1),c(1,1),labels = c( "Contraception" , "Antibiotics" ),pos=3,xpd=T)
+
+
+
+x <- as.character(metadata[,"BV_Monbilicus_v2"])
+x[is.na(x)] <- "NA"
+y <- as.character(metadata[,"Antibiotics"])
+y[is.na(y)] <- "NA"
+plot_sankey( data.frame(x,y),color_by = 2,
+             plot_labels = T, plot_weights = F,order_1_by = "total",
+             order_2_by = "total",use_w1 = T,use_w2 = T,gap2v = 0,smoothing = .1,
+             pal=hue_pal()(10))
+text(c(0,1),c(1,1),labels = c( "BV_Monbilicus_v2" , "Antibiotics" ),pos=3,xpd=T)
+
+
+
+x <- as.character(metadata[,"HIVstatus"])
+x[is.na(x)] <- "NA"
+y <- as.character(metadata[,"Antibiotics"])
+y[is.na(y)] <- "NA"
+eee <- plot_sankey( data.frame(x,y),color_by = 2,
+             plot_labels = T, plot_weights = F,order_1_by = "total",
+             order_2_by = "total",use_w1 = T,use_w2 = T,gap2v = 0,smoothing = .1,
+             pal=hue_pal()(10))
+text(c(0,1),c(1,1),labels = c( "HIVstatus" , "Antibiotics_v2" ),pos=3,xpd=T)
+
+
+x <- as.character(metadata[,"blood_cervix_v3"])
+x[is.na(x)] <- "NA"
+y <- as.character(metadata[,"cervical_inflammation_v3"])
+y[is.na(y)] <- "NA"
+plot_sankey( data.frame(x,y),
+             plot_labels = T, plot_weights = F,order_1_by = "total",
+             order_2_by = "total",use_w1 = T,use_w2 = T,gap2v = 0,smoothing = .1,
+             pal=hue_pal()(9))
+text(c(0,1),c(1,1),labels = c( "blood_cervix_v3" , "cervical_inflammation_v3" ),pos=3,xpd=T)
+
+```
+
+**Figure 7.** A few examples of significant association between metadata parameters shown as sankey plots.
+
+\clearpage
+
+
+```{r, echo = FALSE,fig.width=10,fig.height=10}
+mypar(min(length(metadata_parameters),6),4,mar=c(1,4,1,4))
+
+# metadata$Contraception
+#Antibiotics usage
+for(i in metadata_parameters){
+  empty_plot()
+  text( par("usr")[2] , mean(par("usr")[3:4]),labels = sub("_","\n",i),pos=2 )
+  for(j in c("louvain_tissue_V3","louvain_CVL_V2","louvain_CVL_V3")){
+    x <- as.character(metadata[,i])
+    x[is.na(x)] <- "NA"
+    y <- as.character(metadata[,j])
+    y[is.na(y)] <- "NA"
+    plot_sankey( data.frame(x,y),
+             plot_labels = T, plot_weights = F,order_1_by = "total",
+             order_2_by = "total",use_w1 = T,use_w2 = T,gap2v = 0,smoothing = .1,
+             pal=hue_pal()(10))
+    text(c(0,1),c(1,1),labels = c(i,j),pos=3,xpd=T)
+  }
+}
+```
+
+**Figure 8.** Sankey plots for all tested associations between the patient groups identified in in the microbiome datasets.
+
+\clearpage
+
+```{r, echo = FALSE,fig.width=10,fig.height=13}
+myletter <- letters
+
+for(i in c("ASV_tissue_V3_normalized_batch_corrected",
+           "ASV_CVL_V3_normalized_batch_corrected",
+           "ASV_CVL_V2_normalized_NOT_batch_corrected")){
+  
+  cat(paste0("Correlation between RNAseq and ",sub("_norm.*","",i)))
+  
+  TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+  bac_dataset <- datasets_all_samples[[i]]
+  dge <- read.csv2(paste0(PATH,"/results/DGE_ASV_CVL_V2_normalized_NOT_batch_corrected.csv"),row.names = 1)
+  samples_TRX_and_CVL3 <- colnames(counts) [ colSums(counts[c("Tissue_RNAseq_V3_normalized",i),] > 0)==2 ]
+  
+  # mypar(4,3,mar=c(4,2,2,2))
+  #filter TRX dataset
+  TRX <- TRX [ , samples_TRX_and_CVL3 ]
+  TRX <- TRX [ rowSums(TRX>0)>= 2 , ]
+  top_vars_TRX <- names(sort(apply(TRX,1,var),decreasing = T)[1:5000] )
+  # plot(apply(TRX,1,mean),apply(TRX,1,var),col=ifelse(rownames(TRX) %in% top_vars_TRX,"red","grey20"),cex=.2)
+  TRX <- TRX[ top_vars_TRX , ]
+  dim(TRX)
+  
+  #filter bac_dataset dataset
+  bac_dataset <- bac_dataset [ , samples_TRX_and_CVL3 ]
+  bac_dataset <- bac_dataset [ rowSums(bac_dataset>0)>= 2 , ]
+  top_vars_bacs <- names(sort(apply(bac_dataset,1,var),decreasing = T)[1:100] )
+  dim(bac_dataset)
+  
+  cors <- cor( t(rbind(TRX) ) ,  t(rbind(bac_dataset) ) )
+  # hist(cors,xlim=c(-1,1),breaks = 100)
+  dim(cors)
+  
+  
+  bacteria_use <- colnames(cors)
+  gmt <- gmtPathways("../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")
+  cl <- parallel::makePSOCKcluster(parallel::detectCores()-1)
+  invisible(parallel::clusterEvalQ(cl, {c("gmt","cors");library(fgsea);library(stats);library(base)}))
+  enrichments <- parallel::parLapply(cl,bacteria_use,gmt=gmt,cors=cors,function(x,gmt,cors){
+    res <- fgsea(pathways = gmt,stats = sort(cors[,x],decreasing = T),nper=10000)
+    return(res)
+  })
+  parallel::stopCluster(cl)
+  names(enrichments) <- bacteria_use
+  
+  
+  
+  pvalues <- lapply(enrichments,function(x) setNames(x$pval,x$pathway) )
+  pvalues <- t(as.data.frame(pvalues))
+  pvalues <- -log10( pvalues )
+  top_pathways <- names(sort(apply(pvalues,1,median),T))[1:50]
+  # mypar(mar=c(4,15,2,2))
+  # boxplot( t(pvalues[rev(top_pathways),]),cex=.1,horizontal=T,las=1 )
+  
+  # pvalues[ pvalues < -log10(0.05)] <- 0
+  # sort(rowSums(pvalues>0),T)
+  # sort(colSums(pvalues>0),T)
+  NESes <- lapply(enrichments,function(x) setNames(x$NES,x$pathway) )
+  NESes <- t(as.data.frame(NESes))
+  NESes[is.na(NESes)] <- 0
+  NESes[ pvalues < -log10(0.05) ] <- 0
+  NESes <- NESes[rowSums(NESes!=0) >= 10 , colSums(NESes!=0) >= 10]
+  
+  # o_kegg <- hclust( as.dist( (1-cor(NESes))/2 ),"ward.D2")$order
+  # o_bacs <- hclust( as.dist( (1-cor(t(NESes)))/2 ),"ward.D2")$order
+  o_kegg <- hclust( as.dist( (1-cor(NESes))/2 ),"ward.D2")$order
+  o_bacs <- hclust( as.dist( (1-cor(t(NESes) ))/2 ),"ward.D2")$order
+  
+  NESes <- NESes[o_bacs,o_kegg]
+  
+  mypar(1,1,mar=c(12,2,2,12))
+  image( t(NESes[nrow(NESes):1,]),col=colorRampPalette(c("navy","grey95","firebrick"))(91),breaks=seq(-3,3,length.out = 92),
+         axes=F,border=NA,main="tissue RNAseq KEGG pathways",xlab="",ylab=i,line=.4,cex.main=1,font.main=1)
+  text(  par("usr")[c(4)] , seq(1,0,length.out = nrow(NESes)),
+        labels = rownames(NESes), srt = 0, adj = c(0,.5), xpd = TRUE, cex=.4)
+  text( seq(0,1,length.out = ncol(NESes)) , par("usr")[c(1)],
+        labels = colnames(NESes), srt = 90, adj = c(1,.5), xpd = TRUE, cex=.4)
+  add_letter(myletter); myletter <- myletter[-1]
+  # empty_plot()
+  cat("\\clearpage")
+
+}
+```
+
+
+**Figure 9.** Heatmaps showing the functional association of microbiome datasets with the expression profiles in the RNAseq dataset. Briefly, bacterial abundances from each dataset were correlated with the gene expression of the top 5000 highly variable genes from the RNAseq dataset, generating a correlation matrix between bacteria and genes. Then for each bacteria, we rank genes based on their correlation to that bacteria and perform gene set enrichment anlaysis (GSEA) using the KEGG gene annotation database. This, in turn, will result in a matrix associating every bacteria with every KEGG process in the tissue. The heatmap shows the normalized enrichment score (NES). Only enrichments with pvalue below 0.05 are shown. Bacteria and pathways significant in less that 10 pathways and bacteria, respectivelly, were omitted.
+
+\clearpage
+
+
+```{r, echo = FALSE,fig.width=10,fig.height=10}
+# eee <- data.frame(x=c(sapply(colnames(NESes),function(x)rep(x,nrow(NESes)))),
+#                   y=rep(rownames(NESes),ncol(NESes)),
+#                   w=c(NESes),
+#                   p=c(t(pvalues)),
+#                   x1=0,
+#                   y1=c(sapply(ncol(NESes):1,function(x)rep(x,nrow(NESes))))/ncol(NESes) ,
+#                   x2=1,
+#                   y2=rep(nrow(NESes):1,ncol(NESes))/nrow(NESes) )
+# 
+# eee$w2 <- eee$w / max(eee$w)
+# eee <- eee[eee$w > 1.5,]
+# eee <- eee[eee$p > 2,]
+# 
+# eee$y1 <- rank(eee$y1) / length(eee$y1)
+# eee$y2 <- rank(eee$y2) / length(eee$y2)
+
+
+
+# 
+# plot(c(0,1),c(0,1),type="n")
+# for( i in 1:nrow(eee)){
+#   lines(c(eee$x1[i],eee$x2[i]),c(eee$y1[i],eee$y2[i]),
+#         col=colorRampPalette(c("grey95","grey","firebrick"))(99)[ eee$w2 * 98 + 1 ] )
+# }
+
+
+
+
+```
+
+
+
+
+
+
+```{r, eval=F,echo = FALSE}
+g <- graph_from_incidence_matrix( 1-cors, directed = F,weighted = T  )
+
+l <- layout_with_fr(g)
+plot( g , vertex.label.cex=0.000001 , layout=l,
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,
+      vertex.size=1,vertex.color=ifelse(V(g)$name %in% colnames(CVL3),"red","blue") )
+```
+
+
+
+
