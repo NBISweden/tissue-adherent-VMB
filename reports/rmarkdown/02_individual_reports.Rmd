@@ -55,10 +55,6 @@ P <- 0.35 # prunning threshold of SNN
 fct <- .25 # FC threshold for differential expression
 pvt <- 0.05 # Pvalue threshold for differential expression
 min_pct <- .1 # minimun level of detected bacteria in each sample group
-
-
-#dataset use
-dataset_use <- 3
 ```
 
 # Loading data and metadata

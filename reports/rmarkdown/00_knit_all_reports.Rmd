@@ -34,7 +34,7 @@ rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/01_data_pre_processing
 ```
 
 ```{r, echo = T}
-rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/02_data_quality_control.Rmd"),
+rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/02b_data_quality_control.Rmd"),
                   output_format = "pdf_document")
 ```
 
@@ -45,15 +45,17 @@ dataset_names <- c("ASV_tissue_V3_normalized_batch_corrected.csv",
                    "ASV_CVL_V2_normalized_NOT_batch_corrected.csv")
 
 for(i in dataset_names){
-  rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/03_individual_reports.Rmd"),
+  rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/02_individual_reports.Rmd"),
                     output_format = "pdf_document",
                     params = list(dataset=i),
                     output_file = paste0(PATH,"/reports/rmarkdown/report_",sub(".csv","",i)))
 }
 ```
 
-
-
+```{r, echo = T}
+rmarkdown::render(input = paste0(PATH,"/reports/rmarkdown/03_integrated_datasets.Rmd"),
+                  output_format = "pdf_document")
+```
 
 
 
