@@ -38,9 +38,8 @@ library(igraph)
 library(rafalib)
 library(sva)
 library(batchelor)
-source("~/repos/niceRplots/R/plotting_functions.R")
-source("~/repos/niceRplots/R/add_fig_label.R")
-source("~/repos/niceRplots/R/helper_functions.R")
+remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
+library(niceRplots)
 
 ```
 
@@ -50,7 +49,8 @@ source("~/repos/niceRplots/R/helper_functions.R")
 PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325/data/" #Path to the data
 
 #color palettes
-pal <- RColorBrewer::brewer.pal(8,"Set1") #color pallete for plots
+pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
+         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
 heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
 cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
 ```
@@ -113,6 +113,29 @@ lapply(datasets,dim)
 #     x <- t(log2( t(x) / colSums(x) * 1000 + 1))
 # })
 # lapply(datasets,dim)
+
+# Extract taxonomic information to file
+taxa_info <- lapply(dataset_names, function(x){
+  x <- read.csv( paste0(PATH,"/",x))
+  temp <- as.matrix(x[,c((ncol(x)-6):ncol(x))])
+  temp[is.na(temp)] <- "NA"
+  return(t(temp))
+})
+taxa_info <- t(as.data.frame(taxa_info))
+rownames(taxa_info) <- sub("other.","other ",rownames(taxa_info))
+rownames(taxa_info) <- sub("[.][0123456789","other ",rownames(taxa_info))
+sps <- apply( taxa_info[,6:7] ,1,function(x) paste(x,collapse ="_"))
+not_complete <- grepl("_NA",sps)
+taxa <- apply( taxa_info ,1,function(x) paste(x,collapse ="_"))
+taxa[not_complete] <- sub("_NA.*","",taxa[not_complete])
+taxa[not_complete] <- sub(".*_","other ",taxa[not_complete])
+taxa[!not_complete] <- sps[!not_complete]
+taxa <- sub("_"," ",taxa)
+use <- !is.na(taxa) & (taxa != "NA")
+taxa[taxa == "NA"] <- "other"
+rownames(taxa_info) <- taxa
+taxa_info <- taxa_info[! duplicated(rownames(taxa_info)),]
+write.csv2(taxa_info, paste0(PATH,"../results/taxonomy.csv"),row.names = T)
 ```
 
 

@@ -29,9 +29,8 @@ library(igraph)
 library(rafalib)
 library(sva)
 library(batchelor)
-source("~/repos/niceRplots/R/plotting_functions.R")
-source("~/repos/niceRplots/R/add_fig_label.R")
-source("~/repos/niceRplots/R/helper_functions.R")
+remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
+library(niceRplots)
 
 ```
 
@@ -41,7 +40,8 @@ source("~/repos/niceRplots/R/helper_functions.R")
 PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325" #Path to the data
 
 #color palettes
-pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2")) #color pallete for plots
+pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
+         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
 heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
 cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
 
