@@ -121,41 +121,68 @@ colnames(counts)[(colSums(counts == 0)==3)]
 paste0(colnames(counts)[(colSums(counts == 0)==3)],collapse = ",")
 
 metadata[colnames(counts)[(colSums(counts == 0)>=3)],]
+
+
+samples_to_use <- colnames(counts)[(colSums(counts == 0)<3)]
+datasets_all_samples <- lapply( datasets_all_samples , function(x) { x [ , samples_to_use] } )
+metadata <- metadata[ samples_to_use , ]
 ```
 
 **Figure 1.** Comparative barplot for the **a)** total counts and **b)** number of non-zero detected features (genes / bacteria) for each of the sequencing datasets. Samples are ordered alfabetically according to the patient ID. Samples that are present in exactly two datasets are shown in orange (`r paste0(colnames(counts)[(colSums(counts == 0)==2)],collapse = ",")`). Samples that are present in exactly two datasets are shown in red (`r paste0(colnames(counts)[(colSums(counts == 0)==3)],collapse = ",")`).
 
 
 ```{r, echo = FALSE,fig.width=10,fig.height=9}
-all_microbiome <- rbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
-                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
-                        datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
+# all_microbiome <- rbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
+#                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
+#                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
+all_microbiome <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+all_microbiome <- all_microbiome + rnorm( length(all_microbiome) , mean = 0, sd = .00000001)
 all_microbiome <- all_microbiome[ rowSums(all_microbiome>0)>=2 ,  ]
-
+dim(all_microbiome)
 
 zscore <- t(apply(all_microbiome,1,function(i){scale(i,T,T)}))
-zscore[ zscore > 6 ] <- 6
-zscore[ zscore < -6 ] <- -6
+zscore[ zscore > 4 ] <- 4
+zscore[ zscore < -4 ] <- -4
 rownames(zscore) <- rownames(all_microbiome); colnames(zscore) <- colnames(all_microbiome)
 
 
 #Compute sample-wise correlations
-cors <- cor(zscore, method = "pearson")
+cors <- cor(all_microbiome, method = "pearson")
+adj <- (1-cors)/2
+# pheatmap::pheatmap(adj,border_color = NA,color = colorRampPalette(c("grey90","grey70","grey70","grey70","orange3","firebrick"))(90) )
 
+# cors <- cor(all_microbiome, method = "pearson")
+# adj <- (1-cors)/2
+# pheatmap::pheatmap(adj,border_color = NA,color = colorRampPalette(c("grey90","grey70","grey70","grey70","orange3","firebrick"))(90) )
 
 #Graph construction  
-k <- 5 # k for KNN
-P <- 0.4# prunning threshold of SNN
+k <- 10 # k for KNN
+P <- 0.5# prunning threshold of SNN
 
 
 #Compute KNN graph from correlation matrix
-knn <- RANN::nn2(cors,k = k)
+knn <- RANN::nn2(adj,k = k)
 # knn <- RANN::nn2(t(zscore),k = k)
 nn <- matrix(0, nrow(knn$nn.idx), nrow(knn$nn.idx))
 for(idx in 1:nrow(knn$nn.idx) ){  nn[idx,knn$nn.idx[idx,]] <- 1 }
 
 #Compute SNN graph from KNN
 jSNN <- t( t( (nn %*% nn ) / rowSums(nn)) / colSums(nn))
+
+jSNN[1:10,1:10]
+
+k=20
+P=0.1
+snn <- dbscan::sNN(x = adj, k = k, jp = T, approx = TRUE)
+snnm <- matrix(0, nrow(snn$id), nrow(snn$id))
+snnj <- matrix(0, nrow(snn$id), nrow(snn$id))
+
+# for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$dist[idx,] }
+for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$shared[idx,]/k }
+
+for(idx in 1:nrow(snn$id) ){  snnj[idx,snn$id[idx,]] <- snn$shared[idx,] }
+
+snnm[ snnj <= ceiling(k*P) ] <- 0
 
 #Prune SNN graph based on the Jaccard index
 pSNN <- jSNN
@@ -173,11 +200,12 @@ pSNN <- pSNN / max(pSNN)
 #      main="correlation coeficient",xlim=c(-1,1))
 # abline(v=0,col="red",lty=1,xpd=F)
 
+
 pSNN[ pSNN < P ] <- 0
 pSNN[ pSNN > P ] <- cors[pSNN > P]
 pSNN[ pSNN < 0 ] <- 0
 
-g <- graph_from_adjacency_matrix(pSNN,mode = "undirected",diag = F,weighted = T)
+g <- graph_from_adjacency_matrix(snnm,mode = "undirected",diag = F,weighted = T)
 
 mypar(2,2,mar=c(0,0,2,10))
 
@@ -206,9 +234,109 @@ title("Louvain clusters",cex.main=1,font.main=1)
 
 
 
+
 \clearpage
 
-```{r, echo = FALSE,fig.width=10,fig.height=4}
+```{r, eval=F, echo = FALSE,fig.width=10,fig.height=4}
+
+all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
+
+datasets <- factor(c( rep("tissue_v3",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) ,
+                      rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ,
+                      rep("CVL_v2",ncol(datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])) ))
+
+groups <- factor( rep(metadata$joint_clustering,3) )
+age <- rep(metadata$age,3)
+work_time <- rep(metadata$sexwork_months,3)
+
+datasets <- datasets[ colSums(all_microbiome)>0 ]
+groups <- groups[ colSums(all_microbiome)>0 ]
+age <- age[ colSums(all_microbiome)>0 ]
+all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
+
+df <- data.frame(groups,datasets,age)
+
+library(edgeR)
+design <- model.matrix( ~ datasets * groups + age , data=df )
+rownames(design) <- paste0(datasets,"_",colnames(all_microbiome))
+colnames(all_microbiome) <- rownames(design)
+
+
+y <- DGEList(counts = round(((2^all_microbiome)-1)*1000) , remove.zeros = T)
+y <- calcNormFactors(y,method = "TMM")
+y <- estimateGLMCommonDisp(y,design)
+y <- estimateGLMTagwiseDisp(y,design)
+fit <- glmFit(y, design)
+
+#age
+lrt <- glmLRT(fit,coef = 8)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+plot(top$logFC,-log10(top$PValue))
+
+
+#age
+lrt <- glmLRT(fit,coef = 4:7)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+
+
+
+#age
+lrt <- glmLRT(fit,coef = 9:12)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+
+
+
+#age
+lrt <- glmLRT(fit,coef = 13:16)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+
+
+```
+
+
+
+
+```{r, echo = FALSE,fig.width=5,fig.height=5}
+x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+xL <- rowsum(x , grepl("Lactobacillus",rownames(x)) )[2,] / sum(grepl("Lactobacillus",rownames(x)))
+xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
+xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
+
+mL <- metadata$BV_Lactobacillus_v3 ; mL[is.na(mL)] <- 0
+mM <- metadata$BV_Monbilicus_v3    ; mM[is.na(mM)] <- 0
+mG <- metadata$BV_Vaginal_Garda_v3 ; mG[is.na(mG)] <- 0
+
+mypar(3,1,mar=c(2,6,2,2))
+barlist( data = rbind(  BV=mL ,
+                        counts_16S=xL),
+         main = "Lactobacillus",
+         genes = c("BV","counts_16S"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+
+barlist( data = rbind(  BV=mM ,
+                        counts_16S=xM),
+         main = "Monbilicus",
+         genes = c("BV","counts_16S"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+
+barlist( data = rbind(  BV=mG ,
+                        counts_16S=xG),
+         main = "Gardanerella",
+         genes = c("BV","counts_16S"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+```
+
+
+
+
+\clearpage
+
+```{r, eval=F,echo = FALSE,fig.width=10,fig.height=4}
 myletters <- letters
 
 mypar(1,2,mar=c(2,15,1,1))
@@ -222,7 +350,6 @@ for (m in c("ASV_tissue_V3_normalized_batch_corrected",
   datasets <- factor(metadata$joint_clustering)
   # datasets <- datasets[ colSums(all_microbiome)>0 ]
   # all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
-  
   NN <- min(table(datasets))
   
   res <- data.frame( matrix(0,nrow = 1,ncol = 6) )
@@ -242,7 +369,7 @@ for (m in c("ASV_tissue_V3_normalized_batch_corrected",
       fc <- log2( (mean(a)+1e-3) / (mean(b)+1e-3) )
       
       res <- rbind(res, setNames(c(j,i,fc,perc1,perc2,unlist(temp)[2] ),
-                            c("bacteria","cluster","fc","perc.1","perc.2","pvalue")) )
+                                 c("bacteria","cluster","fc","perc.1","perc.2","pvalue")) )
       colnames(res) <- c("bacteria","cluster","fc","perc.1","perc.2","pvalue")
     }
   }
@@ -259,6 +386,8 @@ for (m in c("ASV_tissue_V3_normalized_batch_corrected",
   res <- res[abs(res$pvalue) < 0.05,]
   res <- res[ (res$perc.1 > min_pct) | (res$perc.2 > min_pct) ,]
   dim(res)
+  
+
   
   ord <- factor(sapply(unique(as.character(res$bacteria)),function(x){getcluster(all_microbiome, x, datasets)}))
 
@@ -279,16 +408,15 @@ for (m in c("ASV_tissue_V3_normalized_batch_corrected",
 
 \clearpage
 
-```{r, echo = FALSE,fig.width=10,fig.height=9}
+```{r, eval=F,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
-datasets <- factor(c( rep("tissue_v3",121) , rep("CVL_v3",121) , rep("CVL_v2",121) ))
+datasets <- factor(c( rep("tissue_v3",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) , rep("CVL_v2",ncol(datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])) ))
 datasets <- datasets[ colSums(all_microbiome)>0 ]
 all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
 
 NN <- min(table(datasets))
-
 
 res <- data.frame( matrix(0,nrow = 1,ncol = 6) )
 for(i in levels(datasets)){
@@ -339,10 +467,10 @@ add_letter("b")
 
 \clearpage
 
-```{r, echo = FALSE,fig.width=10,fig.height=9}
+```{r, eval=F,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
-datasets <- factor(c( rep("CVL_v3",121) , rep("CVL_v2",121) ))
+datasets <- factor(c( rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) , rep("CVL_v2",ncol(datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])) ))
 datasets <- datasets[ colSums(all_microbiome)>0 ]
 all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
 
@@ -398,10 +526,10 @@ add_letter("b")
 
 \clearpage
 
-```{r, echo = FALSE,fig.width=10,fig.height=9}
+```{r, eval=F,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])
-datasets <- factor(c( rep("tissue_v3",121) , rep("CVL_v3",121) ))
+datasets <- factor(c( rep("tissue_v3",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ))
 datasets <- datasets[ colSums(all_microbiome)>0 ]
 all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
 
@@ -461,9 +589,10 @@ add_letter("b")
 groupings <- lapply( names(datasets_all_samples)[-1] ,function(x){
   x <- read.csv2( paste0(PATH,"results/Sample_Louvain_clusters_",x,".csv"),row.names = 1 ) })
 names(groupings) <- names(datasets_all_samples)[-1]
+all_names <- unique(unlist(lapply(groupings,function(x)rownames(x))))
 
 groupings_all_samples <- lapply(groupings,function(x){
-  df <- data.frame(group=rep("NA",nrow(metadata)), row.names = rownames(metadata),stringsAsFactors = F)
+  df <- data.frame(group=rep("NA",length(all_names)), row.names = all_names,stringsAsFactors = F)
   df[rownames(x),1] <- as.character(x[,1])
   return(df)
 })
@@ -471,7 +600,7 @@ names(groupings_all_samples) <- names(groupings)
 
 df <- as.data.frame(groupings_all_samples)
 colnames(df) <- paste0( "louvain_",sub( "ASV_","",  sub( "_norma.*","", names(groupings_all_samples) )))
-metadata <- cbind(metadata,df)
+metadata <- cbind(metadata,df[rownames(metadata),])
 ```
 
 # Computing differential expression across microbiome datasets
@@ -480,42 +609,16 @@ metadata <- cbind(metadata,df)
 all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
-datasets <- c( rep("tissue_v3",121) , rep("CVL_v3",121) , rep("CVL_v2",121) )
-datasets <- paste0(datasets, "_",c(metadata$louvain_tissue_V3,metadata$louvain_CVL_V3,metadata$louvain_CVL_V2))
+datasets <- factor(c( rep("tissue_v3",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) , rep("CVL_v2",ncol(datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])) ))
 
-datasets <- factor( datasets[ colSums(all_microbiome)>0 ])
+datasets <- datasets[ colSums(all_microbiome)>0 ]
 all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
 
 NN <- min(table(datasets))
 ```
 
-```{r, echo = FALSE,fig.width=10,fig.height=10}
-mypar(2,2)
-group_means <- sapply( levels(datasets), function(x) rowMeans( all_microbiome[,datasets==x] ) )
-cors <- cor(group_means)
-h <- hclust( as.dist( (1-cors)/2 ),method = "ward.D2" )
-o <- h$order
 
-par(mar=c(6,6,2,2))
-image(t(cors[o,o][nrow(cors):1,]),col=cor_pal,axes=F,border=NA,
-      main="correlation matrix",xlab="",ylab="",line=.4,cex.main=1,font.main=1)
-text(  rep(par("usr")[c(1)]-.01*diff(par("usr")[c(1,2)]),length(h$labels)),
-        rev((0:(length(h$labels)-1) )/(length(h$labels)-1)),
-            labels = h$labels[o], srt = 0, adj = c(1,.5), xpd = TRUE, cex=1)
-text(  (0:(length(h$labels)-1) )/(length(h$labels)-1),
-        rep(par("usr")[c(3)]-.01*diff(par("usr")[c(3,4)]),length(h$labels)),
-            labels = h$labels[o], srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
-add_letter("a")
-
-par(mar=c(6,4,2,2))
-plot(as.dendrogram(h),las=1,ylab="height")
-add_letter("b")
-```
-
-**Figure 3.** Comparrisson among patient groups across datasets. **(a)** Correlation matrix across sample groups. **(b)** Hierachical clustering of sample groups.
-
-
-```{r, echo = FALSE,fig.width=10,fig.height=12}
+```{r, eval=F,echo = FALSE,fig.width=10,fig.height=12}
 res <- data.frame( matrix(0,nrow = 1,ncol = 6) )
 for(i in levels(datasets)){
   for(j in rownames(all_microbiome) ){
@@ -636,9 +739,7 @@ metadata_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
                          "cervical_inflammation_v2","cervical_inflammation_v3",
                          "HIVstatus","Contraception",
                          "CT_v2","CT_v3","regular_partner",
-                         "vaginal_douching_v2","vaginal_douching_v3",
-                         "louvain_tissue_V3","louvain_CVL_V2","louvain_CVL_V3",
-                         "group_M9_CVLv3","group_M6_CVLv3","group_M4_CVLv3","joint_clustering")
+                         "vaginal_douching_v2","vaginal_douching_v3","joint_clustering")
 
 Ftest <- sapply(metadata_parameters,function(x){
   temp <- sapply(metadata_parameters,x=x,function(x,y){
@@ -756,7 +857,7 @@ mypar(min(length(metadata_parameters),6),4,mar=c(1,4,1,4))
 for(i in metadata_parameters){
   empty_plot()
   text( par("usr")[2] , mean(par("usr")[3:4]),labels = sub("_","\n",i),pos=2 )
-  for(j in c("louvain_tissue_V3","louvain_CVL_V2","louvain_CVL_V3")){
+  for(j in c("joint_clustering")){
     x <- as.character(metadata[,i])
     x[is.na(x)] <- "NA"
     y <- as.character(metadata[,j])
@@ -815,7 +916,7 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
   cl <- parallel::makePSOCKcluster(parallel::detectCores()-1)
   invisible(parallel::clusterEvalQ(cl, {c("gmt","cors");library(fgsea);library(stats);library(base)}))
   enrichments <- parallel::parLapply(cl,bacteria_use,gmt=gmt,cors=cors,function(x,gmt,cors){
-    res <- fgsea(pathways = gmt,stats = sort(cors[,x],decreasing = T),nper=10000)
+    res <- fgsea(pathways = gmt,stats = sort(cors[,x],decreasing = T))
     return(res)
   })
   parallel::stopCluster(cl)
@@ -874,16 +975,28 @@ all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_co
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
 
-cors <- cor(t(all_microbiome[rowSums(all_microbiome > 0)>=10,]))
+cors <- cor(t(all_microbiome[rowSums(all_microbiome > 0)>=5,]))
 
 #Graph construction  
 k <- 5 # k for KNN
-P <- 0.2 # prunning threshold of SNN
+P <- 0.1 # prunning threshold of SNN
 
 knn <- RANN::nn2(cors,k = k)
 # knn <- RANN::nn2(t(zscore),k = k)
 nn <- matrix(0, nrow(knn$nn.idx), nrow(knn$nn.idx))
 for(idx in 1:nrow(knn$nn.idx) ){  nn[idx,knn$nn.idx[idx,]] <- 1 }
+
+# k=10
+# P=0.1
+snn <- dbscan::sNN(x = as.dist( (1-cors)/2 ), k = k, jp = FALSE, approx = TRUE)
+snnm <- matrix(0, nrow(snn$id), nrow(snn$id))
+snnj <- matrix(0, nrow(snn$id), nrow(snn$id))
+
+# for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$dist[idx,] }
+for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$shared[idx,]/k }
+for(idx in 1:nrow(snn$id) ){  snnj[idx,snn$id[idx,]] <- snn$shared[idx,] }
+snnm[ snnj <= ceiling(k*P) ] <- 0
+
 
 #Compute SNN graph from KNN
 jSNN <- t( t( (nn %*% nn ) / rowSums(nn)) / colSums(nn))
@@ -922,7 +1035,7 @@ l <- layout_with_fr(g,niter=3000,start.temp=1)
 
 # cl <- igraph::cluster_louvain(g)
 cl <- igraph::walktrap.community(g)
-
+# 
 table(cl$membership)
 
 
@@ -949,6 +1062,8 @@ for(j in sort(unique(cl$membership)) ){
   text( 0,1,labels = paste0(rownames(cors)[ cl$membership == j ],collapse = "\n"),adj=c(0,1),cex=.7)
   title(main=paste0("community",j))
 }
+write.csv2(cl$membership,"../../results/bacterial_communities.csv",row.names = rownames(cors))
+
 ```
 
 
@@ -984,12 +1099,14 @@ plot_sankey( data.frame( x[y!="NA"] , cl$membership[y!="NA"]), color_by = 1,
 **Figure 9b.** Taxonomic annotation of bacterial communities.
 
 
-```{r, eval=T, echo = FALSE,fig.width=10, fig.height=10}
-sample_order <- order(df$louvain_CVL_V3)
+```{r, eval=F, echo = FALSE,fig.width=10, fig.height=10}
+
 
 module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
   return( rowsum( x[rownames(cors),] , group = cl$membership ) / c(table(cl$membership)) )
 })
+
+mypar(4,3,mar=c(3,5,2,2))
 
 
 # mypar(3,1,mar=c(1,2,1,3))
@@ -1069,23 +1186,28 @@ for( i in c("louvain_tissue_V3","louvain_CVL_V3","louvain_CVL_V2")){
 
 
 ```{r, eval=T, echo = FALSE,fig.width=10, fig.height=14}
-mypar(7,3,mar=c(3,5,2,2))
 
-for( i in c("louvain_tissue_V3","louvain_CVL_V3","louvain_CVL_V2")){
-  for( j in c("ASV_tissue_V3_normalized_batch_corrected",
-          "ASV_CVL_V3_normalized_batch_corrected",
-          "ASV_CVL_V2_normalized_NOT_batch_corrected")){
-    temp_group <- as.character(df[,i])
-    temp_group[ is.na(temp_group) ] <- "NA"
-    temp_group[ temp_group == "" ] <- "NA"
-    temp_group <- factor(temp_group)
-    
-    barlist(data=module_means_per_dataset[[j]],
-            genes=rownames(module_means_per_dataset[[j]]),
-            labels = paste0("bac.com.",rownames(module_means_per_dataset[[j]])),
-            clustering=temp_group, main=paste0(i,"\n", sub("_norm.*","",j)),srt=45)
-  }
-}
+module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
+  return( rowsum( x[rownames(cors),] , group = cl$membership ) / c(table(cl$membership)) )
+})
+
+mypar(4,3,mar=c(3,5,2,2))
+
+# for( i in c("louvain_tissue_V3","louvain_CVL_V3","louvain_CVL_V2")){
+#   for( j in c("ASV_tissue_V3_normalized_batch_corrected",
+#           "ASV_CVL_V3_normalized_batch_corrected",
+#           "ASV_CVL_V2_normalized_NOT_batch_corrected")){
+#     temp_group <- as.character(df[,i])
+#     temp_group[ is.na(temp_group) ] <- "NA"
+#     temp_group[ temp_group == "" ] <- "NA"
+#     temp_group <- factor(temp_group)
+#     
+#     barlist(data=module_means_per_dataset[[j]],
+#             genes=rownames(module_means_per_dataset[[j]]),
+#             labels = paste0("bac.com.",rownames(module_means_per_dataset[[j]])),
+#             clustering=temp_group, main=paste0(i,"\n", sub("_norm.*","",j)),srt=45)
+#   }
+# }
   
 for( i in c("group_M4_CVLv3","group_M6_CVLv3","group_M9_CVLv3","joint_clustering")){
   for( j in c("ASV_tissue_V3_normalized_batch_corrected",
@@ -1149,7 +1271,7 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
   cl <- parallel::makePSOCKcluster(parallel::detectCores()-1)
   invisible(parallel::clusterEvalQ(cl, {c("gmt","cors");library(fgsea);library(stats);library(base)}))
   enrichments <- parallel::parLapply(cl,bacteria_use,gmt=gmt,cors=cors,function(x,gmt,cors){
-    res <- fgsea(pathways = gmt,stats = sort(cors[,x],decreasing = T),nper=10000)
+    res <- fgseaMultilevel(pathways = gmt,stats = sort(cors[,x],decreasing = T))
     return(res)
   })
   parallel::stopCluster(cl)
@@ -1223,11 +1345,11 @@ image( x[,ncol(x):1],col=colorRampPalette(c("navy","grey95","firebrick"))(91),br
        axes=F,border=NA,main="CVL_v3 + tissue_v3\ncombined",xlab="",ylab="",line=.4,cex.main=1,font.main=1)
 # add_letter(myletter); myletter <- myletter[-1]
 text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
-    labels = rownames(x), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+    labels = rev(rownames(x)), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
 empty_plot(xaxs="i",yaxs="i",
            xlim=par("usr")[c(1,2)],ylim=par("usr")[c(3,4)],main="HALLMARK")
 text(  par("usr")[c(1)],seq(0,1,length.out = ncol(x)) ,
-      labels = sub("HALLMARK_","",colnames(x)), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+      labels = rev(sub("HALLMARK_","",colnames(x))), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
 
 
 
@@ -1265,7 +1387,7 @@ image( x[,ncol(x):1],col=colorRampPalette(c("navy","grey95","firebrick"))(91),br
        axes=F,border=NA,main="CVL_v3 + tissue_v3\ncombined",xlab="",ylab="",line=.4,cex.main=1,font.main=1)
 # add_letter(myletter); myletter <- myletter[-1]
 text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
-    labels = rownames(x), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+    labels = rev(rownames(x)), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
 # empty_plot(xaxs="i",yaxs="i",
 #            xlim=par("usr")[c(1,2)],ylim=par("usr")[c(3,4)],main=" ")
 # text(  par("usr")[c(1)],seq(1,0,length.out = ncol(x)) ,
@@ -1318,7 +1440,7 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
   cl <- parallel::makePSOCKcluster(parallel::detectCores()-1)
   invisible(parallel::clusterEvalQ(cl, {c("gmt","cors");library(fgsea);library(stats);library(base)}))
   enrichments <- parallel::parLapply(cl,bacteria_use,gmt=gmt,cors=cors,function(x,gmt,cors){
-    res <- fgsea(pathways = gmt,stats = sort(cors[,x],decreasing = T),nper=10000)
+    res <- fgseaMultilevel(pathways = gmt,stats = sort(cors[,x],decreasing = T))
     return(res)
   })
   parallel::stopCluster(cl)
@@ -1378,7 +1500,7 @@ for( i in names(NESse_list)){
 empty_plot(xaxs="i",yaxs="i",
            xlim=par("usr")[c(1,2)],ylim=par("usr")[c(3,4)],main="KEGG")
 text(  par("usr")[c(1)],seq(0,1,length.out = ncol(x)) ,
-      labels = sub("KEGG_","",colnames(x)), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+      labels = rev(sub("KEGG_","",colnames(x))), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
 
 cat("\\clearpage")
 
@@ -1436,5 +1558,7 @@ text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
 
 
 
-
+```{r, echo = FALSE,fig.width=10,fig.height=8}
+write.csv2(metadata,"../../results/metadata_integration.csv",row.names = T)
+```
 

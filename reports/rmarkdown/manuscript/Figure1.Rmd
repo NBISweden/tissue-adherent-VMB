@@ -1,0 +1,146 @@
+---
+output: pdf_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+
+```{r, echo=F,  warning=FALSE,message=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(Seurat)
+  library(rafalib)
+  library(igraph)
+  library(scales)
+  library(RColorBrewer)
+  library(MASS)
+  library(spatstat)
+  library(magick)
+})  })  })
+
+
+
+#############################
+# SOURCE PLOTTING FUNCTIONS #
+#############################
+source("~/repos/niceRplots/R/helper_functions.R")
+source("~/repos/niceRplots/R/plotting_functions.R")
+source("~/repos/niceRplots/R/add_fig_label.R")
+```
+
+
+
+```{r fig1, echo = FALSE, eval = TRUE, warning=FALSE,message=FALSE,fig.width = 12, fig.height = 5, fig.cap = "Figure 1. Box plot of the total lengths of live and dead sparrows following a snowstorm in Providence, RI, as originally collected by Hermon Bumpus. The central horizontal line shows median values. Boxes and whiskers show inter-quartile ranges and extreme values, respectively."}
+
+#############
+# LODA DATA #
+#############
+ALL_DATA <- readRDS("~/Box/Projects/J_Mjosberg/NBIS_housekeeping_normalization/analysis_all_tissues/all_ilc_dataset.rds")
+pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+
+
+########################
+# DEFINE FIGURE LAYOUT #
+########################
+layout(matrix(c(1,2,5,
+                1,2,6,
+                1,2,7,
+                1,2,8,
+                1,2,9,
+                1,3,10,
+                1,3,11,
+                1,3,12,
+                1,3,13,
+                1,3,14,
+                1,4,15,
+                1,4,16,
+                1,4,16,
+                17,4,16,
+                17,4,16),
+              nrow = 15, byrow = T), 
+   widths=c(3,1.5,1.5), heights=c(1,1))
+#layout.show(16)
+
+
+
+################
+# PLOT FIGURES #
+################
+figlabels <- letters
+
+
+### A
+################
+par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
+plot_meta(ALL_DATA,red = "umap",feat = "RNA_snn_res.3", label = T, frame=F, main="",cex = .7)
+fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
+legend("topright", legend = "", col = "white", pch = 16, bty="n",
+       pt.cex = 1,cex = 1,title = "Clustering")
+
+
+### B
+################
+par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
+plot_meta(ALL_DATA,red = "umap",feat = "Tissue", label = T, frame=F, main="")
+fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
+legend("topright", legend = levels(ALL_DATA$Tissue), col = pal[1:3], pch = 16, bty="n",
+       pt.cex = 1,cex = 1,title = "Tissue")
+
+
+
+### C
+################
+par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
+plot_meta(ALL_DATA,red = "umap",feat = "Celltype", label = T, frame=F, main="")
+fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
+legend("topright", legend = levels(ALL_DATA$Celltype), col = pal[1:4], pch = 16, bty="n",
+       pt.cex = 1,cex = 1,title = "Celltype")
+
+
+
+
+
+### D
+################
+par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
+plot_meta(ALL_DATA,red = "umap",feat = "Donor", label = T, frame=F, main="")
+fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
+legend("topright", legend = "", col = "white", pch = 16, bty="n",
+       pt.cex = 1,cex = 1,title = "Donor")
+
+
+
+
+### E
+################
+my_gene_list <- c("PTGDR2","TNFSF10","TMEM273","KRT1","HPGD","FAM110A","ZP1","PKIB","TESPA1","CSGALNACT1")
+par(mar=c(0.5,6,0,.5))
+for(i in my_gene_list){ 
+try({violins(data = ALL_DATA,gene = i,clustering = "Celltype",assay = "RNA",plot_y_axis = F,plot_x_axis = F,ylab="",main="",bw = 1)
+mtext(side = 2, text = i, line = 1,las=1,cex = .8)})
+}
+mtext(side = 1, at=1:5, text = sort(unique(ALL_DATA@meta.data[,"Celltype"])), line = 1, las=1)
+text(1:5, par("usr")[3], labels = sort(unique(ALL_DATA@meta.data[,"Celltype"])), srt = 45, adj = c(1,0.5), xpd = T, cex=1)
+
+
+### F
+################
+my_image <- image_read("images/sparrow.jpg")
+par(mar = c(1, 1, .5, .5), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
+plot(my_image)
+fig_label(figlabels[1],cex = 3,font = 2,region = "figure") ; figlabels <- figlabels[-1]
+
+
+
+
+### G
+################
+
+
+
+
+
+```

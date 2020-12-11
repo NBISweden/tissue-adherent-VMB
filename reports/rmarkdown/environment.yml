@@ -13,6 +13,10 @@ dependencies:
  - bioconductor-phyloseq
  - bioconductor-sva
  - bioconductor-batchelor
+ - bioconductor-edger
+ - r-dbscan
+ - r-umap
+ - r-uwot
  - r-xcell
  - r-biocmanager
  - r-rann
@@ -25,10 +29,12 @@ dependencies:
  - r-readxl
  - r-enrichR
  - r-factoextra
+ - r-kableextra
  - r-rmarkdown
  - r-xlsx
  - r-keras
  - r-caret
+ - r-bookdown
  - compilers
  - scanorama
  - pip
