@@ -126,6 +126,7 @@ metadata[colnames(counts)[(colSums(counts == 0)>=3)],]
 samples_to_use <- colnames(counts)[(colSums(counts == 0)<3)]
 datasets_all_samples <- lapply( datasets_all_samples , function(x) { x [ , samples_to_use] } )
 metadata <- metadata[ samples_to_use , ]
+saveRDS(datasets_all_samples,"../../results/datasets_all_samples.RDS")
 ```
 
 **Figure 1.** Comparative barplot for the **a)** total counts and **b)** number of non-zero detected features (genes / bacteria) for each of the sequencing datasets. Samples are ordered alfabetically according to the patient ID. Samples that are present in exactly two datasets are shown in orange (`r paste0(colnames(counts)[(colSums(counts == 0)==2)],collapse = ",")`). Samples that are present in exactly two datasets are shown in red (`r paste0(colnames(counts)[(colSums(counts == 0)==3)],collapse = ",")`).
@@ -136,6 +137,7 @@ metadata <- metadata[ samples_to_use , ]
 #                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
 #                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
 all_microbiome <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+# all_microbiome <- t( t(all_microbiome) / colSums(all_microbiome) )
 all_microbiome <- all_microbiome + rnorm( length(all_microbiome) , mean = 0, sd = .00000001)
 all_microbiome <- all_microbiome[ rowSums(all_microbiome>0)>=2 ,  ]
 dim(all_microbiome)
@@ -144,10 +146,13 @@ zscore <- t(apply(all_microbiome,1,function(i){scale(i,T,T)}))
 zscore[ zscore > 4 ] <- 4
 zscore[ zscore < -4 ] <- -4
 rownames(zscore) <- rownames(all_microbiome); colnames(zscore) <- colnames(all_microbiome)
-
-
+mypar(mar=c(2,15,2,2))
+top_var <- apply(all_microbiome,1,var)
+top_var_t <- sort(top_var,decreasing = T)[100]
+is_top_var <- top_var > top_var_t 
+barplot(sort(top_var[is_top_var],decreasing = T)[30:1],horiz = T,las=1)
 #Compute sample-wise correlations
-cors <- cor(all_microbiome, method = "pearson")
+cors <- cor(all_microbiome[is_top_var,], method = "pearson")
 adj <- (1-cors)/2
 # pheatmap::pheatmap(adj,border_color = NA,color = colorRampPalette(c("grey90","grey70","grey70","grey70","orange3","firebrick"))(90) )
 
@@ -156,8 +161,8 @@ adj <- (1-cors)/2
 # pheatmap::pheatmap(adj,border_color = NA,color = colorRampPalette(c("grey90","grey70","grey70","grey70","orange3","firebrick"))(90) )
 
 #Graph construction  
-k <- 10 # k for KNN
-P <- 0.5# prunning threshold of SNN
+k <- 15 # k for KNN
+P <- 0.1# prunning threshold of SNN
 
 
 #Compute KNN graph from correlation matrix
@@ -171,8 +176,8 @@ jSNN <- t( t( (nn %*% nn ) / rowSums(nn)) / colSums(nn))
 
 jSNN[1:10,1:10]
 
-k=20
-P=0.1
+# k=10
+# P=0.1
 snn <- dbscan::sNN(x = adj, k = k, jp = T, approx = TRUE)
 snnm <- matrix(0, nrow(snn$id), nrow(snn$id))
 snnj <- matrix(0, nrow(snn$id), nrow(snn$id))
@@ -201,37 +206,92 @@ pSNN <- pSNN / max(pSNN)
 # abline(v=0,col="red",lty=1,xpd=F)
 
 
+N <- matrix(1,ncol = ncol(nn),nrow = nrow(nn))
+P <- t(nn) %*% nn
+B <- N - nn
+C <- t(B) %*% B
+Q <- nrow(nn)*N - C
+J <- P/Q
+J[is.nan(J)] <- 0
+J[J < 0.2] <- 0
+colnames(J) <- colnames(all_microbiome)
+rownames(J) <- colnames(all_microbiome)
+# image(J[,nrow(nn):1],col = colorRampPalette(c("grey95","black"))(90),axes=F )
+# set.seed(1)
+# g <- graph_from_adjacency_matrix(J,mode = "undirected",diag = F,weighted = T)
+# plot( g , vertex.label.cex=0.000001 , vertex.color = "grey" , 
+#       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,
+#       vertex.size=10 )
+
+
+
+
+
+
+
 pSNN[ pSNN < P ] <- 0
 pSNN[ pSNN > P ] <- cors[pSNN > P]
 pSNN[ pSNN < 0 ] <- 0
 
-g <- graph_from_adjacency_matrix(snnm,mode = "undirected",diag = F,weighted = T)
+g <- graph_from_adjacency_matrix(J,mode = "undirected",diag = F,weighted = T)
+write.csv(J,"../../results/patient_SNN_graph.csv",row.names = T)
 
-mypar(2,2,mar=c(0,0,2,10))
+mypar(3,3,mar=c(0,0,2,0))
 
 set.seed(1)
 # l <- layout_with_graphopt(g,niter = 1000)
+set.seed(1)
 l <- layout_with_fr(g,niter=3000,start.temp=30)
 
 cl <- igraph::cluster_louvain(g)
-# cl <- igraph::walktrap.community(g)
+cl <- igraph::walktrap.community(g)
 metadata$joint_clustering <- cl$membership
+set.seed(1)
+U <- uwot::umap(adj,n_neighbors = 30)
+h <- hclust(as.dist(adj),method = "ward.D2")
+# metadata$joint_clustering <- cutree(h,k = 5)
+write.csv2(metadata,"../../results/metadata_integration.csv",row.names = T)
 
 plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(cl$membership)] , 
       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
-      vertex.size=10,
+      vertex.size=10,main="FR embedding\nlouvain",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
-legend(x = par("usr")[c(2)]+.2*diff(par("usr")[c(1,2)]),
-       y = par("usr")[c(4)],
+
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(cl$membership)] , 
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=U,
+      vertex.size=10,main="umap",
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+empty_plot()
+legend("topleft",title = "Patient groups",
        legend = levels(factor(cl$membership)),
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
-title("Louvain clusters",cex.main=1,font.main=1)
+
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$group_M4_CVLv3)] , 
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
+      vertex.size=10,main="FR embedding",
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$group_M4_CVLv3)] , 
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=U,
+      vertex.size=10,main="umap",
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+empty_plot()
+legend("topleft",title = "Patient groups\ngroup_M4_CVLv3",
+       legend = levels(factor(metadata$group_M4_CVLv3)),
+       bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
+# title("Louvain clusters",cex.main=1,font.main=1)
 
 ```
 
 
 **Figure 1b.** Sample embedding of `r k`-SNN graph clustered using Louvain based on the normalized bacterial abundances across all microbiome datasets (including samples not present in all datasets).
 
+
+```{r, eval=F, echo = FALSE,fig.width=10,fig.height=4}
+
+
+
+
+```
 
 
 
@@ -769,8 +829,10 @@ Ftest <- sapply(metadata_parameters,function(x){
 clean_Ftest <- Ftest
 # clean_Ftest <- ( clean_Ftest + t(clean_Ftest) ) / 2
 clean_Ftest <- -log10(clean_Ftest)
-clean_Ftest[clean_Ftest > 5] <- 5
+clean_Ftest[clean_Ftest > 5.5] <- 5.5
 # clean_Ftest[ clean_Ftest > 0.05 ] <- 1
+
+write.csv2(clean_Ftest , "../../results/metadata_association_results.csv",row.names = T)
 
 mypar(1,1,mar=c(12,1,1,12))
 image( t(clean_Ftest [nrow(Ftest):1,]),axes=F,
@@ -977,77 +1039,56 @@ all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_co
 
 cors <- cor(t(all_microbiome[rowSums(all_microbiome > 0)>=5,]))
 
-#Graph construction  
-k <- 5 # k for KNN
-P <- 0.1 # prunning threshold of SNN
+#Graph construction 
+k_nearest_neighbours <- 10 # k for KNN
+snn_threshold <- 0.1 # prunning threshold of SNN
 
-knn <- RANN::nn2(cors,k = k)
-# knn <- RANN::nn2(t(zscore),k = k)
+#Compute kNN graph
+knn <- RANN::nn2( (1-cors)/2 ,k = k_nearest_neighbours)
 nn <- matrix(0, nrow(knn$nn.idx), nrow(knn$nn.idx))
 for(idx in 1:nrow(knn$nn.idx) ){  nn[idx,knn$nn.idx[idx,]] <- 1 }
 
-# k=10
-# P=0.1
-snn <- dbscan::sNN(x = as.dist( (1-cors)/2 ), k = k, jp = FALSE, approx = TRUE)
-snnm <- matrix(0, nrow(snn$id), nrow(snn$id))
-snnj <- matrix(0, nrow(snn$id), nrow(snn$id))
+#Calculate SNN and prune based on Jaccard index
+N <- matrix(1,ncol = ncol(nn),nrow = nrow(nn))
+P <- t(nn) %*% nn
+B <- N - nn
+C <- t(B) %*% B
+Q <- nrow(nn)*N - C
+J <- P/Q
+J[is.nan(J)] <- 0
+J[J < snn_threshold] <- 0
+rownames(J) <- rownames(cors)
+colnames(J) <- colnames(cors)
 
-# for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$dist[idx,] }
-for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$shared[idx,]/k }
-for(idx in 1:nrow(snn$id) ){  snnj[idx,snn$id[idx,]] <- snn$shared[idx,] }
-snnm[ snnj <= ceiling(k*P) ] <- 0
+#Build a graph object, perform clustering and define the force-directed layout
+g <- graph_from_adjacency_matrix(J,mode = "undirected",diag = F,weighted = T)
+write.csv(J,"../../results/bacteria_SNN_graph.csv",row.names = T)
 
-
-#Compute SNN graph from KNN
-jSNN <- t( t( (nn %*% nn ) / rowSums(nn)) / colSums(nn))
-
-#Prune SNN graph based on the Jaccard index
-pSNN <- jSNN
-pSNN <- pSNN / max(pSNN)
-
-# hist(pSNN[pSNN>0],breaks = seq(0,1,length.out = 50),
-#      border=NA,col="grey60",las=1,
-#      xaxs="i",yaxs="i",
-#      main="SNN jaccard",xlim=c(0,1))
-# abline(v=P,col="red",lty=2,xpd=F)
-# 
-# hist(cors[pSNN>0],breaks = seq(-1,1,length.out = 50),
-#      border=NA,col="grey60",las=1,
-#      xaxs="i",yaxs="i",
-#      main="correlation coeficient",xlim=c(-1,1))
-# abline(v=0,col="red",lty=1,xpd=F)
-
-pSNN[ pSNN < P ] <- 0
-pSNN[ pSNN > P ] <- cors[pSNN > P]
-pSNN[ pSNN < 0 ] <- 0
-
-g <- graph_from_adjacency_matrix(pSNN,mode = "undirected",diag = F,weighted = T)
-```
-
-
-# Visualise the data
-
-```{r, echo = FALSE,fig.width=10,fig.height=9}
-mypar(2,2,mar=c(0,0,2,10))
-
+cl <- igraph::cluster_louvain(g)
+# cl <- igraph::walktrap.community(g)
 set.seed(1)
 l <- layout_with_fr(g,niter=3000,start.temp=1)
 
-# cl <- igraph::cluster_louvain(g)
-cl <- igraph::walktrap.community(g)
-# 
-table(cl$membership)
+#Define layout with UMAP
+mU <- uwot::umap((1-cors)/2, n_neighbors = 10)
 
+#Plot
+mypar(3,3,mar=c(0,0,2,0))
 
 plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(cl$membership)] , 
-      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
-      vertex.size=10,
-      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
-legend(x = par("usr")[c(2)]+.2*diff(par("usr")[c(1,2)]),
-       y = par("usr")[c(4)],
-       legend = levels(factor(cl$membership)),
-       bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
-title("Louvain clusters",cex.main=1,font.main=1)
+    edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
+    vertex.size=10, main="graph layout FR",
+    edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(cl$membership)] , 
+    edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=mU,
+    vertex.size=10, main="UMAP",
+    edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+par(mar=c(0,0,0,0))
+empty_plot()
+legend("topleft",title = "bact. communities",
+     legend = levels(factor(cl$membership)),
+     bty = "n",pch = 21,pt.bg = pal,cex = .8,pt.cex = .9,xpd=T)
+
 ```
 
 
@@ -1175,7 +1216,7 @@ for( i in c("louvain_tissue_V3","louvain_CVL_V3","louvain_CVL_V2")){
     temp_group <- factor(temp_group)
     
     barlist(data=module_means_per_dataset[[j]],
-            genes=rownames(module_means_per_dataset[[j]]),
+            genes=rownames(module_means_per_dataset[[j]]),col = pal,
             labels = paste0("bac.com.",rownames(module_means_per_dataset[[j]])),
             clustering=temp_group, main=paste0(i,"\n", sub("_norm.*","",j)),srt=45)
   }
@@ -1220,7 +1261,7 @@ for( i in c("group_M4_CVLv3","group_M6_CVLv3","group_M9_CVLv3","joint_clustering
     temp_group <- factor(temp_group)
     
     barlist(data=module_means_per_dataset[[j]],
-            genes=rownames(module_means_per_dataset[[j]]),
+            genes=rownames(module_means_per_dataset[[j]]),col=pal,
             labels = paste0("bac.com.",rownames(module_means_per_dataset[[j]])),
             clustering=temp_group, main=paste0(i,"\n", sub("_norm.*","",j)),srt=45)
   }

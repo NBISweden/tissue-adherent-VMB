@@ -14,6 +14,7 @@ dependencies:
  - bioconductor-sva
  - bioconductor-batchelor
  - bioconductor-edger
+ - r-magick
  - r-dbscan
  - r-umap
  - r-uwot

@@ -1,5 +1,5 @@
 ---
-title: "MANUSCRIPT TITLE"
+title: "Integrated multi-omics analysis reveals Lactobacillus anti-inflammatory process in vaginal tissue"
 subtitle: A demonstration of Rmarkdown using Herman Bumpus' data
 author: |
   Author One^1^,
@@ -34,22 +34,35 @@ editor_options:
 \footnotetext[3]{University of Lalaland}
 
 
-
 ```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
 options(tinytex.verbose = TRUE)
-knitr::opts_chunk$set(fig.pos = 'p') # Places figures on their own pages
-knitr::opts_chunk$set(out.width = '100%', dpi=300)
+knitr::opts_chunk$set(out.width = '100%',
+                      dpi=600,
+                      fig.width=10,
+                      echo = FALSE,
+                      # fig.pos = 'p', # Places figures on their own pages
+                      eval = TRUE, 
+                      results = 'hide',
+                      warning = FALSE,
+                      message = FALSE )
 
 # I usually load my libraries up front to keep things organized
 library(bookdown)
 library(knitr)
 library(kableExtra)
 library(ggplot2)
-# library(ggthemes)
+library(igraph)
 library(dplyr)
 library(stringr)
+library(rafalib)
 remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)
+
+#color palettes
+pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
+         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
+heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
+cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
 ```
 
 
@@ -76,12 +89,18 @@ Results
 ===============================================================================
 
 ```{r, echo = FALSE, eval = TRUE}
+# Load reasult from the analysis
 metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1)
-patient_groups <- metadata$joint_clustering
+patient_groups <- metadata$group_M4_CVLv3
 bac_communities <- as.matrix(read.csv2("../../../results/bacterial_communities.csv",row.names = 1))[,1]
+SNN_patients <- read.csv("../../../results/patient_SNN_graph.csv",row.names = 1)
+SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
+clean_Ftest <- read.csv2("../../../results/metadata_association_results.csv",row.names = 1)
+datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+
 ```
 
-**Joint analysis of vaginal microbiome reveals XXXXXXXXXXXXXX**
+**Joint analysis of vaginal microbiome reveals distinct patient subgroups**
 
 To understand the longitudinal and tissue-specific microbiome profile in vaginal samples, `r nrow(metadata)` adult female sex workers were enrolled in [...]. Among those, `r sum(metadata$HIVstatus=="pos")` were previously tested positive for HIV during the cohort's sampling procedure. [Describe here what was done and when, which samples, which tissues]. 
 
@@ -92,12 +111,27 @@ To be able to better undertand the differences in microbiome profile across all 
 Noticebly, bacterial community `r bac_communities["Lactobacillus iners"]` consisted only of Lactobacillus species (*`r names(bac_communities)[bac_communities %in% bac_communities["Lactobacillus iners"]]`*).
 
 
-
 Patients were thus subdivided into `r length(unique(patient_groups))` groups,
 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+
+
+\clearpage
+
+
+**Indentification of bacterial communities metabolic processes linked to Lactobacilli**
+
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+
+
+\clearpage
 
 
 
+**Indentification of bacterial communities metabolic processes linked to Lactobacilli**
+
+
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
 
 
 \clearpage
@@ -123,26 +157,6 @@ Overall, this document demonstrates how high quality, professional looking docum
 Methods
 ================================================================================
 
-Bumpus focused his study on the House Sparrow (*Passer domesticus*; see Figure 1), which has a very wide global distribution. It is native to Europe and Asia, but not the Americas where Bumpus collected his original study [@Bumpus1898]. In addition to measuring total length and survival for 136 sparrows, Bumpus measured sparrow sex, wingspan, and mass, and also the length of each sparrow's head, humerus, tibiotarsus, skull, and sternum. While modern ornithologists believe that the total body length measurement that I will use today is subject to high observational error [@Johnston1972], it will be more than sufficient for demonstrating Rmarkdown.
-
-<!--- Note that the image below is in the public domain --->
-<!--- https://commons.wikimedia.org/wiki/File:Lto-tpbo-passer-domesticus-05.JPG --->
-<center>
-
-![*Passer domesticus*](images/sparrow.jpg)
-
-</center>
-
-I performed an independent two-sample student's t-test on sparrow total body length to test whether or not sparrows that died in the 1898 storm were larger than sparrows that survived. I assume that both groups of sparrows (dead and living) have equal variances, so the test statistic $t$ is calculated as follows,
-
-$$t = \frac{\bar{X}_{1} - \bar{X}_{2}} {s_{p} \times \sqrt{\frac{1}{n_{1}} + \frac{1}{n_{2}}}}.$$
-
-In the above, $\bar{X}_{1}$ and $\bar{X}_{2}$ are the mean of the samples of sparrows that died and lived, respectively. Similarly, $n_{1}$ and $n_{2}$ are the sample sizes of sparrows that died and lived, and $s_{p}$ is the pooled sample mean, which is calculated as follows,
-
-$$s_{p} = \sqrt{\frac{s^{2}_{X_{1}} + s^{2}_{X_{2}}}{2}}.$$
-
-In the above, the $s^{2}_{X_{1}}$ and $s^{2}_{X_{2}}$ are the sample standard deviations for sparrows that died and lived, respectively. I conduceted the two sample t-test using the `t.test` function in R.
-
 
 \clearpage
 
@@ -166,7 +180,256 @@ library(knitr)
 ```
 
 
+\clearpage
 
+
+FIGURES (MAIN)
+================================================================================
+
+
+## Figure 1
+
+```{r, echo = FALSE, eval = TRUE , fig.asp=6/10}
+# Define Layout and set labels
+layout(matrix(c(1,1,1,1,      3,3,3,3,          4,4,4,4,
+                2,2,2,2,      3,3,3,3,          5,5,5,5,
+                6,6,6,6,      9,9,9,9,          9,9,9,9,
+                7,7,7,7,     10,10,10,10,     10,10,10,10,
+                8,8,8,8,     10,10,10,10,     10,10,10,10 ) , ncol= 12,byrow = T),
+       widths = 1,heights = c(1,1,0.5,0.5,0.5))
+# layout.show(29)
+figlabels <- letters
+
+
+#################################
+# COHORT SCHEMATIC ILLUSTRATION #
+#################################
+par(mar=c(0,0,0,0))
+fig1a <- magick::image_read("schematics.pdf",density = 900)
+plot(c(0,1),c(0,1),axes=F,type="n",xlab="",ylab="",xaxs="i",yaxs="i")
+rasterImage(fig1a, 0, 0, 1, 1)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+
+
+
+
+
+####################
+# PATIENT GROUPING #
+####################
+g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+l <- layout_with_fr(g,niter=3000,start.temp=30)
+
+par(mar=c(0,0,0,0))
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$joint_clustering)] ,
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,
+      vertex.size=10,main="", 
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+legend("topright",title.adj = 0,
+       legend = levels(factor(metadata$joint_clustering)),xjust = 0,yjust = 1,
+       bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+
+
+##############################
+# METADATA CROSS-ASSOCIATION #
+##############################
+par(mar=c(12,1,1,12))
+image( t(clean_Ftest [nrow(clean_Ftest):1,]),axes=F,
+       col=colorRampPalette(c("grey95","grey70","orange3","firebrick"))(90) )
+text(  par("usr")[2]+.02 ,seq(1,0,length.out = nrow(clean_Ftest)) ,
+       labels = rownames(clean_Ftest), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+text( seq(0,1,length.out = nrow(clean_Ftest)) , par("usr")[3]-.02 ,
+      labels = rownames(clean_Ftest), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+
+
+###################################
+# BACTERIAL VAGINOSIS COMPARISSON #
+###################################
+par(mar=c(0,0,0,0))
+empty_plot(frame = T)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+empty_plot(frame = T)
+
+
+
+
+###################################
+# BACTERIAL VAGINOSIS COMPARISSON #
+###################################
+par(mar=c(1,5,2,1))
+x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+xL <- rowsum(x , grepl("Lactobacillus",rownames(x)) )[2,] / sum(grepl("Lactobacillus",rownames(x)))
+xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
+xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
+
+mL <- metadata$BV_Lactobacillus_v3 ; mL[is.na(mL)] <- 0
+mM <- metadata$BV_Monbilicus_v3    ; mM[is.na(mM)] <- 0
+mG <- metadata$BV_Vaginal_Garda_v3 ; mG[is.na(mG)] <- 0
+
+barlist( data = rbind(  BV=mL ,
+                        counts_16S=xL),
+         main = "Lactobacillus",
+         genes = c("BV","counts_16S"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+barlist( data = rbind(  BV=mM ,
+                        counts_16S=xM),
+         main = "Monbilicus",
+         genes = c("BV","counts_16S"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+
+barlist( data = rbind(  BV=mG ,
+                        counts_16S=xG),
+         main = "Gardanerella",
+         genes = c("BV","counts_16S"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+
+
+
+
+
+###################################
+# BACTERIAL VAGINOSIS COMPARISSON #
+###################################
+par(mar=c(1,1,1,1))
+
+shann <- vegan::diversity(t(x),index = "shannon")
+shann <- t(as.matrix(shann))
+rownames(shann) <- "Shannon"
+barlist( data = shann,
+         main = "Shannon",
+         labels = "",
+         genes = c("Shannon"),
+         clustering = metadata$joint_clustering,
+         draw_mean_lines=F,col = pal)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+###################################
+# BACTERIAL VAGINOSIS COMPARISSON #
+###################################
+par(mar=c(4,4,1,1))
+temp <- t(t(2^x-1)/colSums(2^x-1))
+taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+taxa[is.na(taxa)] <- "NA"
+taxa <- taxa[rownames(temp),]
+temp <- rowsum(temp , taxa$Class)
+o <- order( rowSums(temp) , decreasing = F)
+sample_o <- order( as.numeric(metadata$group_M4_CVLv3)+(shann/max(shann)/2) )
+temp <- temp[o,sample_o]*100
+barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i", col = pal[factor(rownames(temp))] )
+
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+```
+
+**Figure 1. Identification of patient groups.**
+(**a**) Schematic representation of ########## .
+(**b**) Schematic representation of ########## .
+(**c**) Schematic representation of ########## .
+(**d**) Schematic representation of ########## .
+
+
+\clearpage
+
+
+## Figure 2
+
+```{r, echo = FALSE, eval = TRUE}
+# Define Layout and set labels
+layout(matrix(c(1) , ncol= 1,byrow = T),
+       heights = c(1))
+figlabels <- letters
+
+
+```
+
+**Figure 2. Identification and characterization of vaginal bacterial communities.**
+(**a**) Schematic representation of ########## .
+(**b**) Schematic representation of ########## .
+(**c**) Schematic representation of ########## .
+(**d**) Schematic representation of ########## .
+
+
+\clearpage
+
+## Figure 3
+
+```{r, echo = FALSE, eval = TRUE}
+# Define Layout and set labels
+layout(matrix(c(1) , ncol= 1,byrow = T),
+       heights = c(1))
+figlabels <- letters
+
+
+```
+
+**Figure 1. Identification of patient groups.**
+(**a**) Schematic representation of ########## .
+(**b**) Schematic representation of ########## .
+(**c**) Schematic representation of ########## .
+(**d**) Schematic representation of ########## .
+
+\clearpage
+
+
+
+FIGURES (SUPPL)
+================================================================================
+
+## Figure S1
+
+## Figure S2
+
+## Figure S3
+
+## Figure S4
+
+TABLES (MAIN)
+================================================================================
+
+## Table 1
+
+## Table 2
+
+## Table 3
+
+TABLES (SUPPL)
+================================================================================
+
+## Table S1
+
+## Table S2
+
+## Table S3
 
 
 
