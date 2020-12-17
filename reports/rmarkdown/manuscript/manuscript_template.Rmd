@@ -189,14 +189,14 @@ FIGURES (MAIN)
 
 ## Figure 1
 
-```{r, echo = FALSE, eval = TRUE , fig.asp=6/10}
+```{r, echo = FALSE, eval = TRUE , fig.asp=9/10}
 # Define Layout and set labels
 layout(matrix(c(1,1,1,1,      3,3,3,3,          4,4,4,4,
                 2,2,2,2,      3,3,3,3,          5,5,5,5,
                 6,6,6,6,      9,9,9,9,          9,9,9,9,
                 7,7,7,7,     10,10,10,10,     10,10,10,10,
                 8,8,8,8,     10,10,10,10,     10,10,10,10 ) , ncol= 12,byrow = T),
-       widths = 1,heights = c(1,1,0.5,0.5,0.5))
+       widths = 1,heights = c(1,1,.7,.7,.7))
 # layout.show(29)
 figlabels <- letters
 
@@ -316,7 +316,7 @@ barlist( data = rbind(  BV=mG ,
 ###################################
 # BACTERIAL VAGINOSIS COMPARISSON #
 ###################################
-par(mar=c(1,1,1,1))
+par(mar=c(1,4,1,10))
 
 shann <- vegan::diversity(t(x),index = "shannon")
 shann <- t(as.matrix(shann))
@@ -335,17 +335,27 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 ###################################
 # BACTERIAL VAGINOSIS COMPARISSON #
 ###################################
-par(mar=c(4,4,1,1))
+par(mar=c(4,4,1,10))
 temp <- t(t(2^x-1)/colSums(2^x-1))
 taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
 taxa[is.na(taxa)] <- "NA"
 taxa <- taxa[rownames(temp),]
 temp <- rowsum(temp , taxa$Class)
-o <- order( rowSums(temp) , decreasing = F)
-sample_o <- order( as.numeric(metadata$group_M4_CVLv3)+(shann/max(shann)/2) )
+temp[is.nan(temp)] <- 0
+o <- order( rowSums(temp) , decreasing = T)
+sample_o <- order( metadata$joint_clustering )
 temp <- temp[o,sample_o]*100
-barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i", col = pal[factor(rownames(temp))] )
+temp <- temp[-grep("NA",rownames(temp)),]
+temp <- rbind(temp[1:15,], Other = colSums(temp[16:nrow(temp),]) )
 
+taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"))
+barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",
+         col = taxa_pal[factor(rownames(temp))] )
+legend(x = par("usr")[c(2)],
+       y = par("usr")[c(4)],title.adj = 0,
+       legend = rownames(temp),xjust = 0,yjust = 1,
+       bty = "n",pch = 22,pt.cex = 2,cex = .8,xpd=T,
+       pt.bg = taxa_pal)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
