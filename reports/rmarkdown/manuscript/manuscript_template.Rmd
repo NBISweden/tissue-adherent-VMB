@@ -626,7 +626,7 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
   sample_o <- order( patient_groups )
   temp <- temp[o,sample_o]*100
   # temp <- temp[-grep("NA",rownames(temp)),]
-  temp <- rbind(temp[1:20,], Other = colSums(temp[21:nrow(temp),]) )
+  temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
   
   taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
