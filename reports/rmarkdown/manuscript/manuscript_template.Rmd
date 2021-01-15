@@ -55,6 +55,7 @@ library(igraph)
 library(dplyr)
 library(stringr)
 library(rafalib)
+library(scales)
 # remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)
 
@@ -335,9 +336,9 @@ barlist( data = divers,
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 
-###################################
-# BACTERIAL VAGINOSIS COMPARISSON #
-###################################
+#######################
+# BACTERIAL ABUNDANCE #
+#######################
 par(mar=c(4,5,1,12))
 temp <- t(t(2^x-1)/colSums(2^x-1))
 taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
@@ -378,9 +379,108 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```{r, echo = FALSE, eval = TRUE}
 # Define Layout and set labels
-layout(matrix(c(1) , ncol= 1,byrow = T),
-       heights = c(1))
+layout(matrix(c(2 ,3,4,5,      6,7,20,20,          20,20,20,20,
+                19,1,1,1,      1,8,20,20,          20,20,20,20,
+                18,1,1,1,      1,9,21,21,         21,21,24,24,
+                17,1,1,1,      1,10,22,22,         22,22,24,24,
+                16,15,14,13,  12,11,23,23,         23,23,24,24 ) , ncol= 12,byrow = T),
+       widths = 1,heights = c(1.2,1.2,1.2,1.2,1.2))
+# layout.show(12)
 figlabels <- letters
+
+
+
+#########################
+# BACTERIAL COMMUNITIES #
+#########################
+gB <- graph_from_adjacency_matrix(as.matrix(SNN_bacteria), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+lB <- layout_with_fr(gB,niter=3000,start.temp=30)
+
+par(mar=c(0,0,0,0))
+plot( gB , vertex.label.cex=0.000001 , vertex.color = pal[factor(bac_communities)] ,
+      edge.width=  ( E(gB)$weight / max(E(gB)$weight)) ,
+      vertex.size=10,main="", 
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(gB)$weight / max(E(gB)$weight) * 88 )+1 ] )
+legend("topright",title.adj = 0,
+       legend = levels(factor(bac_communities)),xjust = 0,yjust = 1,
+       bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+
+
+par(mar=c(1,1,1,1))
+for(j in sort(unique(bac_communities)) ){
+  empty_plot()
+  text( 0,1,labels = paste0(rownames(SNN_bacteria)[ bac_communities == j ],collapse = "\n"),adj=c(0,1),cex=.5)
+  title(main=paste0("community",j),cex.main=.7)
+}
+for(i in 1:(18-length(unique(bac_communities)))){empty_plot()}
+
+
+###################################
+# BACTERIAL VAGINOSIS COMPARISSON #
+###################################
+taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+taxa[is.na(taxa)] <- "NA"
+
+par(mar=c(1,7,2,3))
+x <- taxa[match(rownames(SNN_bacteria),rownames(taxa)),2]
+y <- taxa[match(rownames(SNN_bacteria),rownames(taxa)),3]
+# plot_sankey( data.frame( x[y!="NA"] , y[y!="NA"]), color_by = 1,
+#        plot_labels = T, plot_weights = F,order_1_by = "total",
+#        order_2_by = "total",use_w1 = T,use_w2 = T,gapv = .02,gap2v = 0,smoothing = .1,
+#        pal=hue_pal()(length(unique(x))))
+
+# plot_sankey( data.frame( y[y!="NA"] , bac_communities[y!="NA"]), color_by = 1,
+#      plot_labels = T, plot_weights = F,order_1_by = "total",
+#      order_2_by = "total",use_w1 = T,use_w2 = T,gapv = .02,gap2v = 0,smoothing = .1,
+#      pal=hue_pal()(length(unique(y))))
+
+plot_sankey( data.frame( x[y!="NA"] , bac_communities[y!="NA"]), color_by = 1,
+     plot_labels = T, plot_weights = F,order_1_by = "total",
+     order_2_by = "total",use_w1 = T,use_w2 = T,gapv = .02,gap2v = 0,smoothing = .1,
+     pal=hue_pal()(length(unique(x))))
+
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+
+
+##############################################
+# BACTERIAL COMMUNITY DIFFERENTIAL ABUNDANCE #
+##############################################
+par(mar=c(1,7,1,3))
+
+module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
+  return( rowsum( x[rownames(SNN_bacteria),] , group = bac_communities ) / c(table(bac_communities)) )
+})
+module_means_per_dataset <- lapply(module_means_per_dataset,function(i){
+  rownames(i) <- paste0("BC",rownames(i))
+  return(i)
+})
+
+
+for( j in c("ASV_tissue_V3_normalized_batch_corrected",
+        "ASV_CVL_V3_normalized_batch_corrected",
+        "ASV_CVL_V2_normalized_NOT_batch_corrected")){
+  temp_group <- as.character(patient_groups)
+  temp_group[ is.na(temp_group) ] <- "NA"
+  temp_group[ temp_group == "" ] <- "NA"
+  temp_group <- factor(temp_group)
+  
+  barlist(data=module_means_per_dataset[[j]],
+          genes=rownames(module_means_per_dataset[[j]]),col = pal,
+          clustering=temp_group, main=paste0("\n", sub("_norm.*","",j)))
+}
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+empty_plot()
+
 
 
 ```
@@ -420,29 +520,242 @@ FIGURES (SUPPL)
 
 ## Figure S1
 
+```{r, echo = FALSE, eval = TRUE}
+# 
+# figlabels <- letters
+# temp_legend <- NULL
+# 
+# layout(matrix(c(1,4,
+#                 2,4,
+#                 3,4) , ncol= 2,byrow = T),widths = c(4,1),heights = c(1,1,1))
+# 
+# for(i in c("ASV_CVL_V3_normalized_batch_corrected",
+#            "ASV_CVL_V2_normalized_NOT_batch_corrected",
+#            "ASV_tissue_V3_normalized_batch_corrected")){
+#   x <- datasets_all_samples[[i]]
+#   
+#   par(mar=c(3,5,1,1))
+#   temp <- t(t(2^x-1)/colSums(2^x-1))
+#   taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+#   taxa[is.na(taxa)] <- "NA"
+#   taxa <- taxa[rownames(temp),]
+#   temp <- rowsum(temp , taxa$Class)
+#   temp[is.nan(temp)] <- 0
+#   
+#   if(is.null(temp_legend)){ 
+#     temp_legend <- temp   #Use the same legend from the 1st dataset
+#   }
+#   
+#   o <- order( rowSums(temp_legend) , decreasing = T)
+#   sample_o <- order( patient_groups )
+#   temp <- temp[o,sample_o]*100
+#   temp <- temp[-grep("NA",rownames(temp)),]
+#   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
+#   
+#   taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+#   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
+#            col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] )
+#   # legend(x = par("usr")[c(2)],
+#   #        y = par("usr")[c(4)],title.adj = 0,
+#   #        legend = rownames(temp),xjust = 0,yjust = 1,
+#   #        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+#   #        pt.bg = taxa_pal)
+#   
+#   #add label
+#   add_letter(figlabels[1]); figlabels <- figlabels[-1]
+# }
+# 
+# 
+# par(mar=c(4,0,1,0))
+# empty_plot()
+# legend(x = par("usr")[c(1)],
+#          y = par("usr")[c(4)],title.adj = 0,
+#          legend = rownames(temp),xjust = 0,yjust = 1,
+#          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+#          pt.bg = taxa_pal)
+
+
+
+
+
+
+
+
+figlabels <- letters
+temp_legend <- NULL
+
+layout(matrix(c(1,7,
+                2,7,
+                3,7,
+                4,7,
+                5,7,
+                6,7) , ncol= 2,byrow = T),widths = c(4,1),heights = c(.5,1,.5,1,.5,1))
+
+for(i in c("ASV_CVL_V3_normalized_batch_corrected",
+           "ASV_CVL_V2_normalized_NOT_batch_corrected",
+           "ASV_tissue_V3_normalized_batch_corrected")){
+  x <- datasets_all_samples[[i]]
+  
+  par(mar=c(1,5,1,1))
+  temp <- t(t(2^x-1)/colSums(2^x-1))
+  
+  shann <- vegan::diversity(t(temp),index = c("shannon") )
+  simp <- vegan::diversity(t(temp),index = c("simpson") )
+  invsimp <- vegan::diversity(t(temp),index = c("invsimpson") )
+  divers <- as.matrix(rbind(shann,simp,invsimp) )
+  divers[is.infinite(divers)] <- 0
+  rownames(divers) <- c("Shannon","simpson","Inv Simpson")
+  barlist( data = divers,
+         main = "",
+         genes = c("Shannon","simpson","Inv Simpson"),
+         clustering = patient_groups,
+         draw_mean_lines=F,col = pal)
+
+  par(mar=c(3,5,1,1))
+  # taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+  # taxa[is.na(taxa)] <- "NA"
+  # taxa <- taxa[rownames(temp),]
+  # temp <- rowsum(temp , taxa$Class)
+  temp[is.nan(temp)] <- 0
+  
+  if(is.null(temp_legend)){ 
+    temp_legend <- temp   #Use the same legend from the 1st dataset
+  }
+  
+  o <- order( rowSums(temp_legend) , decreasing = T)
+  sample_o <- order( patient_groups )
+  temp <- temp[o,sample_o]*100
+  # temp <- temp[-grep("NA",rownames(temp)),]
+  temp <- rbind(temp[1:20,], Other = colSums(temp[21:nrow(temp),]) )
+  
+  taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+  barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
+           col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] )
+  # legend(x = par("usr")[c(2)],
+  #        y = par("usr")[c(4)],title.adj = 0,
+  #        legend = rownames(temp),xjust = 0,yjust = 1,
+  #        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+  #        pt.bg = taxa_pal)
+  
+  #add label
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+}
+
+
+par(mar=c(4,0,1,0))
+empty_plot()
+legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],title.adj = 0,
+         legend = rownames(temp),xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+         pt.bg = taxa_pal)
+```
+
+\clearpage
+
+
 ## Figure S2
+
+```{r, echo = FALSE, eval = TRUE}
+
+figlabels <- letters
+temp_legend <- NULL
+
+mypar(1,4,mar=c(12,1,1,0))
+
+for(i in c("ASV_CVL_V3_normalized_batch_corrected",
+           "ASV_CVL_V2_normalized_NOT_batch_corrected",
+           "ASV_tissue_V3_normalized_batch_corrected")){
+
+  continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_nmol_L_v3","Plasma_S_Estradiol_pmol_L_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+  continuous_metadata <- metadata[,continuous_parameters]
+  continuous_metadata <- cbind(continuous_metadata , t(module_means_per_dataset[[i]]) )
+  
+  metadata_cor <- cor(continuous_metadata,use = "pairwise.complete.obs")
+  
+  #TO ORDER THE HEATMAP
+  o <- hclust( as.dist(1-metadata_cor),method = "complete")$order
+  metadata_cor <- metadata_cor[o,o]
+  
+  image( t(metadata_cor [nrow(metadata_cor):1,]),axes=F,
+         breaks = seq(-1,1,length.out = 90),main=sub("_nor.*","",i),font.main=1,
+         col=colorRampPalette(c("navy","grey95","firebrick"))(89) )
+  # text(  par("usr")[2]+.02 ,seq(1,0,length.out = nrow(metadata_cor)) , 
+  #        labels = rownames(metadata_cor), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+  text( seq(0,1,length.out = nrow(metadata_cor)) , par("usr")[3]-.02 , 
+        labels = rownames(metadata_cor), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+  
+  #add label
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+}
+
+par(mar=c(12,0,1,0))
+image( t(metadata_cor [nrow(metadata_cor):1,]),axes=F,
+         breaks = seq(-1,1,length.out = 90),main="",
+         col=colorRampPalette(c("white"))(89) )
+text(  0 ,seq(1,0,length.out = nrow(metadata_cor)) , 
+  labels = rownames(metadata_cor), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+```
+
+\clearpage
 
 ## Figure S3
 
+```{r, echo = FALSE, eval = TRUE}
+```
+
+\clearpage
+
 ## Figure S4
+
+```{r, echo = FALSE, eval = TRUE}
+```
 
 TABLES (MAIN)
 ================================================================================
 
 ## Table 1
 
+```{r, echo = FALSE, eval = TRUE}
+```
+
+\clearpage
+
 ## Table 2
 
+```{r, echo = FALSE, eval = TRUE}
+```
+
+\clearpage
+
 ## Table 3
+
+```{r, echo = FALSE, eval = TRUE}
+```
+
+\clearpage
 
 TABLES (SUPPL)
 ================================================================================
 
 ## Table S1
 
+```{r, echo = FALSE, eval = TRUE}
+```
+
+\clearpage
+
 ## Table S2
+
+```{r, echo = FALSE, eval = TRUE}
+```
+
+\clearpage
 
 ## Table S3
 
+```{r, echo = FALSE, eval = TRUE}
+```
 
+\clearpage
 

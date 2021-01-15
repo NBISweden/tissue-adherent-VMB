@@ -162,7 +162,7 @@ adj <- (1-cors)/2
 
 #Graph construction  
 k <- 15 # k for KNN
-P <- 0.1# prunning threshold of SNN
+P <- 0.2# prunning threshold of SNN
 
 
 #Compute KNN graph from correlation matrix
@@ -172,26 +172,26 @@ nn <- matrix(0, nrow(knn$nn.idx), nrow(knn$nn.idx))
 for(idx in 1:nrow(knn$nn.idx) ){  nn[idx,knn$nn.idx[idx,]] <- 1 }
 
 #Compute SNN graph from KNN
-jSNN <- t( t( (nn %*% nn ) / rowSums(nn)) / colSums(nn))
-
-jSNN[1:10,1:10]
-
-# k=10
-# P=0.1
-snn <- dbscan::sNN(x = adj, k = k, jp = T, approx = TRUE)
-snnm <- matrix(0, nrow(snn$id), nrow(snn$id))
-snnj <- matrix(0, nrow(snn$id), nrow(snn$id))
-
-# for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$dist[idx,] }
-for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$shared[idx,]/k }
-
-for(idx in 1:nrow(snn$id) ){  snnj[idx,snn$id[idx,]] <- snn$shared[idx,] }
-
-snnm[ snnj <= ceiling(k*P) ] <- 0
+# jSNN <- t( t( (nn %*% nn ) / rowSums(nn)) / colSums(nn))
+# 
+# jSNN[1:10,1:10]
+# 
+# # k=10
+# # P=0.1
+# snn <- dbscan::sNN(x = adj, k = k, jp = T, approx = TRUE)
+# snnm <- matrix(0, nrow(snn$id), nrow(snn$id))
+# snnj <- matrix(0, nrow(snn$id), nrow(snn$id))
+# 
+# # for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$dist[idx,] }
+# for(idx in 1:nrow(snn$id) ){  snnm[idx,snn$id[idx,]] <- snn$shared[idx,]/k }
+# 
+# for(idx in 1:nrow(snn$id) ){  snnj[idx,snn$id[idx,]] <- snn$shared[idx,] }
+# 
+# snnm[ snnj <= ceiling(k*P) ] <- 0
 
 #Prune SNN graph based on the Jaccard index
-pSNN <- jSNN
-pSNN <- pSNN / max(pSNN)
+# pSNN <- jSNN
+# pSNN <- pSNN / max(pSNN)
 
 # hist(pSNN[pSNN>0],breaks = seq(0,1,length.out = 50),
 #      border=NA,col="grey60",las=1,
@@ -1040,7 +1040,7 @@ all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_co
 cors <- cor(t(all_microbiome[rowSums(all_microbiome > 0)>=5,]))
 
 #Graph construction 
-k_nearest_neighbours <- 10 # k for KNN
+k_nearest_neighbours <- 5 # k for KNN
 snn_threshold <- 0.1 # prunning threshold of SNN
 
 #Compute kNN graph
