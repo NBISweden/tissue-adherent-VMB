@@ -45,7 +45,7 @@ library(niceRplots)
 #Defining some variables for the analysis
 
 ```{r, echo = FALSE}
-PATH <- "~/Desktop/Desktop_stuff/NBIS/SMS_Projects/broliden_5325/" #Path to the data
+PATH <- "../../" #Path to the data
 
 #color palettes
 pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
@@ -1234,7 +1234,7 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
   })
   pvalues <- t(as.data.frame(pvalues))
   pvalues <- -log10( pvalues )
-  pvalues[is.na(pvalues)] <- 1
+  pvalues[is.na(pvalues)] <- 0
   
   allNES <- setNames(rep(NA,length(allpathways)),allpathways)
   NESes <- lapply(enrichments,function(x) {
@@ -1243,12 +1243,14 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
     return(temp)
   })
   NESes <- t(as.data.frame(NESes))
-  NESes[is.na(NESes)] <- 0
-  NESes[ pvalues < -log10(0.1) ] <- 0
+  # NESes[is.na(NESes)] <- 0
+  # NESes[ pvalues < -log10(0.1) ] <- 0
 
   NESse_list[[i]] <- NESes
   
 }
+
+write.csv2(NESse_list,"../../results/Hallmark_NESse_list.csv")
 
 common_pathways <- unique( unlist( lapply( NESse_list , function(x) colnames(x)[colSums(x!=0)>=1] ) ) )
 
@@ -1382,7 +1384,7 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
   })
   pvalues <- t(as.data.frame(pvalues))
   pvalues <- -log10( pvalues )
-  pvalues[is.na(pvalues)] <- 1
+  pvalues[is.na(pvalues)] <- 0
   
   allNES <- setNames(rep(NA,length(allpathways)),allpathways)
   NESes <- lapply(enrichments,function(x) {
@@ -1391,12 +1393,14 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
     return(temp)
   })
   NESes <- t(as.data.frame(NESes))
-  NESes[is.na(NESes)] <- 0
-  NESes[ pvalues < -log10(0.1) ] <- 0
+  # NESes[is.na(NESes)] <- 0
+  # NESes[ pvalues < -log10(0.1) ] <- 0
 
   NESse_list[[i]] <- NESes
   
 }
+
+write.csv2(NESse_list,"../../results/Kegg_NESse_list.csv")
 
 common_pathways <- unique( unlist( lapply( NESse_list , function(x) colnames(x)[colSums(x!=0)>=1] ) ) )
 

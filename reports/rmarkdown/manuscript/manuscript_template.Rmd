@@ -56,7 +56,7 @@ library(dplyr)
 library(stringr)
 library(rafalib)
 library(scales)
-# remotes::install_github("czarnewski/niceRplots")
+# remotes::install_github("czarnewski/niceRplots",force=T)
 library(niceRplots)
 
 #color palettes
@@ -93,14 +93,72 @@ Results
 ```{r, echo = FALSE, eval = TRUE}
 # Load reasult from the analysis
 metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1)
-patient_groups <- metadata$joint_clustering
+patient_groups <- factor(setNames(metadata$joint_clustering,metadata$ID))
 bac_communities <- as.matrix(read.csv2("../../../results/bacterial_communities.csv",row.names = 1))[,1]
+
+
 SNN_patients <- read.csv("../../../results/patient_SNN_graph.csv",row.names = 1)
 SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
 clean_Ftest <- read.csv2("../../../results/metadata_association_results.csv",row.names = 1)
 datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
 
+picrust_data <- read.table("../../../data/pred_metagenome_unstrat.tsv",header = T,row.names = 1)
+picrust_dge <- read.csv("../../../data/Picrust2_top_functions.csv",header = T,row.names = 1)
 ```
+
+
+
+```{r, echo = FALSE, eval = TRUE}
+#Assign names to patient groups
+big_groups <- c(
+  L.inners=    "5",
+  L.inners2=   "4",
+  L.crispatus= "2",
+  Gard=        "3",
+  Gard.Prev=   "6",
+  Gard.Prev2=  "8",
+  Gard.Lacto=  "7",
+  Patho=       "1"
+)
+
+group_annotation <- as.character(patient_groups)
+group_annotation <- names(big_groups)[match(group_annotation,big_groups)]
+group_annotation <- as.factor(setNames(group_annotation,names(patient_groups)))
+
+metadata$group_annotation <- group_annotation
+```
+
+
+
+```{r, echo = FALSE, eval = TRUE}
+bac_communities <- factor(paste0("BC",sprintf("%02d",bac_communities)))
+bacs <- names(bac_communities)
+
+#Assign names to bacterial communities
+BC_groups <- c(
+  BC01= "BC01_Bifidobacterium",
+  BC02= "BC02_Mycoplasma",
+  BC03= "BC03_Lactobacillus.spp",
+  BC04= "BC04_Escherichia.sp",
+  BC05= "BC05_Other1",
+  BC06= "BC06_Other2",
+  BC07= "BC07_Corynebacterium.spp",
+  BC08= "BC08_Other3",
+  BC09= "BC09_Ureaplasma.sp",
+  BC10= "BC10_Campylobacter",
+  BC11= "BC11_Mobiluncus_BVAB",
+  BC12= "BC12_Faecalibacterium",
+  BC13= "BC13_Dialister",
+  BC14= "BC14_P.timonesis",
+  BC15= "BC15_T.scotoductus"
+)
+
+bac_communities <- as.character(bac_communities)
+bac_communities <- BC_groups[match(bac_communities,names(BC_groups))]
+bac_communities <- as.factor(setNames(bac_communities,bacs))
+```
+
+
 
 **Joint analysis of vaginal microbiome reveals distinct patient subgroups**
 
@@ -113,7 +171,7 @@ To be able to better undertand the differences in microbiome profile across all 
 Noticebly, bacterial community `r bac_communities["Lactobacillus iners"]` consisted only of Lactobacillus species (*`r names(bac_communities)[bac_communities %in% bac_communities["Lactobacillus iners"]]`*).
 
 
-Patients were thus subdivided into `r length(unique(patient_groups))` groups,
+Patients were thus subdivided into `r length(unique(group_annotation))` groups,
 
 Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
 
@@ -227,13 +285,13 @@ g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",di
 set.seed(1)
 l <- layout_with_fr(g,niter=3000,start.temp=30)
 
-par(mar=c(0,0,0,0))
-plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(patient_groups)] ,
+par(mar=c(0,0,0,5))
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(group_annotation)] ,
       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,
       vertex.size=10,main="", 
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 legend("topright",title.adj = 0,
-       legend = levels(factor(patient_groups)),xjust = 0,yjust = 1,
+       legend = levels(factor(group_annotation)),xjust = 0,yjust = 1,
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
 
 #add label
@@ -290,7 +348,7 @@ barlist( data = rbind(  BV=mL ,
                         counts_16S=xL),
          main = "Lactobacillus",
          genes = c("BV","counts_16S"),
-         clustering = patient_groups,
+         clustering = group_annotation,
          draw_mean_lines=F,col = pal)
 
 #add label
@@ -301,14 +359,14 @@ barlist( data = rbind(  BV=mM ,
                         counts_16S=xM),
          main = "Monbilicus",
          genes = c("BV","counts_16S"),
-         clustering = patient_groups,
+         clustering = group_annotation,
          draw_mean_lines=F,col = pal)
 
 barlist( data = rbind(  BV=mG ,
                         counts_16S=xG),
          main = "Gardanerella",
          genes = c("BV","counts_16S"),
-         clustering = patient_groups,
+         clustering = group_annotation,
          draw_mean_lines=F,col = pal)
 
 
@@ -329,7 +387,7 @@ rownames(divers) <- c("Shannon","simpson","Inv Simpson")
 barlist( data = divers,
          main = "",
          genes = c("Shannon","simpson","Inv Simpson"),
-         clustering = patient_groups,
+         clustering = group_annotation,
          draw_mean_lines=F,col = pal)
 
 #add label
@@ -347,7 +405,7 @@ taxa <- taxa[rownames(temp),]
 temp <- rowsum(temp , taxa$Class)
 temp[is.nan(temp)] <- 0
 o <- order( rowSums(temp) , decreasing = T)
-sample_o <- order( patient_groups )
+sample_o <- order( group_annotation )
 temp <- temp[o,sample_o]*100
 temp <- temp[-grep("NA",rownames(temp)),]
 temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
@@ -379,10 +437,10 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```{r, echo = FALSE, eval = TRUE}
 # Define Layout and set labels
-layout(matrix(c(2 ,3,4,5,      6,7,20,20,          20,20,20,20,
-                19,1,1,1,      1,8,20,20,          20,20,20,20,
-                18,1,1,1,      1,9,21,21,         21,21,24,24,
-                17,1,1,1,      1,10,22,22,         22,22,24,24,
+layout(matrix(c(2 ,3,4,5,      6,7,17,17,          19,19,19,19,
+                1,1,1,1,      1,8,17,17,          20,20,20,20,
+                1,1,1,1,      1,9,18,18,         21,21,24,24,
+                1,1,1,1,      1,10,18,18,         22,22,24,24,
                 16,15,14,13,  12,11,23,23,         23,23,24,24 ) , ncol= 12,byrow = T),
        widths = 1,heights = c(1.2,1.2,1.2,1.2,1.2))
 # layout.show(12)
@@ -397,7 +455,7 @@ gB <- graph_from_adjacency_matrix(as.matrix(SNN_bacteria), mode = "undirected",d
 set.seed(1)
 lB <- layout_with_fr(gB,niter=3000,start.temp=30)
 
-par(mar=c(0,0,0,0))
+par(mar=c(0,0,0,5))
 plot( gB , vertex.label.cex=0.000001 , vertex.color = pal[factor(bac_communities)] ,
       edge.width=  ( E(gB)$weight / max(E(gB)$weight)) ,
       vertex.size=10,main="", 
@@ -458,16 +516,11 @@ par(mar=c(1,7,1,3))
 module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
   return( rowsum( x[rownames(SNN_bacteria),] , group = bac_communities ) / c(table(bac_communities)) )
 })
-module_means_per_dataset <- lapply(module_means_per_dataset,function(i){
-  rownames(i) <- paste0("BC",rownames(i))
-  return(i)
-})
-
 
 for( j in c("ASV_tissue_V3_normalized_batch_corrected",
         "ASV_CVL_V3_normalized_batch_corrected",
         "ASV_CVL_V2_normalized_NOT_batch_corrected")){
-  temp_group <- as.character(patient_groups)
+  temp_group <- as.character(group_annotation)
   temp_group[ is.na(temp_group) ] <- "NA"
   temp_group[ temp_group == "" ] <- "NA"
   temp_group <- factor(temp_group)
@@ -483,6 +536,101 @@ empty_plot()
 
 
 
+#####################
+# BACTERIAL PICRUST #
+#####################
+par(mar=c(1,7,1,3))
+# 
+# library(keggorthology)
+# data("KOgraph")
+# annot <- as.data.frame(unlist(nodeData(KOgraph,attr="tag")))
+# colnames(annot)[1] <- "KEGGID"
+# annot$pathway <- rownames(annot)
+# annot$KEGGID <- paste0("K",annot$KEGGID)
+# 
+# library(KEGGREST)
+
+download.file("https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/description_mapfiles/ko_info.tsv.gz","../../../data/KEGG_pathways_to_KO.tsv")
+download.file("https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/pathway_mapfiles/KEGG_pathways_to_KO.tsv","../../../data/KEGG_pathways_to_KO.tsv")
+download.file("https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/description_mapfiles/KEGG_pathways_info.tsv.gz","../../../data/KEGG_pathways_info.tsv.gz")
+system("gunzip ../../../data/*.gz")
+
+kegg_pathway_annot <- fgsea::gmtPathways('../../../data/KEGG_pathways_to_KO.tsv')
+
+
+kegg_names <- read.delim('../../../data/KEGG_pathways_info.tsv',header = F)
+
+ko_names <- readLines('../../../data/ko_info.tsv')
+ko_names <- strsplit(ko_names,"\t")
+
+
+
+
+path_trend <- t(sapply(kegg_pathway_annot,function(x){
+  x <- rownames(picrust_data)[rownames(picrust_data) %in% x]
+  if(length(x)>=2){
+    return(colSums(picrust_data [ x , ]))
+  } else {
+    return(rep(0, ncol(picrust_data)))
+  }
+}))
+
+
+path_trend <- path_trend[rowSums(path_trend)!=0 , ]
+rownames(path_trend) <- kegg_names[ match(rownames(path_trend),kegg_names[,1]),2]
+
+
+library(edgeR)
+design <- model.matrix(~  group_annotation, data=metadata)
+
+y <- DGEList(counts=floor(path_trend), remove.zeros = T)
+y <- calcNormFactors(y,method = "TMM")
+y <- estimateGLMCommonDisp(y,design)
+y <- estimateGLMTagwiseDisp(y,design)
+fit <- glmFit(y, design)
+
+lrt <- glmLRT(fit,coef=1:8)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+colnames(top) <- sub("group_annotation","",colnames(top))
+top <- cbind(logFC.Gard=0,top)
+
+
+top_dge <- (top$PValue < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+top_dge <- rownames(top)[ top_dge ]
+
+norm_path_trend <- log2( t( t(path_trend) / colSums(path_trend) ) * 1000 + 1 )
+norm_path_trend <- norm_path_trend[top_dge, ]
+norm_path_trend <- t(apply(norm_path_trend,1,function(x){scale(x,T,T)}))
+norm_path_trend[norm_path_trend > 5] <- 5
+colnames(norm_path_trend) <- colnames(path_trend)
+sample_use <- colnames(norm_path_trend)
+
+
+mypar(2,4,mar=c(1,.2,2,.2))
+h <- hclust( as.dist( (1- cor(t(norm_path_trend)))/2 ), method = "ward.D2")
+plot( rev(as.dendrogram(h)) , horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=F)
+abline(v=1,xpd=F,col="red",lty=2)
+gene_module <- cutree(h, h = 1)
+
+points( rep(0,length(gene_module)),
+        seq(length(gene_module),1,length.out = length(gene_module)),
+        col=taxa_pal[factor(gene_module[h$order])],
+        pch=16,cex=.5)
+
+image( t(norm_path_trend[h$order,][nrow(norm_path_trend):1,order(group_annotation[sample_use])]),
+       col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
+       breaks = seq(-5,5,length.out = 100),axes=F)
+points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[4],length(sample_use)),
+        col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
+        pch=16)
+
+par(mar=c(4,4,2,2))
+set.seed(1)
+UMAP_picrust <- uwot::umap(t(norm_path_trend),n_neighbors = 20,
+                 metric = "correlation",min_dist = .2,spread = .4,
+                 repulsion_strength = .4,negative_sample_rate = 3)
+plot(UMAP_picrust,bg=pal[group_annotation[sample_use]],main="UMAP on top functional profile",
+     pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
 ```
 
 **Figure 2. Identification and characterization of vaginal bacterial communities.**
@@ -502,7 +650,61 @@ layout(matrix(c(1) , ncol= 1,byrow = T),
        heights = c(1))
 figlabels <- letters
 
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+TRX_counts <- round(2^TRX - 1)
+TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
+sample_use <- colnames(TRX_counts)[colSums(TRX_counts)!=0]
+TRX_counts <- TRX_counts[,sample_use]
 
+library(edgeR)
+
+design <- model.matrix(~  group_annotation, data=metadata[sample_use,])
+
+y <- DGEList(counts=TRX_counts[,sample_use], remove.zeros = T)
+y <- calcNormFactors(y,method = "TMM")
+y <- estimateGLMCommonDisp(y,design)
+y <- estimateGLMTagwiseDisp(y,design)
+fit <- glmFit(y, design)
+
+lrt <- glmLRT(fit,coef=2:8)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+colnames(top) <- sub("group_annotation","",colnames(top))
+top <- cbind(logFC.Gard=0,top)
+
+
+top_dge <- (top$PValue < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+top_dge <- rownames(top)[ top_dge ]
+
+top_TRX_counts <- cpm(y)[top_dge, ]
+top_TRX_counts <- t(apply(top_TRX_counts,1,function(x){scale(x,T,T)}))
+top_TRX_counts[top_TRX_counts > 5] <- 5
+colnames(top_TRX_counts) <- colnames(TRX_counts)
+
+mypar(2,4,mar=c(1,.2,2,.2))
+h <- hclust( as.dist( (1- cor(t(top_TRX_counts)))/2 ), method = "ward.D2")
+plot( rev(as.dendrogram(h)) , horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=F)
+abline(v=2,xpd=F,col="red",lty=2)
+gene_module <- cutree(h, h = 2)
+
+points( rep(0,length(gene_module)),
+        seq(length(gene_module),1,length.out = length(gene_module)),
+        col=taxa_pal[factor(gene_module[h$order])],
+        pch=16,cex=.5)
+
+image( t(top_TRX_counts[h$order,][nrow(top_TRX_counts):1,order(group_annotation[sample_use])]),
+       col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
+       breaks = seq(-5,5,length.out = 100),axes=F)
+points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[4],length(sample_use)),
+        col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
+        pch=16)
+
+
+set.seed(1)
+UMAP_TRX <- uwot::umap(t(top_TRX_counts),n_neighbors = 10,
+                 metric = "correlation",min_dist = 0.1,spread = 5,
+                 negative_sample_rate = 10)
+plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main="UMAP on top DGE RNAseq",
+     pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
 ```
 
 **Figure 1. Identification of patient groups.**
@@ -520,76 +722,16 @@ FIGURES (SUPPL)
 
 ## Figure S1
 
-```{r, echo = FALSE, eval = TRUE}
-# 
-# figlabels <- letters
-# temp_legend <- NULL
-# 
-# layout(matrix(c(1,4,
-#                 2,4,
-#                 3,4) , ncol= 2,byrow = T),widths = c(4,1),heights = c(1,1,1))
-# 
-# for(i in c("ASV_CVL_V3_normalized_batch_corrected",
-#            "ASV_CVL_V2_normalized_NOT_batch_corrected",
-#            "ASV_tissue_V3_normalized_batch_corrected")){
-#   x <- datasets_all_samples[[i]]
-#   
-#   par(mar=c(3,5,1,1))
-#   temp <- t(t(2^x-1)/colSums(2^x-1))
-#   taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
-#   taxa[is.na(taxa)] <- "NA"
-#   taxa <- taxa[rownames(temp),]
-#   temp <- rowsum(temp , taxa$Class)
-#   temp[is.nan(temp)] <- 0
-#   
-#   if(is.null(temp_legend)){ 
-#     temp_legend <- temp   #Use the same legend from the 1st dataset
-#   }
-#   
-#   o <- order( rowSums(temp_legend) , decreasing = T)
-#   sample_o <- order( patient_groups )
-#   temp <- temp[o,sample_o]*100
-#   temp <- temp[-grep("NA",rownames(temp)),]
-#   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
-#   
-#   taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
-#   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
-#            col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] )
-#   # legend(x = par("usr")[c(2)],
-#   #        y = par("usr")[c(4)],title.adj = 0,
-#   #        legend = rownames(temp),xjust = 0,yjust = 1,
-#   #        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
-#   #        pt.bg = taxa_pal)
-#   
-#   #add label
-#   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-# }
-# 
-# 
-# par(mar=c(4,0,1,0))
-# empty_plot()
-# legend(x = par("usr")[c(1)],
-#          y = par("usr")[c(4)],title.adj = 0,
-#          legend = rownames(temp),xjust = 0,yjust = 1,
-#          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
-#          pt.bg = taxa_pal)
-
-
-
-
-
-
-
-
+```{r, echo = FALSE, eval = TRUE, fig.asp=1}
 figlabels <- letters
 temp_legend <- NULL
 
 layout(matrix(c(1,7,
                 2,7,
                 3,7,
-                4,7,
-                5,7,
-                6,7) , ncol= 2,byrow = T),widths = c(4,1),heights = c(.5,1,.5,1,.5,1))
+                4,8,
+                5,8,
+                6,8) , ncol= 2,byrow = T),widths = c(4,1),heights = c(.5,1,.5,1,.5,1))
 
 for(i in c("ASV_CVL_V3_normalized_batch_corrected",
            "ASV_CVL_V2_normalized_NOT_batch_corrected",
@@ -605,12 +747,16 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
   divers <- as.matrix(rbind(shann,simp,invsimp) )
   divers[is.infinite(divers)] <- 0
   rownames(divers) <- c("Shannon","simpson","Inv Simpson")
-  barlist( data = divers,
+  barlist( data = divers[,order(group_annotation)],
          main = "",
          genes = c("Shannon","simpson","Inv Simpson"),
-         clustering = patient_groups,
-         draw_mean_lines=F,col = pal)
+         # clustering = group_annotation,
+         draw_mean_lines=F,col = pal[factor(group_annotation[order(group_annotation)])])
 
+  
+  #add label
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+  
   par(mar=c(3,5,1,1))
   # taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
   # taxa[is.na(taxa)] <- "NA"
@@ -623,7 +769,7 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
   }
   
   o <- order( rowSums(temp_legend) , decreasing = T)
-  sample_o <- order( patient_groups )
+  sample_o <- names(group_annotation)[ order( group_annotation )]
   temp <- temp[o,sample_o]*100
   # temp <- temp[-grep("NA",rownames(temp)),]
   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
@@ -636,9 +782,6 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
   #        legend = rownames(temp),xjust = 0,yjust = 1,
   #        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
   #        pt.bg = taxa_pal)
-  
-  #add label
-  add_letter(figlabels[1]); figlabels <- figlabels[-1]
 }
 
 
@@ -646,18 +789,29 @@ par(mar=c(4,0,1,0))
 empty_plot()
 legend(x = par("usr")[c(1)],
          y = par("usr")[c(4)],title.adj = 0,
+         legend = levels(group_annotation),xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "patient groups",
+         pt.bg = pal)
+
+
+empty_plot()
+legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],title.adj = 0,
          legend = rownames(temp),xjust = 0,yjust = 1,
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+          title="top abundant bacteria",
          pt.bg = taxa_pal)
+
+
+
+
 ```
 
 \clearpage
 
-
 ## Figure S2
 
-```{r, echo = FALSE, eval = TRUE}
-
+```{r, echo = FALSE, eval = TRUE, fig.asp=.5}
 figlabels <- letters
 temp_legend <- NULL
 
@@ -669,25 +823,23 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
 
   continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_nmol_L_v3","Plasma_S_Estradiol_pmol_L_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
   continuous_metadata <- metadata[,continuous_parameters]
-  continuous_metadata <- cbind(continuous_metadata , t(module_means_per_dataset[[i]]) )
+  # continuous_metadata <- cbind(continuous_metadata , t(module_means_per_dataset[[i]]) )
   
-  metadata_cor <- cor(continuous_metadata,use = "pairwise.complete.obs")
-  
-  #TO ORDER THE HEATMAP
-  o <- hclust( as.dist(1-metadata_cor),method = "complete")$order
-  metadata_cor <- metadata_cor[o,o]
+  metadata_cor <- cor(t(module_means_per_dataset[[i]]),continuous_metadata,use = "pairwise.complete.obs")
+  # metadata_cor_test <- cor.test(t(module_means_per_dataset[[i]]),continuous_metadata)
   
   image( t(metadata_cor [nrow(metadata_cor):1,]),axes=F,
          breaks = seq(-1,1,length.out = 90),main=sub("_nor.*","",i),font.main=1,
          col=colorRampPalette(c("navy","grey95","firebrick"))(89) )
   # text(  par("usr")[2]+.02 ,seq(1,0,length.out = nrow(metadata_cor)) , 
   #        labels = rownames(metadata_cor), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
-  text( seq(0,1,length.out = nrow(metadata_cor)) , par("usr")[3]-.02 , 
-        labels = rownames(metadata_cor), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+  text( seq(0,1,length.out = ncol(metadata_cor)) , par("usr")[3]-.02 , 
+        labels = colnames(metadata_cor), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
   
   #add label
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
 }
+
 
 par(mar=c(12,0,1,0))
 image( t(metadata_cor [nrow(metadata_cor):1,]),axes=F,
@@ -702,14 +854,95 @@ text(  0 ,seq(1,0,length.out = nrow(metadata_cor)) ,
 ## Figure S3
 
 ```{r, echo = FALSE, eval = TRUE}
+figlabels <- letters
+mypar(1,2,mar=c(3,3,3,10))
+
+datasets <- datasets_all_samples[grep("ASV",names(datasets_all_samples))]
+datasets <- lapply(datasets,t)
+datasets <- t( as.data.frame(datasets) )
+
+group_means <- sapply(levels(group_annotation), function(x){
+  rowMeans( datasets[ , group_annotation == x ] )
+})
+
+d <- as.dist( (1 - cor(group_means)) / 2 )
+h <- hclust( d , method = "ward.D2")
+plot( as.dendrogram(h) , horiz=T, xlab="height")
+points( rep(0 , length(h$labels)) , 1:length(h$labels) , pch=21, cex=1.5,
+        bg=pal[factor(h$labels[ h$order ],levels = h$labels)] )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+
+datasets <- datasets_all_samples[grep("ASV",names(datasets_all_samples))]
+datasets <- as.data.frame(datasets)
+
+group_means <- sapply(levels(factor(bac_communities)), function(x){
+  colMeans( datasets[ bac_communities == x , ] )
+})
+
+d <- as.dist( (1 - cor(group_means)) / 2 )
+h <- hclust( d , method = "ward.D2")
+plot( as.dendrogram(h) , horiz=T, xlab="height")
+points( rep(0 , length(h$labels)) , 1:length(h$labels) , pch=21, cex=1.5,
+        bg=taxa_pal[factor(h$labels[ h$order ],levels = h$labels)] )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
 ```
 
 \clearpage
 
 ## Figure S4
 
-```{r, echo = FALSE, eval = TRUE}
+```{r, echo = FALSE, eval = TRUE,fig.asp=.3}
+figlabels <- letters
+for(j in names(module_means_per_dataset)){
+  mypar(2,8,mar=c(0.5,0.5,4,0.5))
+  
+  plot(UMAP_picrust,bg=pal[group_annotation],main="patient groups",
+     pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+  
+  for(i in 1:nrow(module_means_per_dataset[[j]])){
+  
+    xx <- module_means_per_dataset[[j]][i,]
+    xx <- xx / max(xx)
+    o <- order(xx)
+    plot(UMAP_picrust[o,],
+         col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
+         main=rownames(module_means_per_dataset[[j]])[i],
+         pch=16,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F,font.main=1,cex.main=1)
+  }
+}
 ```
+
+
+\clearpage
+
+## Figure S5
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=.3}
+figlabels <- letters
+for(j in names(module_means_per_dataset)){
+  mypar(2,8,mar=c(0.5,0.5,4,0.5))
+  
+  plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main="patient groups",
+     pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+  
+  for(i in 1:nrow(module_means_per_dataset[[j]])){
+  
+    xx <- module_means_per_dataset[[j]][i,][sample_use]
+    xx <- xx / max(xx)
+    o <- order(xx)
+    plot(UMAP_TRX[o,],
+         col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
+         main=rownames(module_means_per_dataset[[j]])[i],
+         pch=16,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F,font.main=1,cex.main=1)
+  }
+}
+```
+
+\clearpage
 
 TABLES (MAIN)
 ================================================================================
