@@ -1191,6 +1191,7 @@ for( i in c("group_M4_CVLv3","group_M9_CVLv3","joint_clustering")){
 myletter <- letters
 
 NESse_list <- list()
+pvalues_list <- list()
 
 for(i in c("ASV_tissue_V3_normalized_batch_corrected",
            "ASV_CVL_V3_normalized_batch_corrected")){
@@ -1243,14 +1244,16 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
     return(temp)
   })
   NESes <- t(as.data.frame(NESes))
-  # NESes[is.na(NESes)] <- 0
+  NESes[is.na(NESes)] <- 0
   # NESes[ pvalues < -log10(0.1) ] <- 0
 
   NESse_list[[i]] <- NESes
+  pvalues_list[[i]] <- pvalues
   
 }
 
 write.csv2(NESse_list,"../../results/Hallmark_NESse_list.csv")
+write.csv2(pvalues_list,"../../results/Hallmark_pvalues_list.csv")
 
 common_pathways <- unique( unlist( lapply( NESse_list , function(x) colnames(x)[colSums(x!=0)>=1] ) ) )
 
@@ -1341,6 +1344,7 @@ text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
 myletter <- letters
 
 NESse_list <- list()
+pvalues_list <- list()
 
 for(i in c("ASV_tissue_V3_normalized_batch_corrected",
            "ASV_CVL_V3_normalized_batch_corrected")){
@@ -1393,14 +1397,15 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
     return(temp)
   })
   NESes <- t(as.data.frame(NESes))
-  # NESes[is.na(NESes)] <- 0
+  NESes[is.na(NESes)] <- 0
   # NESes[ pvalues < -log10(0.1) ] <- 0
 
   NESse_list[[i]] <- NESes
-  
+  pvalues_list[[i]] <- pvalues
 }
 
 write.csv2(NESse_list,"../../results/Kegg_NESse_list.csv")
+write.csv2(pvalues_list,"../../results/Kegg_pvalues_list.csv")
 
 common_pathways <- unique( unlist( lapply( NESse_list , function(x) colnames(x)[colSums(x!=0)>=1] ) ) )
 

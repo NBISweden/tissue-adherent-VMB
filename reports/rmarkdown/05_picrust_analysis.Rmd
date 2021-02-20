@@ -1,0 +1,76 @@
+---
+title: "Piecrust_analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r }
+picrust_data <- read.table("../../data/pred_metagenome_unstrat.tsv",header = T,row.names = 1)
+picrust_dge <- read.csv("../../data/Picrust2_top_functions.csv",header = T,row.names = 1)
+metadata <- read.csv2("../../results/metadata_integration.csv",row.names = 1)
+
+
+download.file("https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/description_mapfiles/ko_info.tsv.gz","../../data/KEGG_pathways_to_KO.tsv")
+download.file("https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/pathway_mapfiles/KEGG_pathways_to_KO.tsv","../../data/KEGG_pathways_to_KO.tsv")
+download.file("https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/description_mapfiles/KEGG_pathways_info.tsv.gz","../../data/KEGG_pathways_info.tsv.gz")
+system("gunzip ../../data/*.gz")
+
+kegg_pathway_annot <- fgsea::gmtPathways('../../data/KEGG_pathways_to_KO.tsv')
+
+
+kegg_names <- read.delim('../../data/KEGG_pathways_info.tsv',header = F)
+
+ko_names <- readLines('../../data/ko_info.tsv')
+ko_names <- strsplit(ko_names,"\t")
+```
+
+
+```{r }
+
+#Sum counts to pathway level
+path_trend <- t(sapply(kegg_pathway_annot,function(x){
+  x <- rownames(picrust_data)[rownames(picrust_data) %in% x]
+  if(length(x)>=2){
+    return(colSums(picrust_data [ x , ]))
+  } else {
+    return(rep(0, ncol(picrust_data)))
+  }
+}))
+path_trend <- path_trend[rowSums(path_trend)!=0 , ]
+rownames(path_trend) <- kegg_names[ match(rownames(path_trend),kegg_names[,1]),2]
+
+
+
+library(edgeR)
+
+#GLM fit across all patient groups
+metadata$joint_clustering <- factor(metadata$joint_clustering)
+design <- model.matrix(~  joint_clustering, data=metadata)
+y <- DGEList(counts=floor(path_trend), remove.zeros = T)
+y <- calcNormFactors(y,method = "TMM")
+y <- estimateGLMCommonDisp(y,design)
+y <- estimateGLMTagwiseDisp(y,design)
+fit <- glmFit(y, design)
+
+#Perform the test
+lrt <- glmLRT(fit,coef=2:8)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+colnames(top) <- sub("joint_clustering","",colnames(top))
+write.csv2(top,"../../results/Picrust_DGE_table.csv",row.names = T)
+
+#Filter significant bacteria
+top_dge <- (top$PValue < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+top_dge <- rownames(top)[ top_dge ]
+
+#Log Normalize
+norm_path_trend <- log2( t( t(path_trend) / colSums(path_trend) ) * 1000 + 1 )
+norm_path_trend <- norm_path_trend[top_dge, ]
+
+#Z-score transform
+norm_path_trend <- t(apply(norm_path_trend,1,function(x){scale(x,T,T)}))
+norm_path_trend[norm_path_trend > 5] <- 5
+colnames(norm_path_trend) <- colnames(path_trend)
+
+write.csv2(norm_path_trend,"../../results/Picrust_norm_path_trend.csv",row.names = T)
+```
