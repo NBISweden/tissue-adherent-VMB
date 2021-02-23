@@ -735,37 +735,49 @@ metadata_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
                          "vaginal_douching_v2","vaginal_douching_v3","joint_clustering")
 
 Ftest <- sapply(metadata_parameters,function(x){
+  cat(paste0("\n",x,"\n"))
   temp <- sapply(metadata_parameters,x=x,function(x,y){
     if (x==y){
       return( 1 )
     } else {
+      # if( !is.na(sum(as.numeric(metadata[,x]))) ){ f1 <- cut(as.numeric(metadata[,x]),breaks = 5 ) }
+      if( is.numeric(metadata[,x]) ){ f1 <- cut(metadata[,x],breaks = 5 ) }
     f1 <- as.character(metadata[,x])
     f1[is.na(f1)] <- "NA"
     f1[f1==""] <- "NA"
     
+    # if( !is.na(sum(as.numeric(metadata[,y]))) ){ f1 <- cut(as.numeric(metadata[,y]),breaks = 5 ) }
+    if( is.numeric(metadata[,y]) ){ f2 <- cut(metadata[,y],breaks = 5 ) }
     f2 <- as.character(metadata[,y])
     f2[is.na(f2)] <- "NA"
     f2[f2==""] <- "NA"
     
     f11 <- f1 [ (f1!="NA") & (f2!="NA") ]
     f22 <- f2 [ (f1!="NA") & (f2!="NA") ]
-    contT1  <- table(f11,f22)
-    print(x)
-    print(y)
-    return( fisher.test(contT1,simulate.p.value = T)$p.value )
+    contT1  <- table(list(factor(f11,levels=unique(f1)),factor(f22,levels=unique(f2))))
+    cat(".")
+    f <- NULL
+    try(f <- fisher.test(contT1,simulate.p.value = T),silent = T)
+    if( is.null(f) ){ 
+      return( 1  ) 
+      } else {
+      return( c(f$p.value)  ) 
+    }
     # return( chisq.test(contT1,simulate.p.value = T)$p.value )
     }
   })
-  return(temp)
+  
+  return( temp )
 })
 
 clean_Ftest <- Ftest
 # clean_Ftest <- ( clean_Ftest + t(clean_Ftest) ) / 2
 clean_Ftest <- -log10(clean_Ftest)
-clean_Ftest[clean_Ftest > 5.5] <- 5.5
+clean_Ftest[clean_Ftest > 6] <- 6
 # clean_Ftest[ clean_Ftest > 0.05 ] <- 1
 
-write.csv2(clean_Ftest , "../../results/metadata_association_results.csv",row.names = T)
+write.csv2(Ftest , "../../results/metadata_association_results_complete.csv",row.names = T)
+write.csv2(clean_Ftest , "../../results/metadata_association_results_filtered.csv",row.names = T)
 
 mypar(1,1,mar=c(12,1,1,12))
 image( t(clean_Ftest [nrow(Ftest):1,]),axes=F,

@@ -1,4 +1,3 @@
-
 compute_enrichment <- function(genes , gmt_list , min_overlap = NULL, min_terms_pathway=NULL, max_terms_pathway=NULL, sort_by_pvalue=F){
   
   allgenes <- unique( c(unlist(gmt_list) , genes) )
