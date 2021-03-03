@@ -307,12 +307,19 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 # METADATA CROSS-ASSOCIATION #
 ##############################
 par(mar=c(12,1,1,12))
-image( t(clean_Ftest [nrow(clean_Ftest):1,]),axes=F,
+set.seed(1)
+noise <- matrix(rnorm(prod(dim(clean_Ftest)),mean = 0,sd = 1e-10),nrow(clean_Ftest),ncol(clean_Ftest))
+o <- hclust(as.dist( (1-cor(clean_Ftest+noise)/2) ),method = "ward.D2")$order
+
+sizes <- as.matrix(clean_Ftest[o,o])
+sizes[sizes > 7] <- 7
+sizes <- sizes / max(sizes)
+image( t(sizes [nrow(sizes):1,]),axes=F,
        col=colorRampPalette(c("grey95","grey70","orange3","firebrick"))(90) )
-text(  par("usr")[2]+.02 ,seq(1,0,length.out = nrow(clean_Ftest)) ,
-       labels = rownames(clean_Ftest), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
-text( seq(0,1,length.out = nrow(clean_Ftest)) , par("usr")[3]-.02 ,
-      labels = rownames(clean_Ftest), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+text(  par("usr")[2]+.02 ,seq(1,0,length.out = nrow(sizes)) ,
+       labels = rownames(sizes), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+text( seq(0,1,length.out = nrow(sizes)) , par("usr")[3]-.02 ,
+      labels = rownames(sizes), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
@@ -1097,7 +1104,7 @@ text(  0 ,seq(1,0,length.out = nrow(metadata_cor)) ,
 
 ## Figure S2 v2
 
-```{r, echo = FALSE, eval = TRUE, fig.asp=.5}
+```{r, echo = FALSE, eval = TRUE, fig.asp=1}
 figlabels <- letters
 temp_legend <- NULL
 
@@ -1124,6 +1131,8 @@ names(res2) <- rownames(module_means_per_dataset[[k]])
 
 pvals <- sapply(res2, function(x){x[,"pvalue"]})
 rs <- sapply(res2, function(x){x[,"r.squared"]})
+rs[is.nan(rs)] <- 0
+pvals[is.nan(pvals)] <- 1
 
 sizes <- -log10( pvals )
 sizes[sizes < 2] <- 0
@@ -1145,12 +1154,12 @@ points(sort(rep(1:ncol(rs),nrow(rs))),
 srt=90
 text(1:ncol(rs), par("usr")[3] - (par("usr")[4])/200, labels = colnames(rs), srt = srt,
      adj = c(ifelse(srt==0,.5,ifelse(srt==90,1,1)),ifelse(srt==0,1,ifelse(srt==90,.5,1))),
-     xpd = TRUE, cex=1)
+     xpd = TRUE, cex=.8)
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
 }
 
 empty_plot(xlim=c(.5,ncol(rs)+.5),ylim=c(.5,nrow(rs)+.5),xaxs="i",yaxs="i")
-text(par("usr")[1] , 1:nrow(rs) , labels = rownames(rs), srt = 0, adj = c(0,0.5), xpd = TRUE, cex=1)
+text(par("usr")[1] , 1:nrow(rs) , labels = rownames(rs), srt = 0, adj = c(0,0.5), xpd = TRUE, cex=.8)
 
 add_scale_legend(pal = colorRampPalette(c("grey90","firebrick"))(91),labels = c("0","0.5","1"))
 add_size_legend(labels = c("> 0.01","< 1e-5","< 1e-8","< 1e-11"),max.cex = 2.2, min.cex = .2)
@@ -1162,18 +1171,19 @@ add_size_legend(labels = c("> 0.01","< 1e-5","< 1e-8","< 1e-11"),max.cex = 2.2, 
 
 ## Figure S2 v3
 
-```{r, echo = FALSE, eval = TRUE, fig.asp=.5}
+```{r, echo = FALSE, eval = TRUE, fig.asp=.9}
 metadata_parameters <- colnames(metadata)[-c(1:2)]
 
 set.seed(1)
 noise <- matrix(rnorm(prod(dim(clean_Ftest)),mean = 0,sd = 1e-10),nrow(clean_Ftest),ncol(clean_Ftest))
 o <- hclust(as.dist( (1-cor(clean_Ftest+noise)/2) ),method = "ward.D2")$order
 
-sizes <- as.matrix(-log10(clean_Ftest))
+sizes <- as.matrix(clean_Ftest[o,o])
 # sizes[sizes < 2] <- 0
 sizes[sizes > 7] <- 7
 sizes <- sizes / max(sizes)
 sizes <- sizes * lower.tri(sizes)
+
 
 mypar(1,1,mar=c(10,10,2,6))
 plot(0,0, las=1,xlim=c(.5,ncol(sizes)+.5),ylim=c(.5,nrow(sizes)+.5),
@@ -1192,7 +1202,7 @@ srt=90
 text(1:ncol(sizes), par("usr")[3] - (par("usr")[4])/200, labels = colnames(sizes), srt = srt,
      adj = c(ifelse(srt==0,.5,ifelse(srt==90,1,1)),ifelse(srt==0,1,ifelse(srt==90,.5,1))),
      xpd = TRUE, cex=1)
-text(par("usr")[1] , 1:nrow(sizes) , labels = rownames(sizes), srt = 0, adj = c(1,0.5), xpd = TRUE, cex=1)
+text(par("usr")[1] , nrow(sizes):1 , labels = rownames(sizes), srt = 0, adj = c(1,0.5), xpd = TRUE, cex=1)
 
 add_scale_legend(pal = colorRampPalette(c("grey95","orange3","firebrick","red"))(91),labels = c("> 0.01","< 1e-5","< 1e-8","< 1e-11"))
 add_size_legend(labels = c("> 0.01","< 1e-5","< 1e-8","< 1e-11"),max.cex = 1.2, min.cex = .2)
@@ -1242,12 +1252,14 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ## Figure S4
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=.3}
+```{r, echo = FALSE, eval = TRUE,fig.asp=1.3}
+layout( matrix(1:(16*8), 16,8,byrow = F) )
+par(mar=c(.5,.5,1,.5))
+
 figlabels <- letters
 for(j in names(module_means_per_dataset)){
-  mypar(2,8,mar=c(0.5,0.5,4,0.5))
   
-  plot(UMAP_picrust,bg=pal[group_annotation],main="patient groups",
+  plot(UMAP_picrust,bg=pal[group_annotation],main=gsub("ASV_|_norm.*","",j),
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
   
@@ -1258,10 +1270,22 @@ for(j in names(module_means_per_dataset)){
     o <- order(xx)
     plot(UMAP_picrust[o,],
          col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
-         main=rownames(module_means_per_dataset[[j]])[i],
+         main="",
          pch=16,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F,font.main=1,cex.main=1)
   }
 }
+empty_plot()
+
+text( par("usr")[1], mean(par("usr")[3:4]),
+        adj=c(0,0.5),xpd=T,
+        labels = "patient groups" )
+for(i in 1:nrow(module_means_per_dataset[[j]])){
+  empty_plot()
+  text( par("usr")[1], mean(par("usr")[3:4]),
+        adj=c(0,0.5),xpd=T,
+        labels = sub( "_","\n",rownames(module_means_per_dataset[[j]])[i]) )
+}
+
 ```
 
 
@@ -1269,12 +1293,15 @@ for(j in names(module_means_per_dataset)){
 
 ## Figure S5
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=.3}
+```{r, echo = FALSE, eval = TRUE,fig.asp=1.3}
+layout( matrix(1:(16*8), 16,8,byrow = F) )
+par(mar=c(.5,.5,1,.5))
+
+
 figlabels <- letters
 for(j in names(module_means_per_dataset)){
-  mypar(2,8,mar=c(0.5,0.5,4,0.5))
   
-  plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main="patient groups",
+  plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main=gsub("ASV_|_norm.*","",j),
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
   
@@ -1285,10 +1312,22 @@ for(j in names(module_means_per_dataset)){
     o <- order(xx)
     plot(UMAP_TRX[o,],
          col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
-         main=rownames(module_means_per_dataset[[j]])[i],
+         main="",xpd=T,
          pch=16,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F,font.main=1,cex.main=1)
   }
 }
+
+empty_plot()
+text( par("usr")[1], mean(par("usr")[3:4]),
+        adj=c(0,0.5),
+        labels = "patient groups" )
+for(i in 1:nrow(module_means_per_dataset[[j]])){
+  empty_plot()
+  text( par("usr")[1], mean(par("usr")[3:4]),
+        adj=c(0,0.5),xpd=T,
+        labels = sub( "_","\n",rownames(module_means_per_dataset[[j]])[i]) )
+}
+
 ```
 
 
@@ -1315,9 +1354,9 @@ for(i in sort(levels(combined_bc$bc)) ){
 
 ## Figure S7
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+```{r, echo = FALSE, eval = TRUE,fig.asp=.8}
 figlabels <- letters
-mypar(3,3,mar=c(4,10,2,2))
+mypar(3,3,mar=c(4,12,2,4))
 for( j in c("ASV_tissue_V3_normalized_batch_corrected",
         "ASV_CVL_V3_normalized_batch_corrected",
         "ASV_CVL_V2_normalized_NOT_batch_corrected")){
@@ -1341,7 +1380,7 @@ for( j in c("ASV_tissue_V3_normalized_batch_corrected",
 
 ## Figure S8
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
 mypar(mar=c(10,6,1,1))
 
 top_all <- lapply( datasets_all_samples[2:4] , function(x){
