@@ -16,6 +16,7 @@ dependencies:
  - bioconductor-edger
  - bioconductor-keggrest
  - bioconductor-reactome.db
+ - r-tidyverse
  - r-magick
  - r-dbscan
  - r-umap
