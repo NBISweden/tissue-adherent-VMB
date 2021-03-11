@@ -269,9 +269,9 @@ figlabels <- letters
 # COHORT SCHEMATIC ILLUSTRATION #
 #################################
 par(mar=c(0,0,0,0))
-fig1a <- magick::image_read("schematics.pdf",density = 900)
+#fig1a <- magick::image_read("schematics.pdf",density = 900)
 plot(c(0,1),c(0,1),axes=F,type="n",xlab="",ylab="",xaxs="i",yaxs="i")
-rasterImage(fig1a, 0, 0, 1, 1)
+#rasterImage(fig1a, 0, 0, 1, 1)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
