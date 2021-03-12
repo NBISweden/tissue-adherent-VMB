@@ -65,7 +65,7 @@ min_pct <- .05 # minimun level of detected bacteria in each sample group
 
 ```{r, echo = FALSE}
 # Load metadata
-metadata <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatesept28.csv"))
+metadata <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatefeb22.csv"))
 rownames(metadata) <- as.character(metadata$ID)
 
 # Load datasets

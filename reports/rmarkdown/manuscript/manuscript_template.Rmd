@@ -50,6 +50,7 @@ knitr::opts_chunk$set(out.width = '100%',
 library(bookdown)
 library(knitr)
 library(kableExtra)
+library(dplyr)
 library(tidyverse)
 library(igraph)
 library(phyloseq)
@@ -106,6 +107,8 @@ clean_Ftest <- read.csv2("../../../results/metadata_association_results_complete
 datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
 
 picrust_data <- read.table("../../../data/pred_metagenome_unstrat.tsv",header = T,row.names = 1)
+picrust_KO_seq <- read.table("../../../data/KO_predicted.tsv",header = T,row.names = 1)
+picrust_taxa <- read.table("../../../data/SeqID_to_taxa.csv",header = T,row.names = 1,sep = ",")
 ```
 
 
@@ -113,14 +116,14 @@ picrust_data <- read.table("../../../data/pred_metagenome_unstrat.tsv",header = 
 ```{r, echo = FALSE, eval = TRUE}
 #Assign names to patient groups
 big_groups <- c(
-  L.inners=    "5",
-  L.inners2=   "4",
-  L.crispatus= "2",
-  Gard=        "3",
-  Gard.Prev=   "6",
-  Gard.Prev2=  "8",
-  Gard.Lacto=  "7",
-  Patho=       "1"
+  g2_L.iners=    "5",
+  g3_L.iners2=   "4",
+  g1_L.crispatus= "2",
+  g5_Gard=        "3",
+  g6_Gard.Prev=   "6",
+  g7_Gard.Prev2=  "8",
+  g4_Gard.Lacto=  "7",
+  g8_Patho=       "1"
 )
 
 group_annotation <- as.character(patient_groups)
@@ -313,7 +316,7 @@ noise <- matrix(rnorm(prod(dim(clean_Ftest)),mean = 0,sd = 1e-10),nrow(clean_Fte
 o <- hclust(as.dist( (1-cor(clean_Ftest+noise)/2) ),method = "ward.D2")$order
 
 sizes <- as.matrix(clean_Ftest[o,o])
-sizes[sizes > 7] <- 7
+sizes[sizes > 15] <- 15
 sizes <- sizes / max(sizes)
 image( t(sizes [nrow(sizes):1,]),axes=F,
        col=colorRampPalette(c("grey95","grey70","orange3","firebrick"))(90) )
@@ -345,7 +348,7 @@ empty_plot(frame = T)
 ###################################
 # BACTERIAL VAGINOSIS COMPARISSON #
 ###################################
-par(mar=c(1,5,2,1))
+par(mar=c(3,5,2,1))
 x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
 xL <- rowsum(x , grepl("Lactobacillus",rownames(x)) )[2,] / sum(grepl("Lactobacillus",rownames(x)))
 xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
@@ -360,7 +363,7 @@ barlist( data = rbind(  BV=mL ,
          main = "Lactobacillus",
          genes = c("BV","counts_16S"),
          clustering = group_annotation,
-         draw_mean_lines=F,col = pal)
+         draw_mean_lines=F,col = pal,srt=20)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
@@ -371,14 +374,14 @@ barlist( data = rbind(  BV=mM ,
          main = "Monbilicus",
          genes = c("BV","counts_16S"),
          clustering = group_annotation,
-         draw_mean_lines=F,col = pal)
+         draw_mean_lines=F,col = pal,srt=20)
 
 barlist( data = rbind(  BV=mG ,
                         counts_16S=xG),
          main = "Gardanerella",
          genes = c("BV","counts_16S"),
          clustering = group_annotation,
-         draw_mean_lines=F,col = pal)
+         draw_mean_lines=F,col = pal,srt=20)
 
 
 
@@ -387,7 +390,7 @@ barlist( data = rbind(  BV=mG ,
 ###################################
 # BACTERIAL VAGINOSIS COMPARISSON #
 ###################################
-par(mar=c(1,5,1,12))
+par(mar=c(2,5,1,12))
 
 shann <- vegan::diversity(t(x),index = c("shannon") )
 simp <- vegan::diversity(t(x),index = c("simpson") )
@@ -395,11 +398,19 @@ invsimp <- vegan::diversity(t(x),index = c("invsimpson") )
 divers <- as.matrix(rbind(shann,simp,invsimp) )
 divers[is.infinite(divers)] <- 0
 rownames(divers) <- c("Shannon","simpson","Inv Simpson")
-barlist( data = divers,
+# barlist( data = divers,
+#          main = "",
+#          genes = c("Shannon","simpson","Inv Simpson"),
+#          clustering = group_annotation,
+#          draw_mean_lines=F,col = pal,srt=30)
+  barlist( data = divers[,order(group_annotation)],
          main = "",
          genes = c("Shannon","simpson","Inv Simpson"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal)
+         # clustering = group_annotation,
+         draw_mean_lines=F,col = pal[factor(group_annotation[order(group_annotation)])])
+
+
+
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
@@ -423,12 +434,28 @@ temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
 
 taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
 barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",
-         col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] )
+         col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] ,names.arg = rep("",ncol(temp)))
 legend(x = par("usr")[c(2)],
        y = par("usr")[c(4)],title.adj = 0,
        legend = rownames(temp),xjust = 0,yjust = 1,
        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
        pt.bg = taxa_pal)
+# 
+# points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-1,
+#         col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][sample_o],
+#         pch=16,cex=.5,xpd=T)
+# points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2,
+#         col= c("grey","red")[as.numeric(metadata$HIVstatus)][sample_o],
+#         pch=16,cex=.5,xpd=T)
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2,
+        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order( group_annotation )],
+        pch=15,cex=.8,xpd=T)
+  text(par("usr")[1],par("usr")[3]-2,labels = "RepeatedPCR",pos=2,cex=.8,xpd=T)
+  
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-6,
+        col= c("grey","red")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
+        pch=15,cex=.8,xpd=T)
+  text(par("usr")[1],par("usr")[3]-6,labels = "HIVstatus",pos=2,cex=.8,xpd=T)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
@@ -512,8 +539,6 @@ legend(par("usr")[2],par("usr")[4],title.adj = 0,
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
-
-
 
 
 par(mar=c(1,1,1,1))
@@ -645,6 +670,13 @@ image( t(top_picrust_data[h$order,][nrow(top_picrust_data):1,order(group_annotat
 points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[4],length(sample_use)),
         col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
         pch=16)
+points( seq(0,1,length.out = ncol(top_picrust_data)),rep(par("usr")[3],ncol(top_picrust_data))-.005,
+        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order(group_annotation[sample_use])],
+        pch=16,xpd=T)
+points( seq(0,1,length.out = ncol(top_picrust_data)),rep(par("usr")[3],ncol(top_picrust_data))-.01,
+        col= c("grey","red")[as.numeric(metadata$HIVstatus)][order(group_annotation[sample_use])],
+        pch=16,xpd=T)
+
 
 
 source("../enrichment_function.R")
@@ -710,6 +742,87 @@ legend(par("usr")[2],par("usr")[4],title.adj = 0,
 (**d**) Schematic representation of ########## .
 
 
+
+```{r, echo = FALSE, eval = TRUE}
+taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+dim(picrust_taxa)
+dim(picrust_KO_seq)
+
+#Convert picrust to the same bacterial names in the manuscript
+temp <- as.matrix(picrust_taxa)
+temp[is.na(temp)] <- "NA"
+sps <- apply( temp[,8:9] ,1,function(x) paste(x,collapse ="_"))
+not_complete <- grepl("_NA",sps)
+taxa <- apply( temp ,1,function(x) paste(x,collapse ="_"))
+taxa[not_complete] <- sub("_NA.*","",taxa[not_complete])
+taxa[not_complete] <- sub(".*_","other ",taxa[not_complete])
+taxa[!not_complete] <- sps[!not_complete]
+taxa <- sub("_"," ",taxa)
+length(taxa)
+picrust_taxa$final_name <- taxa
+
+
+dim(picrust_data)
+dim(picrust_KO_seq)
+
+common <- rownames(picrust_data)[rownames(picrust_data) %in% colnames(picrust_KO_seq)]
+res <- t( t(as.matrix(picrust_data[common,])) %*% t(as.matrix(picrust_KO_seq[,common])) )
+picrust_KO_seq <- picrust_KO_seq[,common]
+
+picrust_KO_seq[1:100,1:100]
+
+picrust_KO_seq <- rowsum(picrust_KO_seq , picrust_taxa[ match( rownames(picrust_KO_seq) , as.character(picrust_taxa$Seq_ID)  ),"final_name"])
+picrust_KO_seq <- as.matrix(picrust_KO_seq)
+
+picrust_KO_seq[,1]
+
+sub(" [(].*","",names(pvalues))[1]
+
+
+
+ress <- sapply( sub(" [(].*","",names(pvalues)) , function(x){
+  inn <- colnames(picrust_KO_seq) [ colnames(picrust_KO_seq) %in% names(gmt_list[[x]] ) ]
+  temp <- picrust_KO_seq[,inn]
+  temp <- temp[ order(rowMeans(temp),decreasing = T) ,  ]
+  common_bacs <- rownames(SNN_bacteria)[rownames(SNN_bacteria) %in% rownames(temp)]
+  temp <- rowsum(temp[common_bacs , ] , group = bac_communities [ rownames(SNN_bacteria) %in% common_bacs ] )
+  return( temp )
+} )
+
+ress
+
+mypar(1,2,mar=c(4,10,2,4))
+x <- sapply(ress,function(x){
+  rowMeans(x)
+})
+x [ is.nan(x) ] <- 0
+x <- t(x)
+
+sizes <- sapply(ress,function(x){
+  return( rowSums( x > 0) / ncol(x) )
+})
+sizes [ is.nan(sizes) ] <- 0
+sizes <- t(sizes)
+
+plot( sort(rep(1:ncol(x),nrow(x))),
+      rep(nrow(x):1,ncol(x)),
+        col=colorRampPalette(c("grey95","firebrick"))(91)[cut( c(x) , breaks = seq(0,15,length.out = 92) )],pch=16 ,
+      cex= sizes*2 + 0.2, ylim=c(0.5,nrow(x)+.5),yaxs="i",
+      axes=F,xlab="",ylab="", frame=T)
+srt=30
+text(1:ncol(x), par("usr")[3] - (par("usr")[4])/200, labels = colnames(x), srt = srt,
+     adj = c(ifelse(srt==0,.5,ifelse(srt==90,1,1)),ifelse(srt==0,1,ifelse(srt==90,.5,1))),
+     xpd = TRUE, cex=.6)
+text(par("usr")[1] - (par("usr")[2])/200, nrow(x):1 , labels = rownames(x), srt = 0, adj = c(1,0.5), xpd = TRUE, cex=.6)
+
+add_scale_legend(pal = colorRampPalette(c("grey95","firebrick"))(91),labels = c(min(x),round(max(x)) ))
+add_size_legend(labels = c("0%","50%","100%"),max.cex = 2.2, min.cex = .2)
+
+```
+
+
+
+
 \clearpage
 
 ## Figure 3
@@ -770,12 +883,20 @@ points( rep(-.1,length(gene_module)),
         pch=16,cex=.5,xpd=T)
 
 
-image( t(top_TRX_counts[h$order,][nrow(top_TRX_counts):1,order(group_annotation[sample_use])]),
+image( t(top_TRX_counts[h$order,order(group_annotation[sample_use])][nrow(top_TRX_counts):1,]),
        col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
        breaks = seq(-5,5,length.out = 100),axes=F , xlab="patient groups")
 points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[3] - .01,length(sample_use)),
         col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
         pch=16,xpd=T)
+
+points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.005,
+        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order(group_annotation[sample_use])],
+        pch=16,xpd=T)
+points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.01,
+        col= c("grey","red")[as.numeric(metadata$HIVstatus)][order(group_annotation[sample_use])],
+        pch=16,xpd=T)
+
 
 
 source("../enrichment_function.R")
@@ -986,7 +1107,7 @@ temp_legend <- NULL
 
 layout(matrix(c(1,7,
                 2,7,
-                3,7,
+                3,8,
                 4,8,
                 5,8,
                 6,8) , ncol= 2,byrow = T),widths = c(4,1),heights = c(.5,1,.5,1,.5,1))
@@ -1034,12 +1155,22 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
   
   taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
-           col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] )
+           col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] ,names.arg = rep("",ncol(temp)))
   # legend(x = par("usr")[c(2)],
   #        y = par("usr")[c(4)],title.adj = 0,
   #        legend = rownames(temp),xjust = 0,yjust = 1,
   #        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
   #        pt.bg = taxa_pal)
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2,
+        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order( group_annotation )],
+        pch=15,cex=1,xpd=T)
+  text(par("usr")[1],par("usr")[3]-2,labels = "RepeatedPCR",pos=2,cex=.8,xpd=T)
+  
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-6,
+        col= c("grey","red")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
+        pch=15,cex=1,xpd=T)
+  text(par("usr")[1],par("usr")[3]-6,labels = "HIVstatus",pos=2,cex=.8,xpd=T)
+
 }
 
 
@@ -1069,7 +1200,7 @@ legend(x = par("usr")[c(1)],
 figlabels <- letters
 temp_legend <- NULL
 
-continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_nmol_L_v3","Plasma_S_Estradiol_pmol_L_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
 continuous_metadata <- metadata[,continuous_parameters]
 # continuous_metadata <- cbind(continuous_metadata , t(module_means_per_dataset[[i]]) )
   
@@ -1181,7 +1312,7 @@ o <- hclust(as.dist( (1-cor(clean_Ftest+noise)/2) ),method = "ward.D2")$order
 
 sizes <- as.matrix(clean_Ftest[o,o])
 # sizes[sizes < 2] <- 0
-sizes[sizes > 7] <- 7
+sizes[sizes > 10] <- 10
 sizes <- sizes / max(sizes)
 sizes <- sizes * lower.tri(sizes)
 
@@ -1197,7 +1328,7 @@ for(i in 1:nrow(sizes) ){
 }
 points(sort(rep(1:ncol(sizes),nrow(sizes))),
       rep(nrow(sizes):1,ncol(sizes)),
-        col=colorRampPalette(c("grey95","orange3","firebrick","black"))(91)[cut( c(sizes) , breaks = seq(0,1,length.out = 92) )],pch=16 ,
+        col=colorRampPalette(c("grey95","orange3","firebrick","red"))(91)[cut( c(sizes) , breaks = seq(0,1,length.out = 92) )],pch=16 ,
       cex= sizes*1 + 0.2)
 srt=90
 text(1:ncol(sizes), par("usr")[3] - (par("usr")[4])/200, labels = colnames(sizes), srt = srt,

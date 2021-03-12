@@ -123,7 +123,7 @@ taxa_info <- lapply(dataset_names, function(x){
 })
 taxa_info <- t(as.data.frame(taxa_info))
 rownames(taxa_info) <- sub("other.","other ",rownames(taxa_info))
-rownames(taxa_info) <- sub("[.][0123456789","other ",rownames(taxa_info))
+rownames(taxa_info) <- sub("[.][0123456789]","other ",rownames(taxa_info))
 sps <- apply( taxa_info[,6:7] ,1,function(x) paste(x,collapse ="_"))
 not_complete <- grepl("_NA",sps)
 taxa <- apply( taxa_info ,1,function(x) paste(x,collapse ="_"))
