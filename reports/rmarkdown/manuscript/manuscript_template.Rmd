@@ -55,7 +55,7 @@ library(tidyverse)
 library(igraph)
 library(phyloseq)
 library(vegan)
-library(gridExtra)
+library(ggpubr)
 library(rafalib)
 library(scales)
 library(dendextend)
@@ -1617,12 +1617,13 @@ rare_plot <- map(rare_df_col,
               theme_bw() +
               scale_color_manual(values=c('tomato', alpha('black', 0.1))) + 
               geom_line(aes(color = Counts, group = Sample)) +
-              theme(plot.title = element_text(hjust = 0.5))
+              theme(plot.title = element_text(hjust = 0.5),
+                    plot.margin=unit(c(0,0,0.5,0),"cm"))
             )
 raremax <- map(seqtabs, ~min(rowSums(.x)))
 r_plot <- pmap(list(rare_plot, raremax, limit, title),
                ~ ..1 + xlim(c(0,..3)) +
-               labs(title=paste0("Rarefaction Curve ", ..4)) +
+               labs(title=paste0("Sequencing ", ..4)) +
                geom_vline(xintercept = ..2, 
                           linetype='dashed', 
                           color='slategray' )
@@ -1636,16 +1637,18 @@ r_plot <- pmap(list(rare_plot, raremax, limit, title),
 
 ```
 
-```{r Print rare curves, fig.width=6, fig.height=10, message=F}
-grid.arrange(
-  r_plot[[1]],
-  r_plot[[3]],
-  r_plot[[4]],
-  r_plot[[5]],
-  nrow = 4,
-  clip = FALSE
-)
+```{r Print rare curves, fig.width=6, fig.height=10, fig.align="center"}
+ggarrange(r_plot[[1]] + theme(axis.title.x=element_blank()),
+          r_plot[[3]] + theme(axis.title.x=element_blank()),
+          r_plot[[4]] + theme(axis.title.x=element_blank()),
+          r_plot[[5]],
+          ncol = 1, 
+          labels = c("A","B","C","D")
+          )
 ```
+
+**Supp. Figure 10. Rarefraction curves**. **A** Boston 1 sequencing run, **B** Sthlm sequencing run and **C** and **D** shows Boston sequencing run 2 split in two plots showing the CVL visit 2 samples and the the TISSUE visit 3 samples respectively
+
 
 
 \clearpage
