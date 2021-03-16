@@ -29,6 +29,7 @@ library(igraph)
 library(rafalib)
 library(sva)
 library(batchelor)
+library(scales)
 remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
 library(niceRplots)
 
@@ -38,6 +39,7 @@ library(niceRplots)
 
 ```{r, echo = FALSE}
 PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325" #Path to the data
+PATH <- "../.." #Path to the data
 
 #color palettes
 pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),

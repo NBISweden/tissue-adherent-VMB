@@ -578,7 +578,7 @@ add_letter("b")
 
 \clearpage
 
-```{r, echo = FALSE}
+```{r, eval=FALSE, include=FALSE}
 groupings <- lapply( names(datasets_all_samples)[-1] ,function(x){
   x <- read.csv2( paste0(PATH,"results/Sample_Louvain_clusters_",x,".csv"),row.names = 1 ) })
 names(groupings) <- names(datasets_all_samples)[-1]
