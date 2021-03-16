@@ -55,7 +55,7 @@ library(tidyverse)
 library(igraph)
 library(phyloseq)
 library(vegan)
-library(gridExtra)
+library(ggpubr)
 library(rafalib)
 library(scales)
 library(dendextend)
@@ -1555,7 +1555,7 @@ violist(data = x[,colnames(x)%in%top],
 ## Figure S10
 
 
-```{r, echo = FALSE, eval = TRUE, fig.width=6, fig.height=10}
+```{r, echo = FALSE, eval = TRUE, fig.show='hide'}
 paths_p <- c('../../../data/phyloseq_boston_r1.RDS',   # CVL V3
              '../../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
              '../../../data/phyloseq_Sthlm.RDS')       # CVL V2, only v4 region
@@ -1568,8 +1568,8 @@ ps_filt <- map(ps_list, ~ .x %>%
   subset_samples(., Include_final == "yes"))
 
 # separate tissue from CVLv2 samples in the second Boston run
-CVLv2 <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "CVL" & Visit == 2) 
-tissue <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "tissue" & Visit == 3)
+CVLv2 <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "CVL" & Visit == "v2") 
+tissue <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "tissue" & Visit == "v3")
   
 # merge the lists
 ps_types <- c(ps_filt, "CVLv2"=CVLv2, "tissue"=tissue) 
@@ -1577,11 +1577,8 @@ ps_types <- c(ps_filt, "CVLv2"=CVLv2, "tissue"=tissue)
 seqtabs <- map(ps_types, ~data.frame(.x@otu_table@.Data))
 
 # Get rarefaction curves
-raremax <- map(seqtabs, ~min(rowSums(.x)))
-rare_runs <- map2(seqtabs, raremax, ~ .x %>%
-             rarecurve(., step = 20, sample = .y, 
-                       label = FALSE#,col = col, lty = lty,
-          )
+rare_runs <- map(seqtabs, ~ .x %>%
+             rarecurve(., step = 20, label = FALSE)
 )
 
 ggplot_df_fun <- function(rare_obj, count) {
@@ -1597,7 +1594,7 @@ ggplot_df_fun <- function(rare_obj, count) {
   # Get nr. of counts in each sample 
   c <- formatC(count, format="f", big.mark = " ", digits=0)
   rare_df_col <- rare_df %>%
-    rename(ASV = "value") %>%
+    dplyr::rename(ASV = "value") %>%
     group_by(Sample) %>% 
     nest() %>%
     mutate(Counts = map(data, ~max(.$`Sample size`))) %>%
@@ -1615,17 +1612,18 @@ title <- c("Run B1. CVLv3", "Run B2. CVLv2 + TISSUEv3","Run Sthlm CVLv2", "Run B
 # Extract data frame from the rarecurve object
 rare_df_col<- map2(rare_runs, count, ~ggplot_df_fun(.x, .y))
 # Create Plot 
-rare_plot <- map2(rare_df_col, raremax, 
+rare_plot <- map(rare_df_col, 
               ~ggplot(.x, aes(x = `Sample size`, y = ASV)) +
               theme_bw() +
               scale_color_manual(values=c('tomato', alpha('black', 0.1))) + 
               geom_line(aes(color = Counts, group = Sample)) +
-              theme(plot.title = element_text(hjust = 0.5))
+              theme(plot.title = element_text(hjust = 0.5),
+                    plot.margin=unit(c(0,0,0.5,0),"cm"))
             )
-
+raremax <- map(seqtabs, ~min(rowSums(.x)))
 r_plot <- pmap(list(rare_plot, raremax, limit, title),
                ~ ..1 + xlim(c(0,..3)) +
-               labs(title=paste0("Rarefaction Curve ", ..4)) +
+               labs(title=paste0("Sequencing ", ..4)) +
                geom_vline(xintercept = ..2, 
                           linetype='dashed', 
                           color='slategray' )
@@ -1637,16 +1635,20 @@ r_plot <- pmap(list(rare_plot, raremax, limit, title),
 #        width = 10, height = 5,)
 #)
 
-grid.arrange(
-  r_plot[[1]],
-  r_plot[[3]],
-  r_plot[[4]],
-  r_plot[[5]],
-  nrow = 4,
-  #height = c(1, 1, 1, 1),
-  clip = FALSE
-)
 ```
+
+```{r Print rare curves, fig.width=6, fig.height=10, fig.align="center"}
+ggarrange(r_plot[[1]] + theme(axis.title.x=element_blank()),
+          r_plot[[3]] + theme(axis.title.x=element_blank()),
+          r_plot[[4]] + theme(axis.title.x=element_blank()),
+          r_plot[[5]],
+          ncol = 1, 
+          labels = c("A","B","C","D")
+          )
+```
+
+**Supp. Figure 10. Rarefraction curves**. **A** Boston 1 sequencing run, **B** Sthlm sequencing run and **C** and **D** shows Boston sequencing run 2 split in two plots showing the CVL visit 2 samples and the the TISSUE visit 3 samples respectively
+
 
 
 \clearpage
