@@ -48,6 +48,7 @@ source("~/repos/niceRplots/R/helper_functions.R")
 
 ```{r}
 PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325/" #Path to the data
+PATH <- "../.." #Path to the data
 
 #color palettes
 pal <- RColorBrewer::brewer.pal(8,"Set1") #color pallete for plots
