@@ -1544,15 +1544,220 @@ violist(data = x[,colnames(x)%in%top],
 ## Figure S9
 
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
+figlabels <- letters
 
+cytokine_data <- read.csv("../../../data/210125_Cytokines_visit3CVL.csv")
+cytokine_data$ID <- metadata [ match( cytokine_data$PatID , as.character(metadata$PatID)  ) ,"ID" ]
+cytokine_data <- cytokine_data[ !is.na(cytokine_data$ID) , ]
+rownames(cytokine_data) <- cytokine_data$ID
+cytokine_data <- cytokine_data[,grepl("CVL",colnames(cytokine_data))]
+colnames(cytokine_data) <- sub("CVL_","",colnames(cytokine_data))
+cytokine_data <- t(cytokine_data)
+cytokine_data[is.na(cytokine_data)] <- 0.35
+cytokine_data <- log2(cytokine_data+1)
+  
+groupings <- metadata$group_annotation [ match( colnames(cytokine_data) , as.character(metadata$ID)  ) ]
+mypar(1,3,mar=c(6,5,1,5))
+
+plot_dots(data=cytokine_data,
+          srt=45,
+          genes=rownames(cytokine_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+barlist(data=cytokine_data,
+          srt=45,
+          genes=rownames(cytokine_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+violist(data=cytokine_data,
+          srt=45,
+          genes=rownames(cytokine_data),
+          col = pal, transparency = 50,
+          clustering=groupings,smooth = 2 )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+```
+
+
+
+\clearpage
+
+## Figure S10
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=.8}
+figlabels <- letters
+
+IF_data <- read.csv("../../../data/200105_CD4Ecad_Visit3LAMIQ.csv")
+IF_data$ID <- metadata [ match( IF_data$PatID , as.character(metadata$PatID)  ) ,"ID" ]
+IF_data <- IF_data[ !is.na(IF_data$ID) , ]
+rownames(IF_data) <- IF_data$ID
+IF_data <- IF_data [ , -c(1:3)]
+IF_data <- IF_data [ , -ncol(IF_data)]
+IF_data <- t(IF_data)
+# IF_data[is.na(IF_data)] <- 0
+# IF_data <- log2(IF_data+1)
+  
+groupings <- metadata$group_annotation [ match( colnames(IF_data) , as.character(metadata$ID)  ) ]
+
+
+mypar(1,3,mar=c(6,15,1,4))
+plot_dots(data=IF_data,
+          srt=45,
+          genes=rownames(IF_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+barlist(data=IF_data,
+          srt=45,
+          genes=rownames(IF_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+violist(data=IF_data,
+          srt=45,
+          genes=rownames(IF_data),
+          col = pal, transparency = 50,
+          clustering=groupings,smooth = 2 )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+```
+
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
+
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+
+
+mypar(1,3,mar=c(6,15,1,4))
+plot_dots(data=as.matrix(t(metadata[,continuous_parameters])),
+          srt=45,
+          genes=continuous_parameters,
+          col = pal,
+          clustering=metadata$group_annotation )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+barlist(data=as.matrix(t(metadata[,continuous_parameters])),
+          srt=45,
+          genes=continuous_parameters,
+          col = pal,
+          clustering=metadata$group_annotation )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+violist(data=as.matrix(t(metadata[,continuous_parameters])),
+          srt=45,
+          genes=continuous_parameters,
+          col = pal, transparency = 50,
+          clustering=metadata$group_annotation,smooth = 2 )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```
 
 
 \clearpage
 
-## Figure S10
+## Figure S11
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+figlabels <- letters
+
+g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+l <- layout_with_fr(g,niter=3000,start.temp=30)
+
+
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+
+
+mypar(6,6,mar=c(1,1,1,1))
+
+plot(l,
+       col=pal[metadata$group_annotation],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+empty_plot()
+legend("topleft",title.adj = 0,
+       legend = levels(metadata$group_annotation),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+  
+for(i in continuous_parameters){
+  xx <- metadata[,i]
+  xx[is.na(xx)] <- 0
+  xx <- xx / max(xx)
+  o <- order(xx)
+  plot(l[o,],
+       col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+
+}
+
+```
+
+
+
+\clearpage
+
+## Figure S12
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+figlabels <- letters
+
+g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+l <- layout_with_fr(g,niter=3000,start.temp=30)
+
+
+categorical_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
+                         "Bacterio_KOH_v2","Bacterio_KOH_v3","Bacterio_TV_v3",
+                         "BV_Clue_Cells_v2","BV_Clue_Cells_v3",
+                         "BV_Diagnosis_v2","BV_Diagnosis_v3",
+                         "BV_Lactobacillus_v2","BV_Lactobacillus_v3",
+                         "BV_Monbilicus_v2","BV_Monbilicus_v3",
+                         "BV_Vaginal_Garda_v2","BV_Vaginal_Garda_v3",
+                         "blood_cervix_v2","blood_cervix_v3",
+                         "cervical_inflammation_v2","cervical_inflammation_v3",
+                         "HIVstatus","Contraception",
+                         "CT_v2","CT_v3","regular_partner",
+                         "vaginal_douching_v2","vaginal_douching_v3")
+
+mypar(6,5,mar=c(1,1,1,8))
+plot(l,
+       col=pal[metadata$group_annotation],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(metadata$group_annotation),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+  
+for(i in categorical_parameters){
+  xx <- factor(metadata[,i])
+  plot(l[,],
+       col=pal[xx],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(xx),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+}
+```
+
+
+
+
+\clearpage
+
+## Figure S13
 
 
 ```{r, echo = FALSE, eval = TRUE, fig.width=6, fig.height=10}
