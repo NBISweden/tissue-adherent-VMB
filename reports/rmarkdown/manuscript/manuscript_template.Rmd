@@ -26,7 +26,7 @@ linkcolor: blue
 csl: nature.csl
 cslreferences: nature.csl
 bibliography: refs.bib
-editor_options: 
+editor_options:
   chunk_output_type: console
 ---
 \footnotetext[1]{University of Nowhere}
@@ -41,7 +41,7 @@ knitr::opts_chunk$set(out.width = '100%',
                       fig.width=10,
                       echo = FALSE,
                       # fig.pos = 'p', # Places figures on their own pages
-                      eval = TRUE, 
+                      eval = TRUE,
                       results = 'hide',
                       warning = FALSE,
                       message = FALSE )
@@ -55,7 +55,7 @@ library(tidyverse)
 library(igraph)
 library(phyloseq)
 library(vegan)
-library(gridExtra)
+library(ggpubr)
 library(rafalib)
 library(scales)
 library(dendextend)
@@ -74,8 +74,8 @@ cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
 
 Abstract
 ===============================================================================
-  
-Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract 
+
+Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract
 test test test
 
 
@@ -169,7 +169,7 @@ bac_communities <- as.factor(setNames(bac_communities,bacs))
 
 **Joint analysis of vaginal microbiome reveals distinct patient subgroups**
 
-To understand the longitudinal and tissue-specific microbiome profile in vaginal samples, `r nrow(metadata)` adult female sex workers were enrolled in [...]. Among those, `r sum(metadata$HIVstatus=="pos")` were previously tested positive for HIV during the cohort's sampling procedure. [Describe here what was done and when, which samples, which tissues]. 
+To understand the longitudinal and tissue-specific microbiome profile in vaginal samples, `r nrow(metadata)` adult female sex workers were enrolled in [...]. Among those, `r sum(metadata$HIVstatus=="pos")` were previously tested positive for HIV during the cohort's sampling procedure. [Describe here what was done and when, which samples, which tissues].
 
 
 To be able to better undertand the differences in microbiome profile across all datasets collected, we  performed a joint graph-based clustering analysis in order to identify co-regulated bacterial communities (see "Methods" section for details). A total of `r length(unique(bac_communities))` bacterial communities were identified.
@@ -180,7 +180,7 @@ Noticebly, bacterial community `r bac_communities["Lactobacillus iners"]` consis
 
 Patients were thus subdivided into `r length(unique(group_annotation))` groups,
 
-Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results
 
 
 \clearpage
@@ -188,7 +188,7 @@ Results Results Results Results Results Results Results Results Results Results 
 
 **Indentification of bacterial communities metabolic processes linked to Lactobacilli**
 
-Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results
 
 
 \clearpage
@@ -198,7 +198,7 @@ Results Results Results Results Results Results Results Results Results Results 
 **Indentification of bacterial communities metabolic processes linked to Lactobacilli**
 
 
-Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results
 
 
 \clearpage
@@ -207,11 +207,11 @@ Results Results Results Results Results Results Results Results Results Results 
 Discussion
 ================================================================================
 
-I have analysed data collected by Herman Bumpus [@Bumpus1898] on the relationship between sparrow (*Passer domesticus*) total length and surival following an unusually severe storm. I found that sparrows that died in the storm were longer than sparrows that survived, which suggests that higher sparrow body length decreased survival. Of course, it is not possible to definitively conclude a causal relationship between any aspect of body size and sparrow survival<!--- BD Note: maybe explain this better --->, and even the available data collected by Bumpus would permit a more thoughtful analysis than that conducted in this study (see [Appendix Table 1](#appendix)). 
+I have analysed data collected by Herman Bumpus [@Bumpus1898] on the relationship between sparrow (*Passer domesticus*) total length and surival following an unusually severe storm. I found that sparrows that died in the storm were longer than sparrows that survived, which suggests that higher sparrow body length decreased survival. Of course, it is not possible to definitively conclude a causal relationship between any aspect of body size and sparrow survival<!--- BD Note: maybe explain this better --->, and even the available data collected by Bumpus would permit a more thoughtful analysis than that conducted in this study (see [Appendix Table 1](#appendix)).
 
 <!---
 
-Here is one way to add some more detailed comments into the manuscript itself, though this can also be done within the text (see above). 
+Here is one way to add some more detailed comments into the manuscript itself, though this can also be done within the text (see above).
 
 --->
 
@@ -440,7 +440,7 @@ legend(x = par("usr")[c(2)],
        legend = rownames(temp),xjust = 0,yjust = 1,
        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
        pt.bg = taxa_pal)
-# 
+#
 # points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-1,
 #         col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][sample_o],
 #         pch=16,cex=.5,xpd=T)
@@ -451,7 +451,7 @@ legend(x = par("usr")[c(2)],
         col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order( group_annotation )],
         pch=15,cex=.8,xpd=T)
   text(par("usr")[1],par("usr")[3]-2,labels = "RepeatedPCR",pos=2,cex=.8,xpd=T)
-  
+
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-6,
         col= c("grey","red")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
         pch=15,cex=.8,xpd=T)
@@ -482,12 +482,12 @@ layout(matrix(c(2 ,3,4,5,      6,7,17,17,          17,17,17,17,
                 16,15,14,13,  12,11,20,20,         20,20,20,20 ) , ncol= 12,byrow = T),widths = 1,heights = c(1.2,1.2,1.2,1.2,1.2))
 # layout.show(12)
 figlabels <- letters
-# 
+#
 # m <- matrix(as.character(c(1,2,3,4)),nrow = 2,ncol = 2)
 # m
 # m2 <- matrix(as.character(c(1,2,3,"m")),nrow = 2,ncol = 2)
 # m2
-# 
+#
 # matrix(c(1,2,j,3),nrow = 2,ncol = 2)
 # layout_matrix <- function(data, nrow, ncol){
 #   return( matrix(as.character(data), nrow = nrow, ncol = ncol)  )
@@ -502,19 +502,19 @@ figlabels <- letters
 #   
 #   temp2 <- matrix(1,nrow = nrow(data),ncol = ncol(data))
 #   temp3 <- temp2 * heights
-#   temp4 <- t( t( temp2 ) * widths ) 
+#   temp4 <- t( t( temp2 ) * widths )
 #   temp2 <- matrix( "" , ncol = res , nrow = res )
 #   
 #   
 #   for(i in 1:nrow(temp)){
 #     for(j in 1:ncol(temp)){
-#       temp2 <- 
+#       temp2 <-
 #     }
 #   }
 #   temp <- apply(temp,1,function(x){rep( x , widths/ )})
 #   return(   )
 # }
-# 
+#
 # m <- layout_matrix(c(1,2,3,4),2,2)
 # m2 <- layout_matrix(c(1,2,3,"m"),2,2)
 
@@ -531,7 +531,7 @@ lB <- layout_nicely(gB,niter=3000,start.temp=30)
 par(mar=c(0,0,0,10))
 plot( gB , vertex.label.cex=0.000001 , vertex.color = pal[factor(bac_communities)] ,
       edge.width=  ( E(gB)$weight / max(E(gB)$weight)) ,
-      vertex.size=10,main="", 
+      vertex.size=10,main="",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(gB)$weight / max(E(gB)$weight) * 88 )+1 ] ,layout=lB)
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
        legend = levels(factor(bac_communities)),xjust = 0,yjust = 1,
@@ -587,7 +587,7 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
   return( rowsum( x[rownames(SNN_bacteria),] , group = bac_communities ) / c(table(bac_communities)) )
 })
-# 
+#
 par(mar=c(2,10,2,6))
 plot_dots_difference(data = module_means_per_dataset[[2]],
                      data2 = module_means_per_dataset[[3]],
@@ -1053,7 +1053,7 @@ df %>% group_by(bc)  %>% top_n(3,NES) -> top_per_bc
 df %>% group_by(bc)  %>% top_n(-3,NES) ->  bottom_per_bc
 
 as.data.frame(top_per_bc)
-  
+
 mypar(1,2,mar=c(4,10,2,4))
 for(i in 1:2){
 x <- NESse_list[[i]]
@@ -1116,10 +1116,10 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
            "ASV_CVL_V2_normalized_NOT_batch_corrected",
            "ASV_tissue_V3_normalized_batch_corrected")){
   x <- datasets_all_samples[[i]]
-  
+
   par(mar=c(1,5,1,1))
   temp <- t(t(2^x-1)/colSums(2^x-1))
-  
+
   shann <- vegan::diversity(t(temp),index = c("shannon") )
   simp <- vegan::diversity(t(temp),index = c("simpson") )
   invsimp <- vegan::diversity(t(temp),index = c("invsimpson") )
@@ -1132,27 +1132,27 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
          # clustering = group_annotation,
          draw_mean_lines=F,col = pal[factor(group_annotation[order(group_annotation)])])
 
-  
+
   #add label
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-  
+
   par(mar=c(3,5,1,1))
   # taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
   # taxa[is.na(taxa)] <- "NA"
   # taxa <- taxa[rownames(temp),]
   # temp <- rowsum(temp , taxa$Class)
   temp[is.nan(temp)] <- 0
-  
-  if(is.null(temp_legend)){ 
+
+  if(is.null(temp_legend)){
     temp_legend <- temp   #Use the same legend from the 1st dataset
   }
-  
+
   o <- order( rowSums(temp_legend) , decreasing = T)
   sample_o <- names(group_annotation)[ order( group_annotation )]
   temp <- temp[o,sample_o]*100
   # temp <- temp[-grep("NA",rownames(temp)),]
   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
-  
+
   taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
            col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] ,names.arg = rep("",ncol(temp)))
@@ -1165,7 +1165,7 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
         col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order( group_annotation )],
         pch=15,cex=1,xpd=T)
   text(par("usr")[1],par("usr")[3]-2,labels = "RepeatedPCR",pos=2,cex=.8,xpd=T)
-  
+
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-6,
         col= c("grey","red")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
         pch=15,cex=1,xpd=T)
@@ -1203,8 +1203,8 @@ temp_legend <- NULL
 continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
 continuous_metadata <- metadata[,continuous_parameters]
 # continuous_metadata <- cbind(continuous_metadata , t(module_means_per_dataset[[i]]) )
-  
-  
+
+
 mypar(1,4,mar=c(12,1,1,0))
 
 for(i in c("ASV_CVL_V3_normalized_batch_corrected",
@@ -1390,13 +1390,13 @@ par(mar=c(.5,.5,1,.5))
 
 figlabels <- letters
 for(j in names(module_means_per_dataset)){
-  
+
   plot(UMAP_picrust,bg=pal[group_annotation],main=gsub("ASV_|_norm.*","",j),
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-  
+
   for(i in 1:nrow(module_means_per_dataset[[j]])){
-  
+
     xx <- module_means_per_dataset[[j]][i,]
     xx <- xx / max(xx)
     o <- order(xx)
@@ -1432,13 +1432,13 @@ par(mar=c(.5,.5,1,.5))
 
 figlabels <- letters
 for(j in names(module_means_per_dataset)){
-  
+
   plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main=gsub("ASV_|_norm.*","",j),
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-  
+
   for(i in 1:nrow(module_means_per_dataset[[j]])){
-  
+
     xx <- module_means_per_dataset[[j]][i,][sample_use]
     xx <- xx / max(xx)
     o <- order(xx)
@@ -1556,7 +1556,7 @@ colnames(cytokine_data) <- sub("CVL_","",colnames(cytokine_data))
 cytokine_data <- t(cytokine_data)
 cytokine_data[is.na(cytokine_data)] <- 0.35
 cytokine_data <- log2(cytokine_data+1)
-  
+
 groupings <- metadata$group_annotation [ match( colnames(cytokine_data) , as.character(metadata$ID)  ) ]
 mypar(1,3,mar=c(6,5,1,5))
 
@@ -1602,7 +1602,7 @@ IF_data <- IF_data [ , -ncol(IF_data)]
 IF_data <- t(IF_data)
 # IF_data[is.na(IF_data)] <- 0
 # IF_data <- log2(IF_data+1)
-  
+
 groupings <- metadata$group_annotation [ match( colnames(IF_data) , as.character(metadata$ID)  ) ]
 
 
@@ -1688,7 +1688,7 @@ empty_plot()
 legend("topleft",title.adj = 0,
        legend = levels(metadata$group_annotation),xjust = 0,yjust = 1,
        bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
-  
+
 for(i in continuous_parameters){
   xx <- metadata[,i]
   xx[is.na(xx)] <- 0
@@ -1739,7 +1739,7 @@ plot(l,
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
        legend = levels(metadata$group_annotation),xjust = 0,yjust = 1,
        bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
-  
+
 for(i in categorical_parameters){
   xx <- factor(metadata[,i])
   plot(l[,],
@@ -1773,24 +1773,21 @@ ps_filt <- map(ps_list, ~ .x %>%
   subset_samples(., Include_final == "yes"))
 
 # separate tissue from CVLv2 samples in the second Boston run
-CVLv2 <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "CVL" & Visit == 2) 
-tissue <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "tissue" & Visit == 3)
-  
+CVLv2 <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "CVL" & Visit == "v2")
+tissue <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "tissue" & Visit == "v3")
+
 # merge the lists
-ps_types <- c(ps_filt, "CVLv2"=CVLv2, "tissue"=tissue) 
+ps_types <- c(ps_filt, "CVLv2"=CVLv2, "tissue"=tissue)
 # Get ASV tables
 seqtabs <- map(ps_types, ~data.frame(.x@otu_table@.Data))
 
 # Get rarefaction curves
-raremax <- map(seqtabs, ~min(rowSums(.x)))
-rare_runs <- map2(seqtabs, raremax, ~ .x %>%
-             rarecurve(., step = 20, sample = .y, 
-                       label = FALSE#,col = col, lty = lty,
-          )
+rare_runs <- map(seqtabs, ~ .x %>%
+             rarecurve(., step = 20, label = FALSE)
 )
 
 ggplot_df_fun <- function(rare_obj, count) {
-  # Add sample names 
+  # Add sample names
   names(rare_obj) <- c(paste0("sample",sprintf("%03.0f", 1:length(rare_obj))))
 
   # Coerce data into "long" form.
@@ -1799,11 +1796,11 @@ ggplot_df_fun <- function(rare_obj, count) {
               mutate(Sample = .y) %>%
               mutate(`Sample size` = as.numeric(gsub("N","",`Sample size`)))
   )
-  # Get nr. of counts in each sample 
+  # Get nr. of counts in each sample
   c <- formatC(count, format="f", big.mark = " ", digits=0)
   rare_df_col <- rare_df %>%
-    rename(ASV = "value") %>%
-    group_by(Sample) %>% 
+    dplyr::rename(ASV = "value") %>%
+    group_by(Sample) %>%
     nest() %>%
     mutate(Counts = map(data, ~max(.$`Sample size`))) %>%
     unnest(c(data, Counts)) %>%
@@ -1819,39 +1816,44 @@ title <- c("Run B1. CVLv3", "Run B2. CVLv2 + TISSUEv3","Run Sthlm CVLv2", "Run B
 
 # Extract data frame from the rarecurve object
 rare_df_col<- map2(rare_runs, count, ~ggplot_df_fun(.x, .y))
-# Create Plot 
-rare_plot <- map2(rare_df_col, raremax, 
+# Create Plot
+rare_plot <- map(rare_df_col,
               ~ggplot(.x, aes(x = `Sample size`, y = ASV)) +
               theme_bw() +
-              scale_color_manual(values=c('tomato', alpha('black', 0.1))) + 
+              scale_color_manual(values=c('tomato', alpha('black', 0.1))) +
               geom_line(aes(color = Counts, group = Sample)) +
-              theme(plot.title = element_text(hjust = 0.5))
+              theme(plot.title = element_text(hjust = 0.5),
+                    plot.margin=unit(c(0,0,0.5,0),"cm"))
             )
-
+raremax <- map(seqtabs, ~min(rowSums(.x)))
 r_plot <- pmap(list(rare_plot, raremax, limit, title),
                ~ ..1 + xlim(c(0,..3)) +
-               labs(title=paste0("Rarefaction Curve ", ..4)) +
-               geom_vline(xintercept = ..2, 
-                          linetype='dashed', 
+               labs(title=paste0("Sequencing ", ..4)) +
+               geom_vline(xintercept = ..2,
+                          linetype='dashed',
                           color='slategray' )
 )
 
 # Save png
-#imap(r_plot, ~ggsave(filename = paste0('Rarefaction_plot_', .y, '.png'), plot = .x, 
-#        path = paste0("../../../results/"), 
+#imap(r_plot, ~ggsave(filename = paste0('Rarefaction_plot_', .y, '.png'), plot = .x,
+#        path = paste0("../../../results/"),
 #        width = 10, height = 5,)
 #)
 
-grid.arrange(
-  r_plot[[1]],
-  r_plot[[3]],
-  r_plot[[4]],
-  r_plot[[5]],
-  nrow = 4,
-  #height = c(1, 1, 1, 1),
-  clip = FALSE
-)
 ```
+
+```{r Print rare curves, fig.width=6, fig.height=10, fig.align="center"}
+ggarrange(r_plot[[1]] + theme(axis.title.x=element_blank()),
+          r_plot[[3]] + theme(axis.title.x=element_blank()),
+          r_plot[[4]] + theme(axis.title.x=element_blank()),
+          r_plot[[5]],
+          ncol = 1,
+          labels = c("A","B","C","D")
+          )
+```
+
+**Supp. Figure 10. Rarefraction curves**. **A** Boston 1 sequencing run, **B** Sthlm sequencing run and **C** and **D** shows Boston sequencing run 2 split in two plots showing the CVL visit 2 samples and the the TISSUE visit 3 samples respectively
+
 
 
 \clearpage
@@ -1903,4 +1905,3 @@ TABLES (SUPPL)
 ```
 
 \clearpage
-
