@@ -886,15 +886,15 @@ points( rep(-.1,length(gene_module)),
 image( t(top_TRX_counts[h$order,order(group_annotation[sample_use])][nrow(top_TRX_counts):1,]),
        col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
        breaks = seq(-5,5,length.out = 100),axes=F , xlab="patient groups")
-points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[3] - .01,length(sample_use)),
+points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[3] - .02,length(sample_use)),
         col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
         pch=16,xpd=T)
 
 points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.005,
-        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order(group_annotation[sample_use])],
+        col= c("grey","red")[(!is.na(metadata[sample_use,"RepeatedPCR"]))+1][order(group_annotation[sample_use])],
         pch=16,xpd=T)
 points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.01,
-        col= c("grey","red")[as.numeric(metadata$HIVstatus)][order(group_annotation[sample_use])],
+        col= c("grey","red")[as.numeric(metadata[sample_use,"HIVstatus"])][order(group_annotation[sample_use])],
         pch=16,xpd=T)
 
 
@@ -1710,7 +1710,7 @@ for(i in continuous_parameters){
 ## Figure S12
 
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+```{r, echo = FALSE, eval = TRUE,fig.asp=1}
 figlabels <- letters
 
 g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
@@ -1753,11 +1753,95 @@ legend(par("usr")[2],par("usr")[4],title.adj = 0,
 ```
 
 
+\clearpage
+
+## Figure S13
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
+
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+
+common <- colnames(top_TRX_counts)[colnames(top_TRX_counts) %in% rownames(metadata)]
+
+mypar(6,6,mar=c(1,1,1,1))
+
+plot(UMAP_TRX,
+       col=pal[metadata[common,"group_annotation"]],
+       main="",xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+empty_plot()
+legend("topleft",title.adj = 0,
+       legend = levels(metadata[common,"group_annotation"]),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+
+for(i in continuous_parameters){
+  xx <- metadata[common,i]
+  xx[is.na(xx)] <- 0
+  xx <- xx / max(xx)
+  o <- order(xx)
+  plot(UMAP_TRX[o,],
+       col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+
+}
+```
 
 
 \clearpage
 
-## Figure S13
+## Figure S14
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=1}
+figlabels <- letters
+
+# g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+# set.seed(1)
+# l <- layout_with_fr(g,niter=3000,start.temp=30)
+# 
+
+categorical_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
+                         "Bacterio_KOH_v2","Bacterio_KOH_v3","Bacterio_TV_v3",
+                         "BV_Clue_Cells_v2","BV_Clue_Cells_v3",
+                         "BV_Diagnosis_v2","BV_Diagnosis_v3",
+                         "BV_Lactobacillus_v2","BV_Lactobacillus_v3",
+                         "BV_Monbilicus_v2","BV_Monbilicus_v3",
+                         "BV_Vaginal_Garda_v2","BV_Vaginal_Garda_v3",
+                         "blood_cervix_v2","blood_cervix_v3",
+                         "cervical_inflammation_v2","cervical_inflammation_v3",
+                         "HIVstatus","Contraception",
+                         "CT_v2","CT_v3","regular_partner",
+                         "vaginal_douching_v2","vaginal_douching_v3")
+
+common <- colnames(top_TRX_counts)[colnames(top_TRX_counts) %in% rownames(metadata)]
+
+mypar(6,5,mar=c(1,1,1,8))
+plot(UMAP_TRX,
+       col=pal[metadata[common,"group_annotation"]],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(metadata[common,"group_annotation"]),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+
+for(i in categorical_parameters){
+  xx <- factor(metadata[common,i])
+  plot(UMAP_TRX[,],
+       col=pal[xx],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(xx),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+}
+```
+
+
+
+
+\clearpage
+
+## Figure S15
 
 
 ```{r, echo = FALSE, eval = TRUE, fig.width=6, fig.height=10}
@@ -1853,6 +1937,15 @@ ggarrange(r_plot[[1]] + theme(axis.title.x=element_blank()),
 ```
 
 **Supp. Figure 10. Rarefraction curves**. **A** Boston 1 sequencing run, **B** Sthlm sequencing run and **C** and **D** shows Boston sequencing run 2 split in two plots showing the CVL visit 2 samples and the the TISSUE visit 3 samples respectively
+
+
+
+
+
+
+
+
+
 
 
 
