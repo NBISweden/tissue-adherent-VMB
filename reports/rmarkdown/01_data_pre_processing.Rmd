@@ -73,10 +73,15 @@ return(other_taxa)
 # create genus lacto taxonomy
 genus_lacto.fun <- function(df){
   genus_lacto <- df %>%
-    mutate(Genus_lacto = .$Genus, .after=Seq_ID) %>% #ifelse(grepl("Lactobacillus",.$Genus), paste(.$Genus, .$Species),
-    mutate(Genus_lacto = ifelse(grepl("crispatus",.$Species), paste0(.$Genus_lacto, "crispatus/acidophilus"), 
-                                ifelse(grepl("Lactobacillus",.$Genus), paste(.$Genus, .$Species), 
-                                       as.character(.$Genus_lacto))) )
+    mutate(Genus_lacto = .$Genus, .after=Seq_ID) %>% 
+    mutate(Genus_lacto = ifelse(grepl("crispatus",.$Species), paste(.$Genus_lacto, "crispatus/acidophilus"), 
+                                ifelse(grepl("reuteri",.$Species), paste(.$Genus_lacto, "reuteri/oris/frumenti/antri"),
+                                  ifelse(grepl("gasseri",.$Species), paste(.$Genus_lacto,"gasseri/johnsonii/taiwanensis"),
+                                    ifelse(grepl("murinus",.$Species), paste(.$Genus_lacto,"murinus/animalis/apodemi/salivarius"),
+                                      ifelse(grepl("plantarum",.$Species), 
+                                           paste(.$Genus_lacto, "plantarum/fabifermentans/composti/paraplantarum/graminis/fuchuensis"),
+                                        ifelse(grepl("Lactobacillus",.$Genus), paste(.$Genus, .$Species), 
+                                              as.character(.$Genus_lacto))))))) )
   return(genus_lacto)
 } 
 
@@ -114,18 +119,18 @@ rownames(metadata) <- as.character(metadata$ID)
 
 ```{r, echo = FALSE}
 temp <- map(datasets_, ~.x  %>%
-  select(Sequence, Seq_ID, Kingdom:Species, everything()) %>%
-  filter(!(is.na(.$Kingdom))) %>% # Removes any kingdom being NA
-  other_taxa.fun(.) %>% # create "other" taxonomy 
-  genus_lacto.fun(.)  %>% # create genus lacto taxonomy 
-  {. ->> temp_ } %>% 
-  aggregate.fun(., "Genus_lacto") 
-)
+            select(Sequence, Seq_ID, Kingdom:Species, everything()) %>%
+            filter(!(is.na(.$Kingdom))) %>% # Removes any kingdom being NA
+            other_taxa.fun(.) %>% # create "other" taxonomy 
+            genus_lacto.fun(.)  
+            ) %>% # create genus lacto taxonomy 
+        {. ->> temp_ } %>% 
+        map(., ~aggregate.fun(., "Genus_lacto")) 
+
 
 # Extract taxonomic information to file
 seq_taxa <- bind_rows(temp_) %>% select(1:11) %>% unique() 
-#write.csv(seq_taxa, paste0(PATH,"results/","SeqID_to_taxa",".csv"),row.names = F )
-
+#write.csv(seq_taxa, paste0(PATH,"results/","SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
 
 #arrange all datasets to have the same rownames with all bacteria
 common_microbes_fun <- function(x) {
@@ -153,7 +158,7 @@ lapply(datasets_,dim)
 
 # Loading data and metadata Paulos code
 
-```{r, echo = FALSE}
+```{r, eval=F, echo = FALSE}
 PATH <- "../../" #Path to the data
 # Load metadata
 metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
@@ -224,7 +229,7 @@ use <- !is.na(taxa) & (taxa != "NA")
 taxa[taxa == "NA"] <- "other"
 rownames(taxa_info) <- taxa
 taxa_info <- taxa_info[! duplicated(rownames(taxa_info)),]
-write.csv2(taxa_info, paste0(PATH,"../results/taxonomy.csv"),row.names = T)
+write.csv2(taxa_info, paste0(PATH,"results/taxonomy.csv"),row.names = T)
 ```
 
 # Merging, renaming and correcting batch effects on datasets
