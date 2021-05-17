@@ -826,6 +826,125 @@ add_size_legend(labels = c("0%","50%","100%"),max.cex = 2.2, min.cex = .2)
 \clearpage
 
 ## Figure 3
+## individual group comparison DGE
+```{r}
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+TRX_counts <- round(2^TRX - 1)
+TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
+sample_use <- colnames(TRX_counts)[colSums(TRX_counts)!=0]
+TRX_counts <- TRX_counts[,sample_use]
+
+metadata <- metadata %>%
+  #select(Contraception, sexwork_months) %>%
+  mutate(sexwork_months=ifelse(is.na(.$sexwork_months),
+                               mean(metadata$sexwork_months,na.rm = TRUE),.$sexwork_months))%>%
+  mutate(Contraception=ifelse(.$Contraception=="no HC", "no_HC","DMPA")) %>%
+  select(ID, PatID, HIVstatus, Contraception, age, sexwork_months, everything())
+
+library(edgeR)
+
+#design <- model.matrix(~  group_annotation, data=metadata[sample_use,])
+#design <- model.matrix(~0 + group_annotation+Contraception+HIVstatus+age+sexwork_months, 
+                       #data=metadata[sample_use,])
+design <- model.matrix(~group_annotation+HIVstatus+Contraception+age+sexwork_months, 
+                       data=metadata[sample_use,])
+colnames(design) <- sub("group_annotation","",colnames(design))
+
+y <- DGEList(counts=TRX_counts[,sample_use], remove.zeros = T)
+y <- calcNormFactors(y,method = "TMM")
+y <- estimateGLMCommonDisp(y,design)
+y <- estimateGLMTagwiseDisp(y,design)
+fit <- glmFit(y, design)
+
+#lrt <- glmLRT(fit,coef=2:5)
+lrt <- glmLRT(fit,coef=1:9)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+colnames(top) <- sub("group_annotation","",colnames(top))
+#top <- cbind(logFC.Gard=0,top)
+
+saveRDS( y , "../../../results/TRX_EdgeR_estimations.rds" )
+write.csv2( top , "../../../results/TRX_EdgeR_top_dge.csv" )
+
+top_dge <- (top$PValue < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+top_dge <- rownames(top)[ top_dge ]
+
+top_TRX_counts <- cpm(y,normalized.lib.sizes = T,log = T)[top_dge, ]
+top_TRX_counts <- t(apply(top_TRX_counts,1,function(x){scale(x,T,T)}))
+top_TRX_counts[top_TRX_counts > 5] <- 5
+colnames(top_TRX_counts) <- colnames(TRX_counts)
+
+
+## individual group comparision ##
+# without intercept:
+n <- combn(sort(unique(group_annotation)),2) 
+g <- map_chr(seq_along(1:ncol(n)), ~paste(n[1,.x], n[2,.x], sep = "-"))
+s <- seq_along(1:ncol(n)) %>% set_names(g)
+#name <- map_chr(seq_along(1:ncol(n)), ~paste(str_extract(n[1,.x], "^g."), str_extract(n[2,.x], "^g."), sep = "_"))
+
+# with intercept:
+n <- combn(sort(unique(group_annotation))[-1],2) 
+g <- map_chr(seq_along(1:ncol(n)), ~paste(n[1,.x], n[2,.x], sep = "-"))
+g <- c(sort(unique(group_annotation))[-1], g) 
+
+
+CONTRASTS <- makeContrasts( contrasts=g,
+                            levels = design )
+lrt <- map(s, ~ glmLRT(fit, contrast = CONTRASTS[,.x]))
+top <- map(lrt, ~topTags(.x,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]])
+
+#saveRDS(top, file = "./TopTable_all_groups_06.04.2021.RDS")
+#saveRDS(top, file = "./TopTable_ModifiedM4_pairwise_17.05.2021.RDS")
+## end of individual group comparision ##
+
+# save TopTables 
+library(openxlsx)
+l_top <- list(ModifiedM4 = top)
+imap(l_top, ~write.xlsx(.x, file=paste0("../../../results/","TopTable",.y,".xlsx"))) # Excel
+
+
+## individual GO comparison ##
+source("../enrichment_function.R")
+gmt_list_KEGG <- fgsea::gmtPathways("../../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")
+gmt_list_GO <- fgsea::gmtPathways("../../../supplementary_files/c5.bp.v6.2.symbols.gmt.txt")
+enrich_list <- function(x, gmt_list){
+  temp <- compute_enrichment(genes = x,
+                            gmt_list = gmt_list,
+                            min_terms_pathway = 10,
+                            max_terms_pathway = 300,
+                            min_overlap = 3,
+                            sort_by_pvalue = T)
+  temp <- temp[!grepl("REGULATION",rownames(temp)),]
+  return(temp)
+} 
+
+info_logFC <- map(top, ~table(abs(.x$logFC) > 1))
+info_PValue <- map(top, ~table(.$PValue < 0.01))
+
+# up and down regulated genes seperatly
+t_split <- map(top, ~ .x %>%
+        dplyr::filter(., .$PValue < 0.01) %>%
+        #dplyr::filter(., abs(.$logFC) < 1) %>%
+        mutate(., reg = ifelse(.$logFC > 0, "up", "down")) %>%
+        split(., .$reg)
+  )
+# up and down regulated genes toghether
+t <- map(top, ~ .x %>%
+        dplyr::filter(., .$PValue < 0.01) #%>%
+        #dplyr::filter(., abs(.$logFC) < 1) 
+  )
+
+## GO enrichment
+enrichment_groups <- map_depth(t, 1, ~enrich_list(rownames(.x), gmt_list_GO))
+enrichment_groups_split <- map_depth(t_split, 2, ~enrich_list(rownames(.x), gmt_list_GO)) %>%
+  map(., ~bind_rows(.x, .id = "regulation"))
+ 
+## save files
+l_enrich <- list(ModifiedM4_split = enrichment_groups_split, ModifiedM4 = enrichment_groups)
+imap(l_enrich, ~write.xlsx(.x, file=paste0("../../../results/","GO_enrichment_",.y,".xlsx"))) # Excel
+## end of individual GO comparison ##
+```
+
+\clearpage
 
 ```{r, echo = FALSE, eval = TRUE}
 # Define Layout and set labels
