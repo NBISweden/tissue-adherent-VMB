@@ -29,6 +29,7 @@ knitr::opts_chunk$set(fig.width  = 10,
                       results    = "hide",
                       message    = FALSE,
                       warning    = FALSE)
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
 ```
 
 #Load libraries and other scripts
@@ -40,15 +41,17 @@ library(fgsea)
 library(scales)
 remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
 library(niceRplots)
+library(tidyverse)
 ```
 
 #Defining some variables for the analysis
 
 ```{r, echo = FALSE}
 PATH <- "../../" #Path to the data
+Set1 <- c("#4DAF4A", "#377EB8", "#E41A1C", "#FF7F00", "#984EA3", "#FFFF33", "#A65628", "#F781BF", "#999999")
 
 #color palettes
-pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
+pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
          RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
 heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
 cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
@@ -64,9 +67,9 @@ min_pct <- .05 # minimun level of detected bacteria in each sample group
 # Loading data and metadata
 
 ```{r, echo = FALSE}
-# Load metadata
-metadata <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatefeb22.csv"))
-rownames(metadata) <- as.character(metadata$ID)
+# Load meta data
+meta <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatefeb22.csv"))
+rownames(meta) <- as.character(meta$ID)
 
 # Load datasets
 dataset_names <- c("Tissue_RNAseq_V3_normalized",
@@ -74,22 +77,75 @@ dataset_names <- c("Tissue_RNAseq_V3_normalized",
                      "ASV_CVL_V3_normalized_batch_corrected",
                      "ASV_CVL_V2_normalized_NOT_batch_corrected")
 
-#import datasets and return matrix with taxa-level resolution
+
+#import datasets and return matrix with genus_lacto level resolution
+# datasets <- map(dataset_names, 
+#                 ~read.csv(paste0(PATH,"results/",.x, ".csv"),row.names = 1)) %>%
+#   set_names(., dataset_names)
+
+
+#fill all samples with 0s to make plotting easier
+#x <- datasets[[2]]
+# all_samples <- unique(unlist(lapply(datasets,colnames)))
+# datasets_all_samples <- lapply(datasets, function(x) {
+#   col <- setdiff(all_samples, colnames(x))
+#   temp <- tibble(t = rownames(x))  %>% 
+#      tibble::add_column(!!!set_names(as.list(rep(0, length(col))),nm=col)) %>% 
+#     column_to_rownames(., var = "t") %>% bind_cols(x) 
+#   return(temp)
+# })
+
+#import datasets and return matrix with genus_lacto level resolution
 datasets <- lapply(dataset_names, function(x){
   x <- read.csv( paste0(PATH,"results/",x,".csv"),row.names = 1)
   return(as.matrix(x)) })
 names(datasets) <- dataset_names
 
 
+# Define what samples to use
+samples_to_use <- intersect(colnames(datasets[["ASV_CVL_V3_normalized_batch_corrected"]]),
+                            colnames(datasets[["Tissue_RNAseq_V3_normalized"]]))
+
+
 #fill all samples with 0s to make plotting easier
+x <- datasets[[1]]
 datasets_all_samples <- lapply(datasets, function(x) {
   temp <- matrix(0,nrow = nrow(x),
-                 ncol = nrow(metadata),
-                 dimnames = list(rownames(x),rownames(metadata)))
+                 ncol = nrow(meta),
+                 dimnames = list(rownames(x),rownames(meta))
+                 )
   temp[rownames(x),colnames(x)] <- x
   return(temp)
 })
 lapply(datasets_all_samples,dim)
+
+# Clean up metadata
+tissue_gr <- read.csv(paste0(PATH,"/data/210609_TissuegroupsJune.csv"))
+metadata <- meta %>%
+  left_join(tissue_gr, by="ID") %>%
+  mutate(Luminal_names = ifelse(.$ModifiedM4 == "NonIners", "L. crispatus/jensenii",
+                        ifelse(.$ModifiedM4 == "Iners", "L. iners",
+                          ifelse(.$ModifiedM4 == "Gard", "Gardnerella",
+                            ifelse(.$ModifiedM4 == "Prev", "High diverse", 
+                                    "Other")))) ) %>%
+  mutate(Luminal_gr = ifelse(.$ModifiedM4 == "NonIners", "L1",
+                        ifelse(.$ModifiedM4 == "Iners", "L2", 
+                          ifelse(.$ModifiedM4 == "Gard", "L3",
+                            ifelse(.$ModifiedM4 == "Prev", "L4", 
+                                    "L5")))) ) %>%
+  mutate(Tissue_names = ifelse(.$TissuegroupsJune == "Crisp", "L. crispatus/jensenii",
+                        ifelse(.$TissuegroupsJune == "Iners", "L. iners", 
+                          ifelse(.$TissuegroupsJune == "Gard", "Gardnerella",
+                            ifelse(.$TissuegroupsJune == "Prev", "High diverse", 
+                                    "Other")))) ) %>%
+  mutate(Tissue_gr = ifelse(.$TissuegroupsJune == "Crisp", "T1",
+                        ifelse(.$TissuegroupsJune == "Iners", "T2", 
+                          ifelse(.$TissuegroupsJune == "Gard", "T3",
+                            ifelse(.$TissuegroupsJune == "Prev", "T4", 
+                                    "T5")))) ) %>%
+  select(ID:Yeast_v3, group_M9_CVLv3, Luminal_names, Tissue_names, Luminal_gr,Tissue_gr) 
+
+rownames(metadata) <- as.character(metadata$ID)
 ```
 
 # Calculate QC metrics
@@ -122,8 +178,6 @@ paste0(colnames(counts)[(colSums(counts == 0)==3)],collapse = ",")
 
 metadata[colnames(counts)[(colSums(counts == 0)>=3)],]
 
-
-samples_to_use <- colnames(counts)[counts[c(3),] != 0]
 datasets_all_samples <- lapply( datasets_all_samples , function(x) { x [ , samples_to_use] } )
 metadata <- metadata[ samples_to_use , ]
 
@@ -171,8 +225,8 @@ adj <- (1-cors)/2
 # pheatmap::pheatmap(adj,border_color = NA,color = colorRampPalette(c("grey90","grey70","grey70","grey70","orange3","firebrick"))(90) )
 
 #Graph construction  
-k <- 10 # k for KNN
-p <- 0.1 # prunning threshold of SNN
+k <- 12 # k for KNN
+p <- 0.1 # prunning threshold of SNN 0.14
 
 
 #Compute KNN graph from correlation matrix
@@ -205,7 +259,9 @@ l <- layout_with_fr(g,niter=3000,start.temp=30)
 cl <- igraph::cluster_louvain(g)
 # cl <- igraph::walktrap.community(g)
 
-metadata$joint_clustering <- cl$membership
+metadata$Louvain_clusters <- cl$membership
+metadata$joint_clustering <- metadata$Luminal_gr
+metadata$joint_clustering <- factor(metadata$joint_clustering) 
 set.seed(1)
 U <- uwot::umap(adj,n_neighbors = 30)
 h <- hclust(as.dist(adj),method = "ward.D2")
@@ -243,17 +299,17 @@ legend("topleft",title = "Patient groups\ngroup_M9_CVLv3",
 # title("Louvain clusters",cex.main=1,font.main=1)
 
 
-plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$group_M4_CVLv3)] , 
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$Luminal_gr)] , 
       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
       vertex.size=10,main="FR embedding",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
-plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$group_M4_CVLv3)] , 
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$Luminal_gr)] , 
       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=U,
       vertex.size=10,main="umap",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 empty_plot()
-legend("topleft",title = "Patient groups\ngroup_M4_CVLv3",
-       legend = levels(factor(metadata$group_M4_CVLv3)),
+legend("topleft",title = "Patient groups\nLuminal_gr",
+       legend = levels(factor(metadata$Luminal_gr)),
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1.2,xpd=T)
 # title("Louvain clusters",cex.main=1,font.main=1)
 
@@ -266,26 +322,36 @@ legend("topleft",title = "Patient groups\ngroup_M4_CVLv3",
 
 
 ```{r}
-mypar(mar=c(2,15,2,2))
+mypar(mar=c(3.2,15,2,2))
 
 barlist( data = rbind( detected_counts),main = "detected features",
          genes = c(rownames(detected_counts)),labels = sub("_norm.*","",rownames(counts)),
-         clustering = metadata$joint_clustering,
-         col=pal,draw_mean_lines=F)
+         clustering = metadata$joint_clustering, 
+         col=pal[factor(metadata$joint_clustering)],draw_mean_lines=F)
 add_letter("b")
 
 
 barlist( data = all_microbiome, main = "detected features",
-         genes = c("Gardnerella vaginalis",
+         genes = c("Gardnerella",
                    "Lactobacillus iners",
                    "Lactobacillus jensenii",
                    "Lactobacillus crispatus/acidophilus",
-                   "Prevotella amnii",
-                   "Prevotella timonensis",
-                   "Atopobium vaginae"),
+                   "Prevotella",
+                   "Atopobium"),
          clustering = metadata$joint_clustering,
-         col=pal,draw_mean_lines=F)
+         col=pal[factor(metadata$joint_clustering)], draw_mean_lines=F) # ,srt = 65
+#legend(0,legend = levels(factor(metadata$Luminal_gr)))
 
+# barlist( data = all_microbiome, main = "detected features",
+#          genes = c("Gardnerella vaginalis",
+#                    "Lactobacillus iners",
+#                    "Lactobacillus jensenii",
+#                    "Lactobacillus crispatus/acidophilus",
+#                    "Prevotella amnii",
+#                    "Prevotella timonensis",
+#                    "Atopobium vaginae"),
+#          clustering = metadata$joint_clustering,
+#          col=pal,draw_mean_lines=F)
 ```
 
 \clearpage
@@ -293,7 +359,7 @@ barlist( data = all_microbiome, main = "detected features",
 
 ```{r, echo = FALSE,fig.width=5,fig.height=5}
 x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
-xL <- rowsum(x , grepl("Lactobacillus",rownames(x)) )[2,] / sum(grepl("Lactobacillus",rownames(x)))
+xL <- rowsum(x , grepl("L.",rownames(x)) )[2,] / sum(grepl("L.",rownames(x)))
 xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
 xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
 
@@ -306,22 +372,22 @@ barlist( data = rbind(  BV=mL ,
                         counts_16S=xL),
          main = "Lactobacillus",
          genes = c("BV","counts_16S"),
-         clustering = metadata$joint_clustering,
-         draw_mean_lines=F,col = pal)
+         clustering = metadata$joint_clustering, #srt = 60,
+         draw_mean_lines=F,col = pal[factor(metadata$joint_clustering)])
 
 barlist( data = rbind(  BV=mM ,
                         counts_16S=xM),
          main = "Monbilicus",
-         genes = c("BV","counts_16S"),
+         genes = c("BV","counts_16S"), #srt = 60,
          clustering = metadata$joint_clustering,
-         draw_mean_lines=F,col = pal)
+         draw_mean_lines=F,col = pal[factor(metadata$joint_clustering)])
 
 barlist( data = rbind(  BV=mG ,
                         counts_16S=xG),
-         main = "Gardanerella",
-         genes = c("BV","counts_16S"),
+         main = "Gardnerella",
+         genes = c("BV","counts_16S"), #srt = 60,
          clustering = metadata$joint_clustering,
-         draw_mean_lines=F,col = pal)
+         draw_mean_lines=F,col = pal[factor(metadata$joint_clustering)])
 ```
 
 
@@ -329,7 +395,7 @@ barlist( data = rbind(  BV=mG ,
 
 \clearpage
 
-```{r, eval=F,echo = FALSE,fig.width=10,fig.height=4}
+```{r, eval=T,echo = FALSE,fig.width=10,fig.height=4}
 myletters <- letters
 
 mypar(1,2,mar=c(2,15,1,1))
@@ -401,7 +467,7 @@ for (m in c("ASV_tissue_V3_normalized_batch_corrected",
 
 \clearpage
 
-```{r, eval=F,echo = FALSE,fig.width=10,fig.height=9}
+```{r, eval=T,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
@@ -460,7 +526,7 @@ add_letter("b")
 
 \clearpage
 
-```{r, eval=F,echo = FALSE,fig.width=10,fig.height=9}
+```{r, eval=T,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
 datasets <- factor(c( rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) , rep("CVL_v2",ncol(datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])) ))
@@ -519,7 +585,7 @@ add_letter("b")
 
 \clearpage
 
-```{r, eval=F,echo = FALSE,fig.width=10,fig.height=9}
+```{r, eval=T,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])
 datasets <- factor(c( rep("tissue_v3",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("CVL_v3",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ))
@@ -577,24 +643,6 @@ add_letter("b")
 
 
 \clearpage
-
-```{r, echo = FALSE}
-groupings <- lapply( names(datasets_all_samples)[-1] ,function(x){
-  x <- read.csv2( paste0(PATH,"results/Sample_Louvain_clusters_",x,".csv"),row.names = 1 ) })
-names(groupings) <- names(datasets_all_samples)[-1]
-all_names <- unique(unlist(lapply(groupings,function(x)rownames(x))))
-
-groupings_all_samples <- lapply(groupings,function(x){
-  df <- data.frame(group=rep("NA",length(all_names)), row.names = all_names,stringsAsFactors = F)
-  df[rownames(x),1] <- as.character(x[,1])
-  return(df)
-})
-names(groupings_all_samples) <- names(groupings)
-
-df <- as.data.frame(groupings_all_samples)
-colnames(df) <- paste0( "louvain_",sub( "ASV_","",  sub( "_norma.*","", names(groupings_all_samples) )))
-metadata <- cbind(metadata,df[rownames(metadata),])
-```
 
 # Computing differential expression across microbiome datasets
 
@@ -655,7 +703,30 @@ add_letter("a")
 
 **Figure 4.** Differential bacterial abundance across all groups and all microbiome datasets. The results are shown both as **a)** Dot plots and **b)** barplots Bacteria with log2FC above `r fct` and p-value below `r pvt` were considered significant and were sorted by the highest expression.
 
+```{r, echo = FALSE}
+# groupings <- lapply( names(datasets_all_samples)[-1] ,function(x){
+#   x <- read.csv2( paste0(PATH,"results/Sample_Louvain_clusters_",x,".csv"),row.names = 1 ) })
+# names(groupings) <- names(datasets_all_samples)[-1]
+# all_names <- unique(unlist(lapply(groupings,function(x)rownames(x))))
+# 
+# groupings_all_samples <- lapply(groupings,function(x){
+#   df <- data.frame(group=rep("NA",length(all_names)), row.names = all_names,stringsAsFactors = F)
+#   df[rownames(x),1] <- as.character(x[,1])
+#   return(df)
+# })
+# names(groupings_all_samples) <- names(groupings)
+# 
+# df <- as.data.frame(groupings_all_samples)
+# colnames(df) <- paste0( "louvain_",sub( "ASV_","",  sub( "_norma.*","", names(groupings_all_samples) )))
+# metadata <- cbind(metadata,df[rownames(metadata),])
 
+
+Louvain_clusters <- bind_cols(ID = cl$names, louvain_CVL_V3 = cl$membership)
+
+df <- metadata %>%
+  left_join(., Louvain_clusters, by="ID")
+
+```
 
 ```{r, eval=F, echo = FALSE,fig.width=10, fig.height=10}
 sample_order <- order(df$louvain_CVL_V3)
@@ -730,9 +801,11 @@ metadata_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
                          "BV_Vaginal_Garda_v2","BV_Vaginal_Garda_v3",
                          "blood_cervix_v2","blood_cervix_v3",
                          "cervical_inflammation_v2","cervical_inflammation_v3",
+                         "BV_WBC_v2", "BV_WBC_v3","marital_status",
                          "HIVstatus","Contraception",
                          "CT_v2","CT_v3","regular_partner",
-                         "vaginal_douching_v2","vaginal_douching_v3","joint_clustering")
+                         "vaginal_douching_v2","vaginal_douching_v3","Luminal_gr", "Tissue_gr", 
+                         "Louvain_clusters")
 
 Ftest <- sapply(metadata_parameters,function(x){
   cat(paste0("\n",x,"\n"))
@@ -895,7 +968,7 @@ for(i in c("ASV_tissue_V3_normalized_batch_corrected",
   
   TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
   bac_dataset <- datasets_all_samples[[i]]
-  dge <- read.csv2(paste0(PATH,"/results/DGE_ASV_CVL_V2_normalized_NOT_batch_corrected.csv"),row.names = 1)
+  dge <- read.csv2(paste0(PATH,"results/DGE_ASV_CVL_V2_normalized_NOT_batch_corrected.csv"),row.names = 1)
   samples_TRX_and_CVL3 <- colnames(counts) [ colSums(counts[c("Tissue_RNAseq_V3_normalized",i),] > 0)==2 ]
   
   # mypar(4,3,mar=c(4,2,2,2))
@@ -1055,9 +1128,18 @@ write.csv2(cl$membership,"../../results/bacterial_communities.csv",row.names = r
 
 
 ```{r, echo = FALSE,fig.width  = 10, fig.height=5}
-taxa <- read.csv2("../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
-taxa[is.na(taxa)] <- "NA"
-rownames(cors) %in% rownames(taxa)
+# for Genus_lacto taxonomy:
+taxa <- read_csv("../../results/SeqID_to_gen-lacto_tax-oth.csv") %>%
+  select(-Sequence, -Seq_ID, -taxa_other, -Species) %>%
+  unique() %>%
+  filter(!(is.na(.$Genus_lacto))) %>%
+  filter(!(.$Genus == "Granulicatella" & .$Family == "Enterococcaceae")) %>%
+  column_to_rownames(., var = "Genus_lacto")
+
+# For other_taxa taxonomy:
+# taxa <- read.csv2("../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+# taxa[is.na(taxa)] <- "NA"
+# rownames(cors) %in% rownames(taxa)
 
 mypar(2,2,mar=c(1,10,2,10))
 x <- taxa[match(rownames(cors),rownames(taxa)),2]
@@ -1177,7 +1259,7 @@ module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
 
 mypar(3,3,mar=c(3,5,2,2))
 
-for( i in c("group_M4_CVLv3","group_M9_CVLv3","joint_clustering")){
+for( i in c("Luminal_gr","group_M9_CVLv3","Louvain_clusters")){
   for( j in c("ASV_tissue_V3_normalized_batch_corrected",
           "ASV_CVL_V3_normalized_batch_corrected",
           "ASV_CVL_V2_normalized_NOT_batch_corrected")){
@@ -1188,7 +1270,7 @@ for( i in c("group_M4_CVLv3","group_M9_CVLv3","joint_clustering")){
     temp_group <- factor(temp_group)
     
     barlist(data=module_means_per_dataset[[j]],
-            genes=rownames(module_means_per_dataset[[j]]),col=pal,
+            genes=rownames(module_means_per_dataset[[j]]),col=pal[factor(temp_group)],
             labels = paste0("bac.com.",rownames(module_means_per_dataset[[j]])),
             clustering=temp_group, main=paste0(i,"\n", sub("_norm.*","",j)),srt=45)
   }
@@ -1501,11 +1583,9 @@ text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
 
 **Figure 9.** Heatmaps showing the functional association of microbiome datasets with the expression profiles in the RNAseq dataset. Briefly, bacterial abundances from each dataset were correlated with the gene expression of the top 5000 highly variable genes from the RNAseq dataset, generating a correlation matrix between bacteria and genes. Then for each bacteria, we rank genes based on their correlation to that bacteria and perform gene set enrichment anlaysis (GSEA) using the KEGG gene annotation database. This, in turn, will result in a matrix associating every bacteria with every KEGG process in the tissue. The heatmap shows the normalized enrichment score (NES). Only enrichments with pvalue below 0.05 are shown. Bacteria and pathways significant in less that 10 pathways and bacteria, respectivelly, were omitted.
 
-\clearpage
-
-
 
 ```{r, echo = FALSE,fig.width=10,fig.height=8}
+metadata <- select(metadata, -joint_clustering, -group_M9_CVLv3)
 write.csv2(metadata,"../../results/metadata_integration.csv",row.names = T)
 ```
 

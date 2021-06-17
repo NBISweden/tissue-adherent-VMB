@@ -12,7 +12,7 @@ output:
     toc_float:
       collapsed: no
 params:
-  dataset: 1
+  dataset: 2
 ---
 
 ```{r Setup, echo = FALSE}
@@ -20,6 +20,7 @@ knitr::opts_chunk$set(fig.width  = 10,
                       results    = "hold",
                       message    = FALSE,
                       warning    = FALSE)
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
 ```
 
 #Load libraries and other scripts
@@ -29,6 +30,7 @@ library(igraph)
 library(rafalib)
 library(sva)
 library(batchelor)
+library(scales)
 remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
 library(niceRplots)
 
@@ -37,7 +39,7 @@ library(niceRplots)
 #Defining some variables for the analysis
 
 ```{r, echo = FALSE}
-PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325" #Path to the data
+PATH <- "../../" #Path to the data
 
 #color palettes
 pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
@@ -61,7 +63,7 @@ min_pct <- .1 # minimun level of detected bacteria in each sample group
 
 ```{r, echo = FALSE}
 # Load metadata
-metadata <- read.csv(paste0(PATH,"/data/Clinical_visit_2_3_updatesept28.csv"))
+metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
 rownames(metadata) <- as.character(metadata$ID)
 
 # Load datasets
