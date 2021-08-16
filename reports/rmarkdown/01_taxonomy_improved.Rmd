@@ -1,0 +1,358 @@
+---
+title: "`r params$project_title`"
+editor_options:
+  chunk_output_type: console
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    code_folding: hide
+    toc: yes
+    toc_float:
+      collapsed: no
+params:
+  organisation: Karolinska Institutet
+  pi_mail: krisina.broliden@ki.se
+  pi_name: Kristina Broliden
+  project_title: Broliden_5325
+---
+
+```{r Setup, echo = FALSE}
+knitr::opts_chunk$set(fig.width  = 10,
+                      results    = "hold",
+                      message    = FALSE,
+                      warning    = FALSE)
+
+setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
+```
+
+#Load libraries and functions
+
+```{r, echo = FALSE}
+library(tidyverse)
+library(phyloseq)
+library(Biostrings)
+```
+
+```{r function}
+######################## FASTA Function ########################
+write.fasta <- function(df, file.out, open = "w"){
+  outfile <- file(description = file.out, open = "w")
+  write.oneseq <- function(sequence, name){
+    writeLines(paste(">", name, sep = ""), outfile)
+    writeLines(sequence, outfile)
+    return(name)
+  }
+  map2_chr(df$Sequence, df$Seq_ID, ~write.oneseq(.x, .y))
+  close(outfile)
+}
+
+```
+
+# Loading data and metadata
+
+```{r Get ASV and tax tables, message=FALSE}
+paths_p <- c('../../data/phyloseq_boston_r1.RDS',   # CVL V3
+             '../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
+             '../../data/phyloseq_Sthlm.RDS')       # CVL V2, only v4 region
+
+n <- c("boston_r1", "boston_r2", "Sthlm")
+ps_list <- map(paths_p, ~readRDS(.x)) %>% set_names(n)
+
+seqtabs <- map(ps_list, ~data.frame(.x@otu_table@.Data))
+taxtabs <- map(ps_list, ~as_tibble(.x@tax_table@.Data, rownames = 'Sequence'))
+sample_info <- map(ps_list, ~as_tibble(sample_data(.x), rownames = 'SampleID')) 
+```
+
+## Reshape seqtab 
+
+```{r reshape seqtabs}
+seqtab.nochim.reshaped <- map(seqtabs, ~.x %>%
+                            rownames_to_column(var = "Sample_ID") %>%
+                            pivot_longer(., -Sample_ID) %>%
+                            dplyr::rename(Sequence="name", Reads="value")
+)
+seqtab.taxa <- seqtab.nochim.reshaped %>%
+                map2(., taxtabs, ~left_join(.x, .y, by="Sequence"))
+```
+
+## Creat Short ID For Sequences across runs
+
+```{r SeqID dict, include=FALSE, results='hide'}
+############### Create dictonary for Sequence id ####
+Seq_ID_key <-seqtab.taxa %>% 
+  bind_rows(.id = "Sequencing_run") %>%
+  # Get only uniqe sequences by grouping on all taxonomy
+  group_by(Sequence,Kingdom,Phylum,Class,Order,Family,Genus,Species) %>%
+  #summarize(n()) %>% filter(`n()`>1) %>% .$`n()` %>% sum(.)
+  summarise(Reads_per_taxa = sum(Reads),
+            Sequencing_run = paste(unique(Sequencing_run), collapse="; "),
+            .groups = "drop") %>%
+  bind_cols(Seq_ID = c(paste0("Seq_",sprintf("%05.0f", 1:nrow(.))))) %>%
+  {. ->> seqtab.taxa.all } %>% 
+  select(Seq_ID, Sequence)
+
+write.csv(Seq_ID_key, file=paste0("../../results/Seq_ID_key.csv"), quote=FALSE, row.names=FALSE)
+
+# Check that all sequences are unique:
+#S <- Seq_ID_key %>% group_by(Sequence) %>% summarize(n()) %>% filter(`n()`>1) %>% .$`n()` %>% sum(.)
+```
+
+## Create Query files
+
+```{r Querys, echo=T, results='hide'}
+# Identify sequences not assigned by RDP at species level
+unnasigned_0 <- seqtab.taxa.all %>%
+  filter(., is.na(Species)) #%>%
+  #filter(., Reads != 0) 
+
+# Create Query files
+write.fasta(Seq_ID_key, paste0("../../results/BVAB_Query.fasta"))
+write.fasta(unnasigned_0, paste0("../../results/optivag_Query.fasta"))
+```
+
+# BLAST
+## Download databases
+
+```{r Download data base}
+db_dir <- "../../data/database/"
+if( isFALSE(dir.exists(db_dir)) ) { dir.create(db_dir,recursive = TRUE) }
+
+url <- c( "https://raw.githubusercontent.com/ctmrbio/BVAB-and-Lac-sequences/master/BVAB_rRNA_database.fa",
+          "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_db.fasta.gz",
+          "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_seqinfo.csv")
+
+walk(url, ~download.file(.x, paste0(db_dir, basename(.x)), method="auto"))
+system("gunzip ../../data/database/*.gz")
+
+OptiVag <- read_csv("../../data/database/optivag_seqinfo.csv", col_names = T)
+```
+
+## BLAST seraches
+
+```{r BLASTn search}
+# Make uniqe identifyers in the BVAB file
+fa = readDNAStringSet(paste0(db_dir,"BVAB_rRNA_database.fa"))
+ID <-  make.unique(paste0(str_match(names(fa), "^BVAB._"),"0"), sep = "")
+names(fa) = paste(ID, names(fa))
+writeXStringSet(fa, "../../data/database/BVAB_db.fasta")
+
+for(name in c("BVAB", "optivag")) { 
+  db_dir     = "../../data/database/"
+  result_dir = "../../results/"
+  if (isFALSE(is_empty(list.files(path = db_dir, pattern = paste0(name,".+\\.nhr"))))) {
+    message("using database provided in path:")
+    message(paste0(db_dir, name, "_reference.db"))
+  } else {
+    system2(command = "makeblastdb", 
+                          args = c("-in", paste0(db_dir, name, "_db.fasta"), 
+                                  "-out", paste0(db_dir, name, "_reference.db"), 
+                                  "-parse_seqids", 
+                                  "-dbtype", "nucl"),
+                         wait = TRUE,
+                         stdout = TRUE)
+  }
+  blast_out <- system2(command = "blastn", 
+                       args = c("-db", paste0(db_dir, name, "_reference.db"), 
+                                "-query", paste0(result_dir, name, "_Query.fasta"), 
+                                #"-out", paste0(result_dir, name, "_hits.tab"),
+                                "-outfmt", 6, 
+                                "-perc_identity", 99.5,
+                                "-qcov_hsp_perc", 90),
+                       wait = TRUE,
+                       stdout = TRUE) %>%
+  as_tibble() %>% 
+  separate(col = value, sep = "\t", convert = TRUE,
+           into = c("qseqid","sseqid","pident","length","mismatch","gapopen",
+                    "qstart","qend","sstart","send","evalue","bitscore") )
+  
+  write_tsv(blast_out, paste0("../../results/", name, "_hits.tsv"))
+}
+
+```
+
+## Load BLAST results
+
+```{r Load BLAST hits, message=FALSE}
+blast_OptiVag <- read_table2(paste0("../../results/OptiVag_hits.tsv"))
+blast_BVAB <- read_table2(paste0("../../results/BVAB_hits.tsv"))
+
+```
+
+## Retrive Genus and Species hits from BLAST search
+
+```{r Retrive hits}
+# Resolve ambiguously asigned genus and Lacto spp.
+OptiVag_hits <- blast_OptiVag %>%
+                left_join(select(OptiVag, Full_taxonomy, Species, Seq_ID), 
+                          by=c(sseqid='Seq_ID')) %>%
+                select(Seq_ID=qseqid, Full_taxonomy, Species, Ref_iD=sseqid, 
+                       Identity=pident, Mismatch=mismatch) %>%
+                group_by(Seq_ID) %>% 
+# removes hits with mismatch=1, for sequences with multiple hits where on of the hits has mismatch=0 
+                filter(!(n()>1 & any(grepl('0', Mismatch)) & Mismatch == 1)) %>%
+                ungroup() %>%
+                separate(Species, into=c('Genus', 'Species'), sep = '_') %>% 
+                separate(Full_taxonomy, into=c("Full_taxonomy", NA), sep = '(;)(?:.(?!;))+$') %>%
+                select(Seq_ID, Full_taxonomy, Genus, Species) %>%
+                unique() %>%
+# the last group is dropped after summarize (.groups argument)
+                group_by(Seq_ID, Full_taxonomy, Genus) %>% 
+                summarise(Species = paste(Species, collapse="/"), 
+                          .groups='drop_last') %>%
+                mutate(Genus = paste(Genus, collapse="/")) %>%
+                left_join(select(unnasigned_0, Seq_ID, Reads_per_taxa), 
+                          by='Seq_ID') %>%
+                ungroup() 
+
+BVAB_hits <- blast_BVAB %>%
+              select(qseqid, sseqid) %>%
+              left_join(select(seqtab.taxa.all, Seq_ID, Reads_per_taxa),
+                          by=c('qseqid'='Seq_ID')) %>%
+              separate(sseqid, c('Genus', 'Species')) %>%
+              dplyr::rename(Seq_ID=qseqid) %>%
+              select(Seq_ID, Genus, Reads_per_taxa) %>%
+              unique() 
+
+all_hits <- bind_rows(BVAB_hits, OptiVag_hits) %>%
+              unique()
+```
+
+## BLAST result info
+
+```{r Information about BLAST result}
+print(paste0("Number of sequences annotated by OptiVag:  ", length(unique(OptiVag_hits$Seq_ID))))
+
+print(paste0("Number of sequences annotated by BVAB:     ", length(unique(BVAB_hits$Seq_ID))))
+ 
+overlap <- intersect(BVAB_hits$Seq_ID, OptiVag_hits$Seq_ID)
+ifelse(length(unique(all_hits$Seq_ID)) == length(all_hits$Seq_ID), "There is no duplicate species annotation", paste0(message("Resolving overlapping annotation between BVAB and OptiVag:"), paste(overlap,  collapse=', ')))
+
+doNextChunk <- isFALSE(length(unique(all_hits$Seq_ID)) == length(all_hits$Seq_ID))
+
+```
+
+# Resolve Taxonomy
+## Resolve overlapping annotation between BVAB and OptiVag
+
+```{r Resolve Overlap, eval = doNextChunk}
+# Identify which annotation that overlap for BVAB sequences 
+duplicate <- all_hits %>%
+  group_by(Seq_ID) %>% 
+  filter(n()>1) %>%
+  filter((grepl('BVAB', Genus))) %>%
+  ungroup()
+
+# Filter out duplicated annotation for BVAB
+filtered_hits <- all_hits %>%
+  filter(!(Seq_ID %in% duplicate$Seq_ID & !(grepl('BVAB', Genus)))) 
+
+# is there duplicates other than BVAB?
+d <- filtered_hits %>% group_by(Seq_ID) %>% summarize(n(), .groups='drop_last') %>% filter(`n()`>1)  %>% .$Seq_ID
+
+# prints message about duplicate status
+ifelse(length(unique(filtered_hits$Seq_ID)) == length(filtered_hits$Seq_ID), "Overlaping annotation resolved", paste0(message("Resolving duplicate taxonomy asignment:"), paste(d,  collapse=', ')))
+
+# If duplicates are identified, run next chunk
+doNextChunk <- isTRUE(length(d)>=1) 
+
+```
+
+## Resolve duplicate taxonomy
+
+```{r Resolve duplicate taxonomy, eval = doNextChunk}
+# Collapse species annotation for sequences with several hits
+filtered_2 <- aggregate(. ~Seq_ID, data = filtered_hits, na.action=NULL, FUN=function(x) { paste(unique(x), collapse = '/') }) 
+
+# Sequence ids that are duplicate:
+dd <- filtered_2 %>% group_by(Seq_ID) %>% summarize(n(), .groups='drop_last') %>% filter(`n()`>1)  %>% .$Seq_ID
+
+# Message to terminal
+ifelse(length(unique(filtered_hits$Seq_ID)) == length(filtered_2$Seq_ID), "Duplicate annotation resolved", paste0(message("WARNING! still duplicate annotation:"), paste(dd,  collapse=', ')))
+
+filtered_hits <- filtered_2
+```
+
+## Merge New Annotation With Tax Table
+
+```{r Save updated tax table}
+#### Update taxa ####
+update_taxa <- seqtab.taxa.all %>%
+  left_join(., select(filtered_hits, Seq_ID, Genus_u="Genus",
+                      Species_u="Species", Full_taxonomy), by='Seq_ID') %>%
+  mutate(identical = ifelse(str_detect(.$Genus_u, "BVAB")|
+                                     .$Genus_u == .$Genus|
+                                           is.na(.$Genus), "yes", "no"))
+
+new_taxtable <- update_taxa %>%
+  mutate(Genus_f = ifelse(.$identical=="no"|is.na(.$identical), 
+                          .$Genus, .$Genus_u)) %>%
+  mutate(Species_f = ifelse(.$identical=="no"|is.na(.$identical), 
+                            .$Species, .$Species_u)) %>%
+  select(-Genus, -Species, -Genus_u, -Species_u, -identical, -Sequencing_run) %>%
+  dplyr::rename(Genus="Genus_f", Species="Species_f") %>%
+  select(Seq_ID, everything(), -Full_taxonomy, -Reads_per_taxa)
+
+write.csv(new_taxtable, file=paste0("../../data/SeqID_to_taxa.csv"), quote=FALSE, row.names=FALSE)
+```
+
+## Report of unasigned sequences
+
+```{r Saving unnasigned sequences}
+#### Taxa that still have no Genus or Lacto spp. annotation ####
+unnasigned_final <- new_taxtable %>% 
+  left_join(select(seqtab.taxa.all, Sequence, Reads_per_taxa, Sequencing_run), by="Sequence") %>%
+  filter(is.na(.$Genus)) %>%
+  arrange(desc(Reads_per_taxa)) %>%
+  arrange(desc(Family)) %>%
+  filter(Reads_per_taxa >100)
+
+write.csv(unnasigned_final, 
+          file=paste0("../../results/Unnasigned_tax_report.csv"), quote=FALSE, row.names=FALSE)
+
+unnasigned_final
+```
+
+# Save results
+
+## merge seqtab with new taxonomy
+
+```{r Create ASV tables}
+# Add sample info and updated taxonomy 
+ASV_wCtrl <- seqtab.nochim.reshaped %>% 
+            map2(., sample_info, 
+                 ~left_join(.x, select(.y, SampleID, ID, Sample_type, Visit, Place_sequenced,
+                                            Description, Include, Include_final),
+                            by=c("Sample_ID"="SampleID")) ) %>%
+                  {. ->> ASV } %>%
+            map(., ~ .x %>%
+                  select(Sequence, Sample_ID, Reads) %>%
+                  pivot_wider(., names_from=Sample_ID, values_from=Reads) %>%
+                  left_join(., new_taxtable, by="Sequence")
+                  )
+
+#### ASV with all controls and replicate samples removed ####
+ASV_names <- c("ASV_CVL_V2_B1", "ASV_CVL_V3", "ASV_tissue_B1", 
+               "ASV_CVL_V2_B2", "ASV_tissue_B2", "ASV_CVL_V2_C" )
+ASV_list <- map(ASV, ~ .x %>%
+                  filter(grepl("yes", .$Include)) %>%
+                  group_split(Sample_type, Visit, .keep = T)
+            ) %>%
+            flatten() %>%
+            set_names(ASV_names) %>%
+            map(., ~ .x %>%
+                select(Sequence, ID, Reads) %>%
+                pivot_wider(., ,names_from=ID, values_from=Reads) %>%
+                left_join(., new_taxtable, by="Sequence") 
+                )
+
+```
+
+## Save csv
+
+```{r Save ASV files}
+imap(ASV_list, 
+     ~write.csv(.x, file=paste0("../../data/",.y,".csv"), quote=FALSE, row.names=F) )
+
+```

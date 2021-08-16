@@ -29,6 +29,8 @@ knitr::opts_chunk$set(fig.width  = 10,
                       results    = "hold",
                       message    = FALSE,
                       warning    = FALSE)
+
+setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
 ```
 
 #Load libraries and other scripts
@@ -40,13 +42,14 @@ library(sva)
 library(batchelor)
 remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
 library(niceRplots)
+library(tidyverse)
 
 ```
 
 #Defining some variables for the analysis
 
 ```{r, echo = FALSE}
-PATH <- "~/Desktop/NBIS/SMS_Projects/broliden_5325/data/" #Path to the data
+PATH <- "../../" #Path to the data
 
 #color palettes
 pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
@@ -55,13 +58,112 @@ heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3"
 cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
 ```
 
+```{r, Functions}
+# create "other" taxonomy
+other_taxa.fun <- function(df) {
+  other_taxa <- df %>%
+  unite("taxa_other", Kingdom:Species, sep = ";", remove = F, na.rm = T) %>%
+  mutate(taxa_other = ifelse(is.na(.$Species), paste0(.$taxa_other, ";other"), .$taxa_other)) %>%
+  #mutate(taxa_other = str_replace(.$taxa_other, ";NA.+|;NA", ";other")) %>%
+  mutate(taxa_other = str_extract(.$taxa_other, "([^;]+);([^;]+)$")) %>% # get the two last taxa levels
+  mutate(taxa_other = sub('^(.*);(other)', '\\2;\\1', .$taxa_other)) # place "other" first
+return(other_taxa)
+}
+
+# create genus lacto taxonomy
+genus_lacto.fun <- function(df){
+  genus_lacto <- df %>%
+    mutate(Genus_lacto = .$Genus, .after=Seq_ID) %>% 
+    mutate(Genus_lacto = ifelse(grepl("crispatus",.$Species), paste("L.", "crispatus/acidophilus"), 
+                                ifelse(grepl("reuteri",.$Species), paste("L.", "reuteri/oris/frumenti/antri"),
+                                  ifelse(grepl("gasseri",.$Species), paste("L.","gasseri/johnsonii/taiwanensis"),
+                                    ifelse(grepl("murinus",.$Species), paste("L.","murinus/animalis/apodemi/salivarius"),
+                                      ifelse(grepl("plantarum",.$Species), 
+                                           paste("L.", "plantarum/fabifermentans/composti/paraplantarum/graminis/fuchuensis"),
+                                        ifelse(grepl("Lactobacillus",.$Genus), paste("L.", .$Species), 
+                                              as.character(.$Genus_lacto))))))) )
+  return(genus_lacto)
+} 
+
+aggregate.fun <- function(df, level){
+  level <- enquo(level)
+  aggregated <- df %>%
+    dplyr::rename(Taxonomy = !!level) %>%
+    unite(., "Full_taxonomy", Kingdom:Species, sep = ";") %>%
+    dplyr::select(-any_of(c("Sequence", "Seq_ID", "Genus_lacto", "taxa_other", "Full_taxonomy"))) %>%
+    group_by(Taxonomy) %>%
+    summarise(across(where(is.numeric), sum)) %>%
+    ungroup()
+return(aggregated)
+}
+```
+
+
 # Loading data and metadata
 
 ```{r, echo = FALSE}
 # Load metadata
-metadata <- read.csv(paste0(PATH,"/Clinical_visit_2_3_updatesept28.csv"))
-rownames(metadata) <- as.character(metadata$ID)
+dataset_names <- c("ASV_tissue_B2.csv",   # Tissue, Boston run 2 (95 samples)
+                     "ASV_tissue_B1.csv", # Tissue, Boston run 1 (1 sample)
+                     "ASV_CVL_V2_B1.csv", # CVL V2, Boston run 1 (27 samples)
+                     "ASV_CVL_V2_B2.csv", # CVL V2, Boston run 2 (49 samples)
+                     "ASV_CVL_V2_C.csv",  # CVL V2, CTMR         (62 samples)
+                     "ASV_CVL_V3.csv") 
 
+datasets_ <- map(dataset_names, ~read.csv( paste0(PATH,"data/",.x))) %>% set_names(., dataset_names)
+metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
+rownames(metadata) <- as.character(metadata$ID)
+```
+
+# Taxonomy agglomeration
+
+```{r, echo = FALSE}
+temp <- map(datasets_, ~.x  %>%
+            select(Sequence, Seq_ID, Kingdom:Species, everything()) %>%
+            filter(!(is.na(.$Kingdom))) %>% # Removes any kingdom being NA
+            other_taxa.fun(.) %>% # create "other" taxonomy 
+            genus_lacto.fun(.)  
+            ) %>% # create genus lacto taxonomy 
+        {. ->> temp_ } %>% 
+        map(., ~aggregate.fun(., "Genus_lacto")) 
+
+
+# Extract taxonomic information to file
+seq_taxa <- bind_rows(temp_) %>% select(1:11) %>% unique() 
+#write.csv(seq_taxa, paste0(PATH,"results/","SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
+
+#arrange all datasets to have the same rownames with all bacteria
+common_microbes_fun <- function(x) {
+  t <- bind_rows(temp) %>%
+    select(Taxonomy) %>%
+    unique() %>%
+    left_join(x, by="Taxonomy") %>%
+    mutate(across(Taxonomy, ~replace_na(.x, "Not assigned"))) %>%
+    mutate(across(-Taxonomy, ~replace_na(.x, 0))) %>%
+    column_to_rownames(var = "Taxonomy")
+  return(t)
+}
+datasets_ <- map(temp, ~common_microbes_fun(.x))
+lapply(datasets_,dim)
+
+
+# datasets <- datasets[3] #in case you wanna test in 1 dataset
+
+# Transform phyloseq data into normalized matricies ( log2[CP1K] )
+# datasets <- lapply(datasets,function(x){
+#     x <- t(log2( t(x) / colSums(x) * 1000 + 1))
+# })
+# lapply(datasets,dim)
+
+```
+
+# Loading data and metadata Paulos code
+
+```{r, eval=F, echo = FALSE}
+PATH <- "../../" #Path to the data
+# Load metadata
+metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
+rownames(metadata) <- as.character(metadata$ID)
 # Load datasets
 dataset_names <- c("ASV_tissue_B2.csv",
                      "ASV_tissue_B1.csv",
@@ -69,10 +171,9 @@ dataset_names <- c("ASV_tissue_B2.csv",
                      "ASV_CVL_V2_B2.csv",
                      "ASV_CVL_V2_C.csv",
                      "ASV_CVL_V3.csv")
-
 #import datasets and return matrix with taxa-level resolution
 datasets <- lapply(dataset_names, function(x){
-  x <- read.csv( paste0(PATH,"/",x))
+  x <- read.csv( paste0(PATH,"data/",x))
   temp <- as.matrix(x[,c((ncol(x)-6):ncol(x))])
   temp[is.na(temp)] <- "NA"
   sps <- apply( temp[,6:7] ,1,function(x) paste(x,collapse ="_"))
@@ -84,7 +185,6 @@ datasets <- lapply(dataset_names, function(x){
   taxa[!not_complete] <- sps[!not_complete]
   taxa <- sub("_"," ",taxa)
   use <- !is.na(taxa) & (taxa != "NA")
-
   temp <- as.matrix( x[,-c(1,(ncol(x)-7):ncol(x))] )
   temp <- rowsum(temp[use,],taxa[use])
   colnames(temp) <- colnames(x)[-c(1,(ncol(x)-7):ncol(x))]
@@ -93,8 +193,6 @@ datasets <- lapply(dataset_names, function(x){
 names(datasets) <- dataset_names
 lapply(datasets,dim)
 lapply(datasets,colnames)
-
-
 #arrange all datasets to have the same rownames with all bacteria
 common_microbes <- unique(unlist(lapply(datasets,rownames)))
 datasets <- lapply(datasets, function(x) {
@@ -105,25 +203,22 @@ datasets <- lapply(datasets, function(x) {
   return(temp)
 })
 lapply(datasets,dim)
-
 # datasets <- datasets[3] #in case you wanna test in 1 dataset
-
 # Transform phyloseq data into normalized matricies ( log2[CP1K] )
 # datasets <- lapply(datasets,function(x){
 #     x <- t(log2( t(x) / colSums(x) * 1000 + 1))
 # })
 # lapply(datasets,dim)
-
 # Extract taxonomic information to file
 taxa_info <- lapply(dataset_names, function(x){
-  x <- read.csv( paste0(PATH,"/",x))
+  x <- read.csv( paste0(PATH,"data/",x))
   temp <- as.matrix(x[,c((ncol(x)-6):ncol(x))])
   temp[is.na(temp)] <- "NA"
   return(t(temp))
 })
 taxa_info <- t(as.data.frame(taxa_info))
 rownames(taxa_info) <- sub("other.","other ",rownames(taxa_info))
-rownames(taxa_info) <- sub("[.][0123456789","other ",rownames(taxa_info))
+rownames(taxa_info) <- sub("[.][0123456789]","other ",rownames(taxa_info))
 sps <- apply( taxa_info[,6:7] ,1,function(x) paste(x,collapse ="_"))
 not_complete <- grepl("_NA",sps)
 taxa <- apply( taxa_info ,1,function(x) paste(x,collapse ="_"))
@@ -135,13 +230,15 @@ use <- !is.na(taxa) & (taxa != "NA")
 taxa[taxa == "NA"] <- "other"
 rownames(taxa_info) <- taxa
 taxa_info <- taxa_info[! duplicated(rownames(taxa_info)),]
-write.csv2(taxa_info, paste0(PATH,"../results/taxonomy.csv"),row.names = T)
+write.csv2(taxa_info, paste0(PATH,"results/taxonomy.csv"),row.names = T)
 ```
-
 
 # Merging, renaming and correcting batch effects on datasets
 
 ```{r, echo = FALSE}
+datasets <- datasets_
+names(datasets)
+
 #No batch correction needed in tissue_V3 dataset, only add it to the other samples
 datasets[["ASV_tissue_V3"]] <- cbind( datasets[["ASV_tissue_B2.csv"]],datasets[["ASV_tissue_B1.csv"]] )
 
@@ -169,10 +266,12 @@ merged <- merged[nonzeros,]
 PC_raw <- prcomp(round(t(batch1[nonzeros, paste0("boston_",common_samples)]),4) )
 ```
 
+
 # Batch correction with different approaches
 
 ```{r, echo = FALSE}
-mypar(3,3)
+#mypar(3,3)
+par(mar=c(3, 3, 0, 0))
 PC_raw <- prcomp(round(t(batch1[nonzeros, paste0("boston_",common_samples)]),4) )
 
 #COMBAT
@@ -227,12 +326,12 @@ print(dim(x_train))
 print(dim(y_train)) 
  
 
-if(file.exists(paste0(PATH,"../results/encoder.h5")) & 
-  file.exists(paste0(PATH,"../results/decoder.h5")) & 
-  file.exists(paste0(PATH,"../results/aen.h5")) ){
-  encoder <- load_model_hdf5(paste0(PATH,"../results/encoder.h5"))
-  decoder <- load_model_hdf5(paste0(PATH,"../results/decoder.h5"))
-  aen <- load_model_hdf5(paste0(PATH,"../results/aen.h5"))
+if(file.exists(paste0(PATH,"results/encoder.h5")) & 
+  file.exists(paste0(PATH,"results/decoder.h5")) & 
+  file.exists(paste0(PATH,"results/aen.h5")) ){
+  encoder <- load_model_hdf5(paste0(PATH,"results/encoder.h5"))
+  decoder <- load_model_hdf5(paste0(PATH,"results/decoder.h5"))
+  aen <- load_model_hdf5(paste0(PATH,"results/aen.h5"))
   
 } else {
   enc_input = layer_input(shape = input_size)
@@ -267,9 +366,9 @@ if(file.exists(paste0(PATH,"../results/encoder.h5")) &
   
   aen %>% fit( y_train , x_train , epochs=2000, batch_size=round(dim(y_train)[1]/2) ) 
   
-  save_model_hdf5(encoder, paste0(PATH,"../results/encoder.h5") )
-  save_model_hdf5(decoder, paste0(PATH,"../results/decoder.h5"))
-  save_model_hdf5(aen, paste0(PATH,"../results/aen.h5"))
+  save_model_hdf5(encoder, paste0(PATH,"results/encoder.h5") )
+  save_model_hdf5(decoder, paste0(PATH,"results/decoder.h5"))
+  save_model_hdf5(aen, paste0(PATH,"results/aen.h5"))
 }
 
 encoded_imgs = encoder %>% predict(y_train)
@@ -301,7 +400,6 @@ barplot(pc_var,ylim=c(0,60),las=2,names.arg = paste0("PC",1:length(pc_var)),
 abline(h=0,lwd=2)
 add_letter(fig_letters); fig_letters <- fig_letters[-1]
 legend("topright",legend = c("batch1","batch2"),col = c("firebrick","navy"),pch=c(15,16),bty = "n")
-
 
 plot(c(1,20),range(PC_raw$x),type="n",ylim=c(-.2,1.2),yaxs="i",frame=F,axes=F,ylab="PC embbeddings",xlab="",main="uncorrected") ; axis(2)
 abline(h=0,col="grey90",lty=1)
@@ -462,7 +560,7 @@ legend("topright",legend = c("batch1","batch2"),col = c("firebrick","navy"),pch=
 
 
 samples_not_batch1 <- sort(colnames(batch2_decoded_data) [! colnames(batch2_decoded_data) %in% common_samples2])
-datasets[["ASV_CVL_V2"]] <- cbind( batch1[nonzeros,] , batch2_decoded_data[,samples_not_batch1] )
+datasets[["ASV_CVL_V2"]] <- as.data.frame.array(cbind( batch1[nonzeros,] , batch2_decoded_data[,samples_not_batch1] ))
 datasets <- datasets[-c(1,2,3)]
 colnames(datasets[["ASV_CVL_V2"]]) <- sub(".*_","",colnames(datasets[["ASV_CVL_V2"]]))
 lapply(datasets,dim)
@@ -471,13 +569,16 @@ lapply(datasets,colnames)
 common_microbes <- unique(unlist(lapply(datasets,rownames)))
 all_samples <- rownames(metadata)
 
-datasets <- lapply(datasets, function(x) {
-  temp <- matrix(0,nrow = length(common_microbes),
-                 ncol = ncol(x),
-                 dimnames = list(common_microbes,colnames(x)))
-  temp[rownames(x),colnames(x)] <- x
-  return(temp)
-})
+
+common_microbes.fun <- function(x) {
+  xy <- rownames_to_column(x, var = "Taxa")
+  d <- data.frame(Taxa = common_microbes) %>%
+    left_join(., xy, by="Taxa") %>%
+    mutate(across(where(is.numeric), ~replace_na(.x, 0))) %>%
+    column_to_rownames(var = "Taxa")
+  return(d)
+}
+datasets <- map(datasets, ~common_microbes.fun(.x))
 lapply(datasets,dim)
 
 
@@ -486,32 +587,37 @@ datasets <- lapply(datasets,function(x){
   return(x)
 })
 
+# raw files
+n <- c("ASV_CVL_V3", "ASV_tissue_V3", "ASV_CVL_V2")
+map2(datasets[1:3],n,  ~write.csv(.x, file=paste0(PATH,"results/",.y,"_raw_counts.csv"),row.names = T) )
+
 datasets[["ASV_CVL_V3.csv"]] <- round( t(log2( t(datasets[["ASV_CVL_V3.csv"]]) / colSums(datasets[["ASV_CVL_V3.csv"]]) * 1000 + 1 )),4)
 datasets[["ASV_tissue_V3"]] <- round(t( log2( t(datasets[["ASV_tissue_V3"]]) / colSums(datasets[["ASV_tissue_V3"]]) * 1000 + 1 )),4)
 datasets[["ASV_CVL_V2_raw"]] <- round(t( log2( t(datasets[["ASV_CVL_V2_raw"]]) / colSums(datasets[["ASV_CVL_V2_raw"]]) * 1000 + 1 )),4)
 datasets[["ASV_CVL_V2"]] <- round( datasets[["ASV_CVL_V2"]] ,4)
 
-write.csv( datasets[["ASV_CVL_V2"]] , paste0(PATH,"../results/ASV_CVL_V2_normalized_batch_corrected.csv"),row.names = T )
-write.csv( datasets[["ASV_tissue_V3"]] , paste0(PATH,"../results/ASV_tissue_V3_normalized_batch_corrected.csv"),row.names = T )
-write.csv( datasets[["ASV_CVL_V3.csv"]] , paste0(PATH,"../results/ASV_CVL_V3_normalized_batch_corrected.csv"),row.names = T )
-write.csv( datasets[["ASV_CVL_V2_raw"]] , paste0(PATH,"../results/ASV_CVL_V2_normalized_NOT_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_CVL_V2"]] , paste0(PATH,"results/ASV_CVL_V2_normalized_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_tissue_V3"]] , paste0(PATH,"results/ASV_tissue_V3_normalized_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_CVL_V3.csv"]] , paste0(PATH,"results/ASV_CVL_V3_normalized_batch_corrected.csv"),row.names = T )
+write.csv( datasets[["ASV_CVL_V2_raw"]] , paste0(PATH,"results/ASV_CVL_V2_normalized_NOT_batch_corrected.csv"),row.names = T )
 
 batches_CVL2 <- ifelse( colnames(datasets[["ASV_CVL_V2_raw"]]) %in% sub(".*_","",colnames(batch1)),"boston","CTMR" )
 batches_CVL2 <- t(t(setNames(batches_CVL2 , colnames(datasets[["ASV_CVL_V2_raw"]]))))
-write.csv( batches_CVL2 , paste0(PATH,"../results/batches_CVL2.csv"),row.names = T )
+write.csv( batches_CVL2 , paste0(PATH,"results/batches_CVL2.csv"),row.names = T )
 ```
 
 
 
 ```{r, echo = FALSE}
-trx <- read.csv(paste0(PATH,"/TRX_rawcounts.csv"),row.names = 1)
+trx <- read.csv(paste0(PATH,"data/TRX_rawcounts.csv"),row.names = 1)
 trx <- rowsum(trx[,-c(1,2)],trx$symbol)
 colnames(trx) <- sub("ML","",colnames(trx))
 trx  <- trx[ rownames(trx) != "" , ]
+trx <- trx[ rownames(trx) != "NA" , ]
 colnames(trx) <- as.character(metadata$ID)[ match(colnames(trx) , as.character(metadata$PatID) ) ]
 trx <- trx[ rowSums(trx > 5) >= 3 , ]
 trx <- t( log2( t( trx ) / colSums(trx) * 1e6 + 1 ) )
-write.csv( trx , paste0(PATH,"../results/Tissue_RNAseq_V3_normalized.csv"),row.names = T )
+write.csv( trx , paste0(PATH,"results/Tissue_RNAseq_V3_normalized.csv"),row.names = T )
 ```
 
 

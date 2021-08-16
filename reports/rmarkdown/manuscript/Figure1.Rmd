@@ -1,45 +1,323 @@
 ---
-output: pdf_document
+title: "Figure 1. Microbiome abundances"
+output: 
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+header-includes: 
+- \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
 
 
-```{r, echo=F,  warning=FALSE,message=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
-  library(Seurat)
-  library(rafalib)
-  library(igraph)
+  library(tidyverse)
   library(scales)
   library(RColorBrewer)
-  library(MASS)
-  library(spatstat)
-  library(magick)
+  remotes::install_github("czarnewski/niceRplots",force=T)
+  library(niceRplots)
 })  })  })
-
-
-
-#############################
-# SOURCE PLOTTING FUNCTIONS #
-#############################
-source("~/repos/niceRplots/R/helper_functions.R")
-source("~/repos/niceRplots/R/plotting_functions.R")
-source("~/repos/niceRplots/R/add_fig_label.R")
-```
-
-
-
-```{r fig1, echo = FALSE, eval = TRUE, warning=FALSE,message=FALSE,fig.width = 12, fig.height = 5, fig.cap = "Figure 1. Box plot of the total lengths of live and dead sparrows following a snowstorm in Providence, RI, as originally collected by Hermon Bumpus. The central horizontal line shows median values. Boxes and whiskers show inter-quartile ranges and extreme values, respectively."}
 
 #############
 # LODA DATA #
 #############
-ALL_DATA <- readRDS("~/Box/Projects/J_Mjosberg/NBIS_housekeeping_normalization/analysis_all_tissues/all_ilc_dataset.rds")
-pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1)
+group_annotation <- factor(setNames(metadata$Luminal_gr,metadata$ID))
+#group_annotation <- as.character(metadata$Luminal_gr) %>% set_names()
+
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+sample_use <- colnames(TRX)[colSums(TRX)!=0]
+
+
+#color palettes
+#################
+# COLOR PALETTS #
+#################
+lvl <- c("L. iners", "Gardnerella", "L. crispatus/acidophilus","Prevotella", "Atopobium","Sneathia", "L. jensenii", "Megasphaera", "Streptococcus", "Anaerococcus", "BVAB2", "Escherichia/Shigella", "BVAB1", "Dialister", "Mycoplasma", "Bifidobacterium", "Other")
+
+pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
+#pal <- c("#377EB8", "#4DAF4A", "#FF7F00", "#F781BF", "#984EA3", "#FFFF33", "#A65628",  "#999999")
+#pal <- c("#4DAF4A", "#377EB8", "#E41A1C", "#FF7F00", "#984EA3", "#FFFF33", "#A65628", "#F781BF", "#999999")
+taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+#show_col(pal)
+#show_col(taxa_pal)
+```
+
+```{r Figure 1, echo=FALSE, warning=FALSE, message=FALSE, fig.height=7, fig.width=6 ,fig.asp=1, fig.pos="t"}
+### A + B
+#############################
+# DIVERSITY + TAX ABUNDANCE #
+#############################
+
+figlabels <- letters
+temp_legend <- NULL
+
+layout(matrix(c(1,1,1,1,1,1,
+                2,2,2,2,2,2,
+                3,3,3,3,3,3,
+                4,4,4,4,4,4,
+                5,5,8,9,6,6,
+                5,5,8,7,6,6,
+                5,5,8,7,7,7) , ncol= 6,byrow = T),
+                               widths = c(1.2,1,1.85,1.35,1,1.4),
+                               heights = c(.7,1.5,.7,1.5,1,.8,.2))
+# layout(matrix(c(1,1,1,1,1,5,
+#                 2,2,2,2,2,5,
+#                 3,3,3,3,3,6,
+#                 4,4,4,4,4,6,
+#                 7,7,8,8,8,6) , ncol= 6,byrow = T),
+#                                widths = c(.5,1,1,1,1,1.1),
+#                                heights = c(.5,1,.5,1,1.5))
+
+
+#i <- ASV[2]
+ASV <- list(c("Luminal_gr","ASV_CVL_V3_normalized_batch_corrected"),
+         c("Tissue_gr","ASV_tissue_V3_normalized_batch_corrected")
+          #"3"="ASV_CVL_V2_normalized_NOT_batch_corrected"
+         )
+for(i in ASV){
+  x <- datasets_all_samples[[i[2]]]
+  gr <- factor(setNames(metadata[[i[1]]],metadata$ID))
+  #x <- x[,sample_use]
+  #x <- datasets_all_samples[[2]]
+
+  par(mar=c(0,5,1.5,1.5)) #b,l,t,r
+  temp <- t(t(2^x-1)/colSums(2^x-1))
+
+  shann <- vegan::diversity(t(temp),index = c("shannon") )
+  simp <- vegan::diversity(t(temp),index = c("simpson") )
+  invsimp <- vegan::diversity(t(temp),index = c("invsimpson") )
+  divers <- as.matrix(rbind(shann,simp,invsimp) )
+  divers[is.infinite(divers)] <- 0
+  rownames(divers) <- c("Shannon","simpson","Inv Simpson")
+  barlist( data = divers[,order(group_annotation)],
+         main = "", xlab="", #bg="white", #cex=.6, 
+         genes = c("Shannon","simpson","Inv Simpson"),
+         # clustering = group_annotation,
+         draw_mean_lines=F,col = pal[gr[order(group_annotation)]])
+  
+  if(i[2] == "ASV_CVL_V3_normalized_batch_corrected"){
+    end <- table(pal[factor(group_annotation[order(group_annotation)])])
+    end <- end[order(factor(names(end), levels = pal))]
+    end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/length(colnames(divers)))-.2 )
+    start <- c(0.5, map_dbl(end[1:4], ~.x+0.7))
+    
+    axis(1, at = c(start, end), label = F, pos =3.3 , xpd=T, col="white",col.ticks="black")
+    map2(start, end, ~lines(x=c(.y, .x), y= c(3.3, 3.3), xpd=T, cex=.8))
+    t <- map2(start, end, ~(.x+.y)/2)
+    map2(t,levels(gr), ~text(x=.x, y=3.8, .y,xpd=T))
+    #print(par("usr"))
+  }
+  
+  #add label
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+  par(mar=c(1,5,1,1.5)) #b,l,t,r
+  # taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+  # taxa[is.na(taxa)] <- "NA"
+  # taxa <- taxa[rownames(temp),]
+  # temp <- rowsum(temp , taxa$Class)
+  temp[is.nan(temp)] <- 0
+
+  if(is.null(temp_legend)){
+    temp_legend <- temp   #Use the same legend from the 1st dataset
+  }
+
+  o <- order( rowSums(temp_legend) , decreasing = T)
+  sample_o <- names(group_annotation)[ order( group_annotation )]
+  temp <- temp[o,sample_o]*100
+  # temp <- temp[-grep("NA",rownames(temp)),]
+  temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
+
+  barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=gsub("_gr","",i[1]),font.main=1,
+           col = taxa_pal[factor(rownames(temp),levels = lvl)] ,names.arg = rep("",ncol(temp)))
+
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2, bg="white",
+        col= c("tomato","orange","#d7d7d7")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation )],
+        pch=15,cex=.7,xpd=T)
+  text(par("usr")[2],par("usr")[3]-2,labels = "      BV",cex=.5,xpd=T)
+  #text(x = c(2), y = 3, ']', srt = 90, cex = 3, xpd=T)
+
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-8,bg="white",
+        col= c("#d7d7d7","tomato")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
+        pch=15,cex=.7,xpd=T)
+  text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T) # pos=4,
+
+}
+### C
+############################
+# TOTAL RELATIVE ABUNDANCE #
+############################
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+sample_use <- colnames(TRX)[colSums(TRX)!=0]
+raw <- c("ASV_CVL_V3", "ASV_tissue_V3") %>% set_names()
+
+raw_list <- raw %>%
+  map(., ~read_csv(paste0("../../../results/",.x,"_raw_counts.csv")))  %>%
+  map(., ~column_to_rownames(., var = "X1")) %>%          
+  map(., ~dplyr::select(., any_of(sample_use))) 
+            
+
+r <- raw_list %>%
+  map(., ~mutate(.,across(where(is.numeric), ~ ./sum(.))) ) %>%
+  map(., ~(rowSums(.x)/length(colnames(.x)) )*100 ) %>%
+  bind_rows(., .id="ID") %>%
+    pivot_longer(-ID) %>% 
+    pivot_wider(names_from = ID, values_from = value) %>%
+    mutate_at(vars(name), ~replace(., ASV_CVL_V3<0.5514392, "Other")) %>%
+    group_by(name) %>%
+    summarize(across(where(is.numeric), ~sum(.))) %>%
+    arrange(-ASV_CVL_V3) %>%
+    dplyr::rename(Luminal="ASV_CVL_V3",Tissue="ASV_tissue_V3") %>%
+    `row.names<-`(., NULL) %>% 
+    column_to_rownames(var = "name") %>%
+    as.matrix()
+
+
+#colSums(r)
+
+par(mar=c(1,5,2,0)) #b,l,t,r
+barplot( r, border = NA ,ylab="abundance", xlab ="",
+         col = taxa_pal[factor(rownames(r),levels = rownames(temp))])
+title(main = "Total relative abundance", line = 0.5, cex.main = .9, font.main= 1)
+mtext("Luminal        Tissue ", line = 0, cex=.6, side=1)
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+# legend(x = par("usr")[c(2)],
+#          y = par("usr")[c(4)],title.adj = 0,
+#          legend = rownames(r),xjust = 0,yjust = 1,
+#          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+#           title="top abundant bacteria",
+#          pt.bg = taxa_pal)
+
+### D
+#############################
+# LUMINAL-TISSUE COMPARISON #
+#############################
+par(mar=c(0,4,3,2)) #b,l,t,r
+x <- as.character(metadata[,"Luminal_gr"])
+x[is.na(x)] <- "NA"
+y <- as.character(metadata[,"Tissue_gr"])
+y[is.na(y)] <- "NA"
+x1 <- x [ (x!="NA") & (y!="NA") ]
+y1 <- y [ (x!="NA") & (y!="NA") ]
+df <- data.frame(x1,y1)
+plot_sankey( df,color_by = 1, 
+             plot_labels = T, plot_weights = F,order_1_by = "NULL",
+             order_2_by = "disentangled",use_w1 = T,use_w2 = T,gap2v = 0,smoothing = .1,
+             pal= pal)
+text(c(0,1),c(1,1),labels = c( "Luminal" , "Tissue" ),pos=3, xpd=T)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+###########
+# LEGENDS #
+###########
+par(mar=c(0,.5,0,0)) #b,l,t,r
+empty_plot()
+legend(x = -0.04, #par("usr")[c(1)],
+       y = 1.04, #par("usr")[c(4)],title.adj = 0,
+       #legend = sort(unique(group_annotation)),
+       legend = c("L. crispatus/jensenii", "L. iners", "Gardnerella", "High diverse", "Other") ,
+       xjust = 0,yjust = 1,title.adj = 0,  ncol =1, #xjust=1,
+       bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "patient groups",
+       pt.bg = pal)
+
+
+
+par(mar=c(0,.4,1,.5)) #b,l,t,r
+empty_plot()
+legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],#title.adj = 0,
+         legend = lvl[1:12],xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+          #title="",
+         pt.bg = taxa_pal)
+
+par(mar=c(0,.4,1,1)) #b,l,t,r
+empty_plot()
+legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],#title.adj = 0,
+         legend = lvl[13:17],xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+          #title="",
+         pt.bg = taxa_pal[13:17])
+
+```
+
+```{r include=FALSE}
+dev.copy2pdf(file=paste0("./images/","Figure1",".pdf"), 
+    width = 6.5,
+    height = 7 , paper = "a4" #units = "cm", res = 300 # a4 = 8.3 x 11.7 inches
+)
+```
+
+```{r eval=FALSE, include=FALSE}
+##########################
+x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+y <- datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]]
+z <- datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]]
+
+ # par(mar=c(1,5,1,1))
+tempx <- t(t(2^x-1)/colSums(2^x-1))
+tempy <- t(t(2^y-1)/colSums(2^y-1))
+tempz <- t(t(2^z-1)/colSums(2^z-1))
+
+tempx[is.nan(tempx)] <- 0
+tempy[is.nan(tempy)] <- 0
+tempz[is.nan(tempz)] <- 0
+ # if(is.null(temp_legend)){
+ #   temp_legend <- temp   #Use the same legend from the 1st dataset
+#  }
+
+temp1 <- rowSums(tempx)/100
+temp2 <- rowSums(tempy)/108
+temp3 <- rowSums(tempz)/93
+
+Totrelab <- cbind(temp1, temp2, temp3)
+Totrelab <- cbind(temp1, temp2)
+Totrelab["Lactobacillus_crispatus/acidophilus", ] <- Totrelab["Lactobacillus_crispatus/acidophilus", ] + Totrelab["Lactobacillus_crispatus", ]
+Totrelab[rownames(Totrelab) != "Lactobacillus_crispatus", ]
+  o <- order( rowSums(Totrelab) , decreasing = T)
+  #sample_o <- names(group_annotation)[ order( group_annotation )]
+  temp_a <- Totrelab[o,]*100
+  write.csv(temp_a, "totalRelAbundance.csv")
+  
+  # temp <- temp[-grep("NA",rownames(temp)),]
+  temp_b <- rbind(temp_a[1:19,], Other = colSums(temp_a[20:nrow(temp_a),]) )
+  
+layout(matrix(c(2) , ncol= 2,byrow = T),heights = c(1))
+#par(mar=c(2,7))
+layout(matrix(c(2) , ncol= 2,byrow = T),
+       heights = c(1))
+  par(mar=c(2,7))
+  barplot( temp_a, las=2 , border = NA ,ylab="abundance",main=sub("_nor.*","",i),font.main=1,
+           col = taxa_pal[factor(rownames(temp_a),levels = rownames(temp_a))] ,names.arg = rep("",ncol(temp_a)))
+  legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],title.adj = 0,
+         legend = rownames(temp_a),xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+          title="top abundant bacteria",
+         pt.bg = taxa_pal)
+```
+
+
+```{r fig1, eval=FALSE, fig.cap="Figure 1. Box plot of the total lengths of live and dead sparrows following a snowstorm in Providence", fig.height=5, fig.width=12, message=FALSE, warning=FALSE, include=FALSE}
+
+#############
+# LODA DATA #
+#############
+#ALL_DATA <- readRDS("~/Box/Projects/J_Mjosberg/NBIS_housekeeping_normalization/analysis_all_tissues/all_ilc_dataset.rds")
+#pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
 
 
 ########################
@@ -138,9 +416,5 @@ fig_label(figlabels[1],cex = 3,font = 2,region = "figure") ; figlabels <- figlab
 
 ### G
 ################
-
-
-
-
 
 ```
