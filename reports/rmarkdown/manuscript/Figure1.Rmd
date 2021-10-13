@@ -23,6 +23,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(RColorBrewer)
   remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
+  library(openxlsx)
 })  })  })
 
 #############
@@ -83,6 +84,7 @@ ASV <- list(c("Luminal_gr","ASV_CVL_V3_normalized_batch_corrected"),
          c("Tissue_gr","ASV_tissue_V3_normalized_batch_corrected")
           #"3"="ASV_CVL_V2_normalized_NOT_batch_corrected"
          )
+div_list <- list()
 for(i in ASV){
   x <- datasets_all_samples[[i[2]]]
   gr <- factor(setNames(metadata[[i[1]]],metadata$ID))
@@ -97,10 +99,14 @@ for(i in ASV){
   invsimp <- vegan::diversity(t(temp),index = c("invsimpson") )
   divers <- as.matrix(rbind(shann,simp,invsimp) )
   divers[is.infinite(divers)] <- 0
-  rownames(divers) <- c("Shannon","simpson","Inv Simpson")
+  rownames(divers) <- c("Shannon","Simpson","Inv Simpson")
+  
+  div <- tibble(shann, simp, invsimp ) %>% rename_with(., ~paste0(c("Shannon","Simpson","Inv Simpson")))
+  div_list[[length(div_list) + 1]] <- div
+  
   barlist( data = divers[,order(group_annotation)],
          main = "", xlab="", #bg="white", #cex=.6, 
-         genes = c("Shannon","simpson","Inv Simpson"),
+         genes = c("Shannon","Simpson","Inv Simpson"),
          # clustering = group_annotation,
          draw_mean_lines=F,col = pal[gr[order(group_annotation)]])
   
@@ -152,6 +158,17 @@ for(i in ASV){
   text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T) # pos=4,
 
 }
+
+# save diversity index stats
+div_stat <- div_list %>% 
+  set_names(map(ASV,1)) %>%
+  map(., ~summarise_all(.x, list(median=median, IQR=IQR), na.rm = TRUE)) %>%
+  map(., ~pivot_longer(.x, everything(), names_sep = "_", names_to = c(".value", "Stats"), )) %>%
+  bind_rows(.id = "Sample type") %>%
+  mutate("Sample type" = gsub("_gr", "", .$"Sample type"))
+
+write.xlsx(div_stat, file=paste0("../../../results/","Suppl.Tbl.1 Diversity statistics",".xlsx"))
+
 ### C
 ############################
 # TOTAL RELATIVE ABUNDANCE #
