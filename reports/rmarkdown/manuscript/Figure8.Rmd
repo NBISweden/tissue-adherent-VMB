@@ -21,6 +21,9 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(edgeR)
   library(openxlsx)
+  library(rstatix)
+  library(broom)
+  library(niceRplots)
 })  })  })
 
 #############
@@ -29,6 +32,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv") 
 datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
 metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+cytokine_data <- read.csv("../../../data/210125_Cytokines_visit3CVL.csv")
 
 #color palettes
 #################
@@ -184,7 +188,7 @@ top_dpe.fun <- function(top){
 # top_PROT_mfi <- t
 # gr <- "Luminal_gr"
 # plot_heatmap.fun(t, "Luminal_gr", scale = T)
-plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE){
+plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
   df <- na.omit(metadata[sample_use, c(gr, "ID")])
   df <- arrange(df, df[1])
   samples <- df[, "ID"]
@@ -199,40 +203,51 @@ plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE){
   
   h <- hclust( as.dist( (1- cor(t(top_PROT_mfi)))/2 ), method = "ward.D2")
 
-  layout(matrix(c(1,2,3,4,
-                  1,2,3,4),
-                  nrow = 1,ncol = 2,byrow = T),widths = c(1.,2,.4,6) )
-    ## Heatmap
-    par(mgp=c(0,0.2,0), mar=c(4,.4,1,0)) #(bottom, left, top, right) 
+  if(layout == "multi") {
+    layout(matrix(c(1,2,5,6,
+                    7,7,8,8,
+                    3,3,4,4),
+           nrow = 3, ncol = 4,byrow = T),
+           widths = c(.9,2,.9,2), heights = c(1,1,.01) ) }
+  if(layout == "single") {
+    layout(matrix(c(1,2),
+                    nrow = 1, ncol = 2,byrow = T),widths = c(1,2) ) }
+  
+    
+    ## Dendogram
+    par(mgp=c(0,0.2,0), mar=c(4,.6,1,.2)) #(bottom, left, top, right) 
     plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.01),
-          horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T, cex.axis = 0.7 )
+          horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T, cex.axis = .7 )
     #title(xlab="height", line=3)
-    mtext( c("Height"), side=1, las = 1, cex = 0.7, line =1,xpd=T)
+    mtext( c("Height"), side=1, las = 1, cex = .7, line =1,xpd=T)
+    
     
     if(gr == "Tissue_gr") {
-      height <-1.5 }else{height <- round(max(h$height))}
-    lines(x=c(0,height), y=c(0.45,0.45), col="black", lty=1, lwd = 2.5) # only for grob
+      height <-1.5 
+      add_letter("b")
+    }else{height <- round(max(h$height))
+      add_letter("a")}
+    #lines(x=c(0,height), y=c(0.45,0.45), col="black", lty=1, lwd = 2.5) # only for grob
     
-    # abline(v=cuttoff,xpd=F,col="red",lty=2)
-    # points( rep(-.1,length(gene_module)),
-    #         seq(length(gene_module),1,length.out = length(gene_module)),
-    #         col=taxa_pal[factor(gene_module[h$order])],
-    #         pch=15,cex=.5,xpd=F)
-    
-    par(mar=c(4,.2,1,2)) #(bottom, left, top, right) 
+    ## Heatmap
+    par(mar=c(4,.2,1,2.5)) #(bottom, left, top, right) 
     image( t(top_PROT_mfi[h$order,pull(df, "ID")][nrow(top_PROT_mfi):1,]),
            col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
            breaks = breaks,
            axes=F)
 
-    mtext( c("patient groups"), side=1, las = 1, cex = 0.7, line =1,xpd=T)
+    mtext( c("patient groups"), side=1, las = 1, cex = .7, line =1,xpd=T)
     
     if(gr == "Luminal_gr") {
-      lines(x=c(0,.603,.603,0,0), y=c(.488,.488,1.006, 1.006,.488), col="red", lty=1, lwd = 1.5)
-      lines(x=c(.39,.94,.94,.39,.39), y=c(.488,.488,-0.008, -0.008,.488), col="red", lty=1, lwd = 1.5)}
+      lines(x=c(0,.603,.603,0,0),
+            y=c(.488,.488,1.006, 1.006,.488), col="red", lty=1, lwd = 1.5)
+      lines(x=c(.39,.94,.94,.39,.39),
+            y=c(.488,.488,-0.008, -0.008,.488), col="red", lty=1, lwd = 1.5)}
     if(gr == "Tissue_gr") {
-      lines(x=c(.653,.95,.95,.653,.653), y=c(.735,.735,1.011, 1.011,.735), col="red", lty=1, lwd = 1.5)
-      lines(x=c(.653,.95,.95,.653,.653), y=c(.735,.735,-0.012, -0.012,.735), col="red", lty=1, lwd = 1.5)
+      lines(x=c(.653,.95,.95,.653,.653),
+            y=c(.735,.735,1.011, 1.011,.735), col="red", lty=1, lwd = 1.5)
+      lines(x=c(.653,.95,.95,.653,.653),
+            y=c(.735,.735,-0.012, -0.012,.735), col="red", lty=1, lwd = 1.5)
     }
     
     ## Meta info bars
@@ -256,65 +271,164 @@ plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE){
 
 ```
 
-### top dpe with p-value < 0.05 un-scaled and scaled respectively
-```{r single plots, fig.height=5, fig.width=3, include=FALSE}
+```{r sig. cytokines function, include=FALSE}
+sig_stars.fun <- function(df_krusk, df_dunn, group, n = 6, order = NULL){
+  samples_use <- metadata[,c(group, "ID")] %>% na.omit() %>% filter(ID %in% colnames(cytokine_data))
+  
+  # select only sig. cytokines 
+  sig <- df_krusk %>% filter(p.adj<0.05) %>% pull(Cytokines)
+  sig_df <- cytokine_data_log[sig,samples_use$ID] %>%
+    cbind(Max = c(rep(max(.)+n, nrow(.))))
+  
+  groupings <- samples_use[[group]] [ match( colnames(sig_df[,1:ncol(sig_df)-1]) , as.character(samples_use$ID)  ) ]
+  groupings <- c(groupings, "Max")
+  
+   if(is.null(order)){
+    g <- rownames(sig_df)
+  }else{g <- order}
+  
+  stars_df <- df_dunn %>%
+    mutate(x = (as.integer(str_extract(.$group1, "\\d")) + 
+                  as.integer(str_extract(.$group2, "\\d")))/2) %>%
+    mutate(line_x0 = as.integer(str_extract(.$group1, "\\d"))) %>%
+    mutate(line_x1 = as.integer(str_extract(.$group2, "\\d"))) %>%
+    mutate(y = (as.numeric(factor(Cytokines, levels = rev(g))))-.3) %>%
+    arrange(group1, group2) %>%
+    dplyr::group_by(Cytokines) %>%
+    nest() %>%
+    mutate(y_ = map(data, ~accumulate(.$y, ~.x + .1))) %>%
+    unnest(c(data, y_))
+  
+  return(list(sig_df=sig_df, stars_df=stars_df, groupings=groupings, samples_use=samples_use))
+}
+```
+
+```{r Cytokine stats tests, include=FALSE}
+cytokine_data$ID <- metadata [ match( cytokine_data$PatID , as.character(metadata$PatID)  ) ,"ID" ]
+cytokine_data <- cytokine_data[ !is.na(cytokine_data$ID) , ]
+rownames(cytokine_data) <- cytokine_data$ID
+cytokine_data <- cytokine_data[,grepl("CVL",colnames(cytokine_data))]
+colnames(cytokine_data) <- sub("CVL_","",colnames(cytokine_data))
+cytokine_data <- t(cytokine_data)
+cytokine_data[is.na(cytokine_data)] <- 0.01
+cytokine_data <- log2(cytokine_data+1)
+cytokine_data_log <- cytokine_data
+
+cyto2 <- as.data.frame(t(cytokine_data))
+cyto2$ID<-row.names(cyto2)
+
+#select data and re-format to long format
+cytogr.long <- metadata %>%
+  select(ID, Luminal_gr, Tissue_gr) %>%
+  left_join(.,cyto2, by="ID") %>%
+  pivot_longer(c(-Luminal_gr, -Tissue_gr, -ID), names_to = "Cytokines", values_to = "value") 
+
+test.krusk_dunn.fun <- function(df, var, group) {
+  var <- enquo(var)
+  
+  stat.test.krusk <- df %>%
+  group_by(!!(var)) %>%
+  kruskal_test(., as.formula(paste("value", "~", group))) %>%
+  adjust_pvalue(method = "BH") %>%
+  select(-.y., -n, -df) %>%
+  arrange(p) %>%
+  rename(p.value = "p") %>%
+  add_significance()
+
+# select the significant proteins from kruskal
+sig <- stat.test.krusk %>% filter(p.adj<0.05) %>% pull(!!var)
+
+### Post hoc test
+stat.test.dunn <- df %>%
+  filter(!!var %in% sig) %>%
+  group_by(!!var) %>%
+  dunn_test(., as.formula(paste("value", "~", group))) %>%
+  #dunn_test(value ~ !!group) %>%
+  select(-.y.) %>%
+  arrange(p) %>%
+  rename(p.value = "p") %>%
+  filter(p.adj<0.05)
+
+  sig2 <- stat.test.dunn[stat.test.dunn$p.adj<0.05,]
+  
+ l <- list(stat.test.krusk, stat.test.dunn)
+ n <-  c("Kruskal", "Dunn's") %>% paste0(., "_", group, sep = "")
+ l <- set_names(l, n)
+
+return(l)
+}
+
+stat <- imap(c("Luminal_gr", "Tissue_gr"), ~test.krusk_dunn.fun(cytogr.long, Cytokines, .x))
+s <- flatten(stat)
+write.xlsx(s, file=paste0("../../../results/","Cytokine_stats",".xlsx"))
+
+```
+
+```{r Proteins plot, echo = FALSE, eval = TRUE, fig.height=10, fig.width=7}
+figlabels <- letters
+
 # top differentially expressed proteins Luminal groups
 t <- top_dpe.fun(dpe_L$top)
-
-library(cowplot)
-plot_heatmap.fun(t, "Luminal_gr")
-p.plot <- recordPlot()
-plot_heatmap.fun(t, "Luminal_gr", scale = T)
-p.plot_s <- recordPlot()
+plot_heatmap.fun(t, "Luminal_gr", scale = T, layout = "multi")
 
 # top differentially expressed proteins Tissue groups
 t <- top_dpe.fun(dpe_T$top)
-
-library(cowplot)
-plot_heatmap.fun(t, "Tissue_gr")
-p.plot_T <- recordPlot()
+par(mfg = c(2,1)) # adds the remaning plots to the previous layout
 plot_heatmap.fun(t, "Tissue_gr", scale = T)
-p.plot_s_T <- recordPlot()
+
+# Luminal Cytokine plot 
+g <- c("IL1a", "MIG", "IP10", "IL1b", "IL12_p70", "MCP1")
+Luminal <- sig_stars.fun(s$Kruskal_Luminal_gr, s$`Dunn's_Luminal_gr`, "Luminal_gr", order = g)
+temp <- as.factor(c(Luminal$groupings, "Max"))
+stars <- Luminal$stars_df
+
+par( mar=c(1.4,4,1.5,1)) #b,l,t,r 
+violist(data=Luminal$sig_df,
+          srt=45,
+          genes= g,
+          col = pal, transparency = 50,
+          clustering=c(Luminal$groupings),smooth = 2 )
+segments(x0 = stars$line_x0, x1 = stars$line_x1, y0 = stars$y_, y1 = stars$y_) 
+text( stars$x , stars$y_+.05,
+        labels = stars$p.adj.signif, srt = 0, xpd = TRUE, cex=1)
+title(main = "Luminal gr. Cytokines", line = 0.7, cex.main = .9)
+
+add_letter("c")
+
+# Tissue Cytokine plot
+Tissue <- sig_stars.fun(s$Kruskal_Tissue_gr, s$`Dunn's_Tissue_gr`, "Tissue_gr")
+temp <- factor(Tissue$groupings, levels=c("T1","T2","T3","T4","Max"))
+stars <- Tissue$stars_df
+
+par( mar=c(24.5,5,1.5,1)) #b,l,t,r
+violist(data=Tissue$sig_df,
+          srt=45, 
+          genes= rownames(Tissue$sig_df),
+          col = pal, transparency = 50,
+          clustering=Tissue$groupings, smooth = 2 )
+segments(x0 = stars$line_x0, x1 = stars$line_x1, y0 = stars$y_, y1 = stars$y_) 
+text( stars$x , stars$y_+.05,
+        labels = stars$p.adj.signif, srt = 0, xpd = TRUE, cex=1)
+title(main = "Tissue gr. Cytokines", line = 0.7, cex.main = .9)
+
+add_letter("d")
 
 ```
 
-```{r top dpe Luminal plot, echo=FALSE, fig.height=5, fig.width=6}
-# side by side
-# plot_grid(ggdraw(p.plot), ggdraw(p.plot_s), 
-#           labels = c('a', 'b'),rel_widths=c(1,1), greedy = F)
-
-plot_grid(ggdraw(p.plot_s),ggdraw(p.plot_s_T), 
-          labels = c('a', 'b'),rel_widths=c(1,1), greedy = F) # , 'c', 'd'
-
-```
+**Figure 3. Protein Heatmap**. **a** and **c** Without scaling (normalized MFI), for Luminal and Tissue respectively **b** and **d** scaled by row for Luminal and Tissue respectively. top dpe with p-value < 0.05
 
 
-```{r top dpe Tissue plot, eval=FALSE, fig.height=10, fig.width=6, include=FALSE}
-# side by side Luminal & Tissue
-# plot_grid(ggdraw(p.plot), ggdraw(p.plot_s),
-#           ggdraw(p.plot_T), ggdraw(p.plot_s_T), 
-#           labels = c('a', 'b', 'c', 'd'),rel_widths=c(1,1), greedy = F)
+```{r All dpe plot, eval=FALSE, fig.height=6, fig.width=6, include=FALSE}
+library(cowplot)
 
-plot_grid(ggdraw(p.plot_s),ggdraw(p.plot_s_T), 
-          labels = c('a', 'b'),rel_widths=c(1,1), greedy = F) # , 'c', 'd'
-
-
-```
-
-**Figure 3. Protein Heatmap**. **a** and **c** Without scaling (normalized MFI), for Luminal and Tissue respectively **b** and **d** scaled by row for Luminal and Tissue respectively
-
-
-## all dpe un-scaled and scaled respectively
-### Luminal
-```{r all dpe plot, eval=FALSE, fig.height=6, fig.width=3, include=FALSE}
-# all proteins 
 plot_heatmap.fun(Protein[,sample_use], "Luminal_gr")
-plot_heatmap.fun(Protein[,sample_use], "Luminal_gr", scale = T)
-```
+p.plot <- recordPlot()
 
-### Tissue
-```{r all dpe Tissue plot, eval=FALSE, fig.height=6, fig.width=3, include=FALSE}
-# all proteins 
 plot_heatmap.fun(Protein[,sample_use], "Tissue_gr")
-plot_heatmap.fun(Protein[,sample_use], "Tissue_gr", scale = T)
+p.plot_T <- recordPlot()
+
+# side by side unscaled
+plot_grid(ggdraw(p.plot),ggdraw(p.plot_T), 
+          labels = c('a', 'b'),rel_widths=c(1,1), greedy = F) # , 'c', 'd'
+
 ```
