@@ -154,9 +154,6 @@ sample_use <- intersect(colnames(Protein), sample_use)
 dpe_L <- limma_dpe.fun("Luminal_gr", confound=T)
 dpe_T <- limma_dpe.fun("Tissue_gr", confound=T)
 
-# save TopTables
-write.xlsx(dpe_L$top, file=paste0("../../../results/DE/","dpe_across_","Luminal",dpe_L$c,".xlsx"))
-write.xlsx(dpe_T$top, file=paste0("../../../results/DE/","dpe_across_","Tissue",dpe_T$c,".xlsx"))
 
 # Pairwise DPE's
 pairwise_dpe_L <- pairwise_dpe.fun("Luminal_gr", 
@@ -166,15 +163,9 @@ pairwise_dge_T <- pairwise_dpe.fun("Tissue_gr",
                                    fit=dpe_T$fit,
                                    design=dpe_T$design)
 
-# save TopTables 
-l_top <- list(Luminal = pairwise_dpe_L$top, Tissue = pairwise_dge_T$top)
-imap(l_top, ~write.xlsx(.x,file=paste0("../../../results/DE/","dpe_pairwise_",.y,"_conf",".xlsx"))) # Excel
-
 ```
 
-
 ```{r heatmap functions, echo=FALSE}
-
 top_dpe.fun <- function(top){
   p_val <- pull(top, "P.Value")
   top_dpe <- (p_val < 0.05) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
@@ -358,9 +349,23 @@ stat.test.dunn <- df %>%
 return(l)
 }
 
-stat <- imap(c("Luminal_gr", "Tissue_gr"), ~test.krusk_dunn.fun(cytogr.long, Cytokines, .x))
+n <- c("Luminal_gr", "Tissue_gr") %>% set_names(c("Luminal", "Tissue"))
+stat <- imap(n, ~test.krusk_dunn.fun(cytogr.long, Cytokines, .x))
 s <- flatten(stat)
-write.xlsx(s, file=paste0("../../../results/","Cytokine_stats",".xlsx"))
+```
+
+```{r Save stats to excel, include=FALSE}
+# save TopTables pairwise
+l_top_p <- list(Luminal = pairwise_dpe_L$top, Tissue = pairwise_dge_T$top)
+imap(l_top_p, ~write.xlsx(.x,file=paste0("../../../results/DE/","dpe_pairwise_",.y,".xlsx"))) # Excel
+
+# save TopTables across + cytokines
+l_top_a <- list(Luminal = list(Across = dpe_L$top), Tissue = list(Across = dpe_T$top))
+l <- list(l_top_a, stat, l_top_p)
+names <- c("Luminal", "Tissue") %>% set_names()
+p_list <- imap(names, ~flatten(map_depth(l, 1, .x))) 
+
+imap(p_list, ~write.xlsx(.x,file=paste0("../../../results/DE/","Proteins_",.y,".xlsx"))) # Excel
 
 ```
 
@@ -415,7 +420,7 @@ add_letter("d")
 
 ```
 
-**Figure 3. Protein Heatmap**. **a** and **c** Without scaling (normalized MFI), for Luminal and Tissue respectively **b** and **d** scaled by row for Luminal and Tissue respectively. top dpe with p-value < 0.05
+**Figure 3. Protein Heatmap**. **a** and **b** top differentially expressed proteins scaled by row, for Luminal and Tissue respectively. (p-value < 0.05) **b** and **d** sig. cytokines for Luminal and Tissue respectively. 
 
 
 ```{r All dpe plot, eval=FALSE, fig.height=6, fig.width=6, include=FALSE}
