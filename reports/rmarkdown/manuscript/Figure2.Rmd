@@ -22,7 +22,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(scales)
   library(igraph)
   library(RColorBrewer)
-  #remotes::install_github("czarnewski/niceRplots",force=T)
+  remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
 })  })  })
 
@@ -50,37 +50,25 @@ AA_ <- set_names(AA, map_chr(names(AA), ~ paste0("(?i)", .))) # make case insens
 #################
 # COLOR PALETTS #
 #################
-Set1 <- c("#4DAF4A", "#377EB8", "#E41A1C", "#FF7F00", "#984EA3", "#FFFF33", "#A65628", "#F781BF", "#999999")
-pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
-         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
 pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
 bact_pal <- c('#88CCEE', '#44AA99', '#117733', '#332288', '#DDCC77', '#999933','#CC6677', '#882255', '#AA4499', '#DDDDDD')
-
 ```
 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.height=8}
-# fig.asp=.6
-# Define Layout and set labels
-# layout(matrix(c(2,3,4,5,      6,7,  11,12,13,14,
-#                 1,1,1,1,      1,8,  11,12,13,14,
-#                 1,1,1,1,      1,9,  11,12,13,14,
-#                 1,1,1,1,      1,10, 11,12,13,14,
-#                 15,15,15,15,  0,0,  11,12,13,14
-#                 ) , 
-#               ncol= 10,byrow = T),widths = c(1,1,1,1,1,1,1,2,.5,6),heights = c(1.5,1.2,1.2,1.2,1.2))
-# layout.show(3)
 
-layout(matrix(c(1,2,3,4,5,
-                6,2,3,4,5,
-                7,7,7,10,10,
-                8,8,8,10,10,
-                9,9,9,10,10),
-              nrow = 5,ncol = 5,byrow = T), widths = c(1.9,.6,1,.2,2),
-       heights = c(1.5,1.5,.7,.7,.7))
+layout(matrix(c(1,1,2,2,2,
+                1,1,3,3,3,
+                1,1,4,4,4,
+                5,6,7,8,9,
+                5,6,7,8,10),
+              nrow = 5,ncol = 5,byrow = T), widths = c(.6,1.5,.2,1.9,2),
+       heights = c(.6,.6,.6,1,1.5))
 figlabels <- letters
 
+
+## A
 #########################
 # BACTERIAL COMMUNITIES #
 #########################
@@ -92,7 +80,7 @@ lB <- layout_nicely(gB,niter=3000,start.temp=30)
 par(mar=c(0,0,3.5,5))
 plot( gB , vertex.label.cex=0.000001 , vertex.color = bact_pal[factor(bac_communities)] ,
       edge.width=  ( E(gB)$weight / max(E(gB)$weight)) ,
-      vertex.size=10, #main="Bacterial Communities",
+      vertex.size=10,
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(gB)$weight / max(E(gB)$weight) * 88 )+1 ] ,layout=lB)
 title(main = "           Bacterial Communities- Louvain", line = 0.5, cex.main = 1)
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
@@ -103,14 +91,47 @@ legend(par("usr")[2],par("usr")[4],title.adj = 0,
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 
-# par(mar=c(1,1,1,1))
-# for(j in sort(unique(bac_communities)) ){
-#   empty_plot()
-#   text( 0,1,labels = paste0(rownames(SNN_bacteria)[ bac_communities == j ],collapse = "\n"),adj=c(0,1),cex=.5)
-#   title(main=j,cex.main=.5)
-# }
+## B
+###################################
+# BACTERIAL VAGINOSIS COMPARISSON #
+###################################
+par(mar=c(1,5,2,1)) #b,l,t,r
+x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+xL <- rowsum(x , grepl("L.",rownames(x)) )[2,] / sum(grepl("L.",rownames(x)))
+xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
+xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
+
+mL <- metadata$BV_Lactobacillus_v3 ; mL[is.na(mL)] <- 0
+mM <- metadata$BV_Monbilicus_v3    ; mM[is.na(mM)] <- 0
+mG <- metadata$BV_Vaginal_Garda_v3 ; mG[is.na(mG)] <- 0
+
+barlist( data = rbind(WS=mL ,
+                      "16S counts"=xL),
+         main = "Lactobacillus",
+         genes = c("WS","16S counts"),
+         clustering = group_annotation,
+         draw_mean_lines=F,col = pal,srt=20)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 
+barlist( data = rbind(WS=mM ,
+                      "16S counts"=xM),
+         main = "Mobiluncus",
+         genes = c("WS","16S counts"),
+         clustering = group_annotation,
+         draw_mean_lines=F,col = pal,srt=20)
+
+barlist( data = rbind(WS=mG ,
+                      "16S counts"=xG),
+         main = "Gardnerella",
+         genes = c("WS","16S counts"),
+         clustering = group_annotation,
+         draw_mean_lines=F,col = pal,srt=20)
+
+
+## C
 #####################
 # BACTERIAL PICRUST #
 #####################
@@ -142,11 +163,6 @@ lrt <- glmLRT(fit,coef=2:5)
 top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
 colnames(top) <- sub("group_annotation","",colnames(top))
 top <- cbind(LogFC.intercept=0,top) # with intercept
-
-
-#saveRDS( y , "../../../results/Picrust_EdgeR_estimations.rds" )
-#write.csv2( top , "../../../results/Picrust_EdgeR_top_dge.csv" )
-write.xlsx(top, file=paste0("../../../results/DE/","dge_picrust_",gr,"_conf.xlsx"))
 
 top_dge <- (top$FDR < 1e-5) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
 top_dge <- rownames(top)[ top_dge ]
@@ -209,8 +225,7 @@ res_list <- lapply( unique( gene_module[h$order] ),function(x){
   return(temp)
 } )
 res <- map(res_list, ~rownames_to_column(.x, var = "Terms")) %>% 
-    set_names(., paste0("module_",  seq_along(res_list)))
-write.xlsx(res, file=paste0("../../../results/ENRICHMENT/Heatmap/","KEGG","_enrichment_picrust_",gr,".xlsx"))
+    set_names(., paste0("module_",  seq_along(res_list))) 
 
 names(res_list) <- unique( gene_module[h$order] )
 
@@ -244,11 +259,9 @@ text( rev(pvalues)+strwidth("M") , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=1,x
       labels = rev(gsub("\\(\\)","",names(pvalues)) ),xpd=T)
 text( rev(pvalues)+strwidth("M") , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=1,
       labels = rev(names(pvalues)),col = paste0(taxa_pal[factor(rev(module_color))],90) ,xpd=T)
-# text( rep(max(pvalues)+.5,length(pvalues)) , seq(length(pvalues),1 )*1.2-.5,
-#       adj=0,cex=.8,labels = names(pvalues), col = taxa_pal[factor(module_color)] )
 
 
-
+## D
 ################
 # PICRUST UMAP #
 ################
@@ -260,7 +273,6 @@ UMAP_picrust <- uwot::umap(t(named_picrust_data[,sample_use]),n_neighbors = 20,
                  metric = "correlation",min_dist = .2,spread = .4,
                  repulsion_strength = .4,negative_sample_rate = 3)
 plot(UMAP_picrust,bg=pal[factor(metadata$Luminal_gr)],
-     #main="Top Functional Profile- UMAP",
      pch=21,frame=F,axes=F)
 title(main = "Top Functional Profile- UMAP", line = 0.5, cex.main = 1)
 #mtext("UMAP1", side=1, line=0.7, cex=0.8)
@@ -273,94 +285,14 @@ legend(par("usr")[2],par("usr")[4],title.adj = 0,
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 
-###################################
-# BACTERIAL VAGINOSIS COMPARISSON #
-###################################
-par(mar=c(1,1,2,1)) #b,l,t,r
-x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
-xL <- rowsum(x , grepl("L.",rownames(x)) )[2,] / sum(grepl("L.",rownames(x)))
-xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
-xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
-
-mL <- metadata$BV_Lactobacillus_v3 ; mL[is.na(mL)] <- 0
-mM <- metadata$BV_Monbilicus_v3    ; mM[is.na(mM)] <- 0
-mG <- metadata$BV_Vaginal_Garda_v3 ; mG[is.na(mG)] <- 0
-
-barlist( data = rbind(WS=mL ,
-                      counts_16S=xL),
-         main = "Lactobacillus",
-         genes = c("WS","counts_16S"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal,srt=20)
-
-#add label
-add_letter(figlabels[1]); figlabels <- figlabels[-1]
-
-
-barlist( data = rbind(WS=mM ,
-                      counts_16S=xM),
-         main = "Mobiluncus",
-         genes = c("WS","counts_16S"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal,srt=20)
-
-barlist( data = rbind(WS=mG ,
-                      counts_16S=xG),
-         main = "Gardnerella",
-         genes = c("WS","counts_16S"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal,srt=20)
-
 empty_plot()
 ```
 
-```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
-layout(matrix(c(1,
-                2,
-                3),
-              nrow = 3,ncol = 1,byrow = T), widths = c(1,1,1))
+```{r Suppl. Table 2., include=FALSE}
+#saveRDS( y , "../../../results/Picrust_EdgeR_estimations.rds" )
+top <- top %>% as_tibble(rownames="KO Terms") 
 
-###################################
-# BACTERIAL VAGINOSIS COMPARISSON #
-###################################
-par(mar=c(3,5,2,1))
-x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
-xL <- rowsum(x , grepl("L.",rownames(x)) )[2,] / sum(grepl("L.",rownames(x)))
-xM <- rowsum(x , grepl("Monbilicus",rownames(x)) )[2,] / sum(grepl("Monbilicus",rownames(x)))
-xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
-
-mL <- metadata$BV_Lactobacillus_v3 ; mL[is.na(mL)] <- 0
-mM <- metadata$BV_Monbilicus_v3    ; mM[is.na(mM)] <- 0
-mG <- metadata$BV_Vaginal_Garda_v3 ; mG[is.na(mG)] <- 0
-
-barlist( data = rbind(  BV=mL ,
-                        counts_16S=xL),
-         main = "Lactobacillus",
-         genes = c("WS","counts_16S"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal,srt=20)
-
-#add label
-add_letter(figlabels[1]); figlabels <- figlabels[-1]
-
-
-barlist( data = rbind(  BV=mM ,
-                        counts_16S=xM),
-         main = "Mobiluncus",
-         genes = c("WS","counts_16S"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal,srt=20)
-
-barlist( data = rbind(  BV=mG ,
-                        counts_16S=xG),
-         main = "Gardnerella",
-         genes = c("WS","counts_16S"),
-         clustering = group_annotation,
-         draw_mean_lines=F,col = pal,srt=20)
-
-
-
+pages <- list(list("Across"=top), res) %>% flatten()
+write.xlsx(pages, file=paste0("./Suppl.Tbl/","Suppl.Tbl.02",".xlsx"))
 ```
-
-
