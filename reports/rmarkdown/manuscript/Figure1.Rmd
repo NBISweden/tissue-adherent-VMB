@@ -1,5 +1,5 @@
 ---
-title: "Main Figure 1.Luminal Patient Grouping"
+title: "Figure 1.Luminal Patient Grouping"
 output: 
   pdf_document:
     fig_caption: yes
@@ -10,7 +10,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r Load data., message=FALSE, warning=FALSE, include=FALSE}
+```{r Load data, message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -51,7 +51,6 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 
 ```{r Figure 1., echo=FALSE, fig.asp=1, fig.height=7, fig.pos="t", fig.width=6, message=FALSE, warning=FALSE}
 figlabels <- letters
-temp_legend <- NULL
 
 layout(matrix(c(1,1,1,1,1,1,
                 2,2,2,2,2,2,
@@ -59,14 +58,14 @@ layout(matrix(c(1,1,1,1,1,1,
                 5,6,7,7,8,8,
                 5,4,7,7,8,8,
                 5,4,7,7,8,8) , ncol= 6,byrow = T),
-                               widths = c(1.9,1.4,.7,.8,.8,.7,.8),
+                               widths = c(1.87,1.42,.7,.8,.8,.7,.8),
                                heights = c(1.6,.65,1.5,.95,.9,.2))
 ### A
 #################################
 # COHORT SCHEMATIC ILLUSTRATION #
 #################################
 par(mar=c(0,3.3,0,1))
-fig1a <- magick::image_read("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/supplementary_files/Scematic figure.pdf", density = 900 )
+fig1a <- magick::image_read("../../../supplementary_files/Scematic figure.pdf", density = 900 )
 plot(c(0,1),c(0,1),axes=F,type="n",xlab="",ylab="",xaxs="i",yaxs="i")
 rasterImage(fig1a, 0, 0, 1, 1)
 
@@ -81,7 +80,6 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ASV <- list(c("Luminal_gr","ASV_CVL_V3_normalized_batch_corrected"),
           c("Tissue_gr","ASV_tissue_V3_normalized_batch_corrected")
-          #"3"="ASV_CVL_V2_normalized_NOT_batch_corrected"
          )
 div_list <- list()
 for(i in ASV){
@@ -97,7 +95,7 @@ for(i in ASV){
   divers[is.infinite(divers)] <- 0
   rownames(divers) <- c("Shannon","Simpson","Inv Simpson")
   
-  div <- tibble(shann, simp, invsimp ) %>% rename_with(., ~paste0(c("Shannon","Simpson","Inv Simpson")))
+  div <- tibble(ID=names(shann),shann, simp, invsimp ) %>% rename_with(., ~paste0(c("ID","Shannon","Simpson","Inv Simpson")))
   div_list[[length(div_list) + 1]] <- div
   
   if(i[2] == "ASV_tissue_V3_normalized_batch_corrected"){break}
@@ -106,7 +104,6 @@ for(i in ASV){
   barlist( data = divers[,order(group_annotation)],
          main = "", xlab="", #bg="white", #cex=.6, 
          genes = c("Shannon","Simpson","Inv Simpson"),
-         # clustering = group_annotation,
          draw_mean_lines=F,col = pal[gr[order(group_annotation)]])
   
   if(i[2] == "ASV_CVL_V3_normalized_batch_corrected"){
@@ -127,14 +124,9 @@ for(i in ASV){
   par(mar=c(1,5,1,1.5)) #b,l,t,r
   temp[is.nan(temp)] <- 0
 
-  if(is.null(temp_legend)){
-    temp_legend <- temp   #Use the same legend from the 1st dataset
-  }
-
   o <- order( rowSums(temp_legend) , decreasing = T)
   sample_o <- names(group_annotation)[ order( group_annotation )]
   temp <- temp[o,sample_o]*100
-  # temp <- temp[-grep("NA",rownames(temp)),]
   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
 
   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=gsub("_gr","",i[1]),font.main=1,
@@ -144,12 +136,11 @@ for(i in ASV){
         col= c("tomato","orange","#d7d7d7")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation )],
         pch=15,cex=.7,xpd=T)
   text(par("usr")[2],par("usr")[3]-2,labels = "      BV",cex=.5,xpd=T)
-  #text(x = c(2), y = 3, ']', srt = 90, cex = 3, xpd=T)
 
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-8,bg="white",
         col= c("#d7d7d7","tomato")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
         pch=15,cex=.7,xpd=T)
-  text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T) # pos=4,
+  text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T)
 
 }
 
@@ -157,32 +148,30 @@ for(i in ASV){
 ###########
 # LEGENDS #
 ###########
-par(mar=c(1,.3,0,.5)) #b,l,t,r
+par(mar=c(1,0,0,.5)) #b,l,t,r
 empty_plot()
 legend(x = -0.04, y = 1.04, 
        legend = c("L1 L. crispatus/jensenii", "L2 L. iners", "L3 Gardnerella", "L4 High diverse", "L5 Other") ,
-       xjust = 0,yjust = 1,title.adj = 0,  ncol =1, #xjust=1,
-       bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "patient groups",
+       xjust = 0,yjust = 1,title.adj = 0,  ncol =1,
+       bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "Study Groups",
        pt.bg = pal)
 
 
 par(mar=c(0,3.3,1.5,.5)) #b,l,t,r
 empty_plot()
 legend(x = par("usr")[c(1)],
-         y = par("usr")[c(4)],#title.adj = 0,
+         y = par("usr")[c(4)],
          legend = lvl[1:12],xjust = 0,yjust = 1,
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
-          #title="",
          pt.bg = taxa_pal)
 
 
-par(mar=c(0,.3,1.5,1)) #b,l,t,r
+par(mar=c(0,0,1.5,1)) #b,l,t,r
 empty_plot()
 legend(x = par("usr")[c(1)],
-         y = par("usr")[c(4)],#title.adj = 0,
+         y = par("usr")[c(4)],
          legend = lvl[13:17],xjust = 0,yjust = 1,
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
-          #title="",
          pt.bg = taxa_pal[13:17])
 
 
@@ -214,7 +203,7 @@ adj <- (1-cors)/2
 U <- uwot::umap(adj,n_neighbors = 30)
 plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(group_annotation)] , 
       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=U,
-      vertex.size=10,#main="UMAP",
+      vertex.size=10,
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 title(main = "UMAP", line = -2, cex.main = 1)
 
@@ -243,15 +232,18 @@ r <- raw_list %>%
     summarize(across(where(is.numeric), ~sum(.))) %>%
     arrange(-ASV_CVL_V3) %>%
     dplyr::rename(Luminal="ASV_CVL_V3",Tissue="ASV_tissue_V3") %>%
-    rename(Taxa="name")
-
+    rename(Taxa="name") %>%
+  mutate(across(where(is.numeric), ~round(.x, digits = 1)))
+  
 # Alfa Diversity Stats
 div_stat <- div_list %>%
   set_names(map(ASV,1)) %>%
   map(., ~summarise_all(.x, list(median=median, IQR=IQR), na.rm = TRUE)) %>%
   map(., ~pivot_longer(.x, everything(), names_sep = "_", names_to = c(".value", "Stats"), )) %>%
   bind_rows(.id = "Sample type") %>%
-  mutate("Sample type" = gsub("_gr", "", .$"Sample type"))
+  select(-ID) %>%
+  mutate("Sample type" = gsub("_gr", "", .$"Sample type")) %>%
+  mutate(across(where(is.numeric), ~round(.x, digits = 2)))
 
 # Bacterial Communities
 bac_communities <- bac_communities %>% 
