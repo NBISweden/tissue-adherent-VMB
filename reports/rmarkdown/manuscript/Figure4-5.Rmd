@@ -626,6 +626,43 @@ arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", 
 ```
 
 
+```{r Suppl. Tbl. 12, include=FALSE}
+metadata <- metadata %>% 
+  mutate(L_T_groups = paste0(.$Luminal_gr, .$Tissue_gr)) %>%
+  mutate(L_T_groups = ifelse(grepl("L2T2|L2T3", .$L_T_groups), .$L_T_groups, NA))
+
+dge_LT <- edgR_dge.fun("L_T_groups", confound=T)
+enrich_LT <- db %>%
+  map(., ~gene_mod_enrich.fun(dge_LT$top,dge_LT$y,dge_LT$c,
+                              db = .x,
+                              group_name = "L_T_groups",
+                              cuttoff = c(GO=2, KEGG=2) # c(GO=2, KEGG=2.7)
+                              ))
+
+#pal <- c("#54ba63","#ad58c6","#d03e7a","#4cb6a9","#bb6fac","#cca442","#8fb53c","#6a7ecd","#63813e","#c46570","#b3743e","#d35238")
+#plot_heatmap.fun(enrich_LT, "KEGG", "L_T_groups", "L_T_groups")
+
+t <- dge_LT$top %>% filter(PValue <= 0.01)
+
+df_across <- enframe(list(LtoT=enrich_LT)) %>%  
+  unnest_longer(value) %>%
+  mutate(res = map(.$value, "res_list")) %>%
+  unnest_longer(res) %>%
+  mutate(res = map(res, ~rownames_to_column(.x, var = "Terms"))) %>%
+  mutate(res = map(res, ~filter(.x, pvalue <= 0.01))) %>%
+  group_by(name, value_id) %>%
+  mutate(mod = row_number()) %>% ungroup() %>%
+  mutate(res = set_names(.$res, paste0(.$value_id,"_gene_module_",.$mod))) %>%
+  group_split(name) %>% set_names(., map(., ~unique(.x$name)))
+
+
+pages <- list(list("DEGs L2T2 vs L2T3"=t), df_across[[1]]$res) %>% flatten()
+write.xlsx(pages, file=paste0(out,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrichment.xlsx")) 
+```
+
+
+
+
 ```{r UMAP, eval=FALSE, fig.height=2.5, fig.width=3, include=FALSE}
 # , fig.height=3, fig.width=3.5
 ###############
@@ -664,3 +701,70 @@ dev.copy2pdf(file=paste0("./UMAP",".pdf"),
 ```
 
  <!-- -->
+ 
+## igraph network plot
+```{r igraph network, echo=FALSE, warning=FALSE} 
+# 1. Change the groups of interest by assigning condition_use
+# 2. Change the number of genes to be included in the network by changing n       # , results="hold"
+#    look at tempD_i and tempU_i to see how many genes was significant
+# 3. Adjust the size of the gene nodes and text in the graph by changing; square, circle and txt
+
+# combinations
+g <- sheets[-1]
+
+# Set enrichment conditions
+n <- 10  # maximum number of TF's to plot
+# sizes:
+square <- 10
+cricle <- 8
+txt <- .7
+  
+# Create a graph from the list of UP and DOWN regulated genes
+i_graph <- function(temp_i, n, square, cricle){
+  temp <- lapply( 1:n, function(x){ strsplit(as.character(temp_i$Genes[x]),split = ";")[[1]]  } )
+  temp <- map(temp, purrr::discard, is.na) %>% compact() # removes NA
+  names(temp) <- temp_i$Term[1:length(temp)]
+  temp2 <- lapply( names(temp) , function(x){ rep(x,length(temp[[x]])) })
+  temp <- cbind(unlist(temp2),unlist(temp))
+  g <- graph_from_data_frame(temp,directed = F)
+  v_shape <- ifelse( names(V(g)) %in% unique(temp[,1]) , "square" , "circle" )
+  v_color <- ifelse( names(V(g)) %in% unique(temp[,1]) , "honeydew" , "cornsilk" )
+  v_size <- ifelse( names(V(g)) %in% unique(temp[,1]) , square , cricle ) 
+  
+  return(list(g=g, v_shape=v_shape, v_color=v_color, v_size=v_size))
+  }
+
+
+# Test parameters
+# i <- "TF_PPI_enrichment"
+# i <- "TF_TRRUST_enrichment"
+# n <- 4
+# g <- sheets[-1]
+# condition_use <- g[1]
+# g <-  g[1]
+# temp_i_names <- paste0(strsplit(i, "enrichment"),condition_use,"_UP_", gr_name,".csv") %>% set_names()
+
+# Save all combination plots in one file
+save_pdf.fun <- function(i){
+  
+  temp_i_names <- grep(gr_name,list.files(paste0(out,i,"/",gr_name),full.names=F),value=T) %>%
+    set_names()
+  temp_i <- imap(temp_i_names, ~read.csv2(paste0(out,i,"/",gr_name,"/",.x)))
+  obj_igraph <- imap(temp_i, ~i_graph(.x, n, square, cricle))
+  pattern <-paste(g , collapse="|")
+  
+  par(mar = c(0, 0, .7, 0))  #bottom, left, top, right
+  p <- imap(obj_igraph,
+       ~with(.x, 
+               plot.igraph(g, label=V(g), 
+               main = paste0(str_extract(.y,pattern)," ",str_extract(.y, "UP|DOWN")," regulated genes"),
+               layout=layout_with_kk(g), vertex.label.color="black" ,
+               vertex.size=v_size, vertex.label.cex=txt , vertex.label.font=2, 
+               vertex.shape=v_shape, vertex.color=v_color, marigin = c(-1,-4,0,0),
+               vertex.frame.color="grey60", curved=F) 
+  ))
+  #text(0,1.15, paste0(str_extract(.y,pattern)," ",str_extract(.y, "UP|DOWN")," regulated genes"), cex=1.2, font=2)
+  dev.copy2pdf(file = paste0(out, "Plots/", gr_name, "_network_", i,".pdf", sep=""))
+}
+
+```
