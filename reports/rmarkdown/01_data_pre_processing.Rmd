@@ -103,12 +103,12 @@ return(aggregated)
 
 ```{r, echo = FALSE}
 # Load metadata
-dataset_names <- c("ASV_tissue_B2.csv",   # Tissue, Boston run 2 (95 samples)
-                     "ASV_tissue_B1.csv", # Tissue, Boston run 1 (1 sample)
+dataset_names <- c("ASV_tissue_V3_B2.csv",   # Tissue, Boston run 2 (95 samples)
+                     "ASV_tissue_V3_B1.csv", # Tissue, Boston run 1 (1 sample)
                      "ASV_CVL_V2_B1.csv", # CVL V2, Boston run 1 (27 samples)
                      "ASV_CVL_V2_B2.csv", # CVL V2, Boston run 2 (49 samples)
-                     "ASV_CVL_V2_C.csv",  # CVL V2, CTMR         (62 samples)
-                     "ASV_CVL_V3.csv") 
+                     "ASV_CVL_V2_S.csv",  # CVL V2, CTMR         (62 samples)
+                     "ASV_CVL_V3_B1.csv") # CVL V3, Boston run 1 (111 samples)
 
 datasets_ <- map(dataset_names, ~read.csv( paste0(PATH,"data/",.x))) %>% set_names(., dataset_names)
 metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
@@ -122,15 +122,30 @@ temp <- map(datasets_, ~.x  %>%
             select(Sequence, Seq_ID, Kingdom:Species, everything()) %>%
             filter(!(is.na(.$Kingdom))) %>% # Removes any kingdom being NA
             other_taxa.fun(.) %>% # create "other" taxonomy 
-            genus_lacto.fun(.)  
-            ) %>% # create genus lacto taxonomy 
+            genus_lacto.fun(.)  # create genus lacto taxonomy
+            ) %>%  
         {. ->> temp_ } %>% 
-        map(., ~aggregate.fun(., "Genus_lacto")) 
+        map(., ~aggregate.fun(., "Genus_lacto")) # agglomerate on genus/lacto spp. lvl.
 
 
 # Extract taxonomic information to file
-seq_taxa <- bind_rows(temp_) %>% select(1:11) %>% unique() 
+seq_taxa <- bind_rows(temp_, .id = "dataset") %>% select(1:12) %>% unique() 
 #write.csv(seq_taxa, paste0(PATH,"results/","SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
+
+# make long format raw non agglom ASV files
+# remove_from_CVL_V2 <- intersect(colnames(temp_[[5]]), colnames(temp_[[3]]))[-c(1:11)]
+# names <- c("ASV_tissue_V3_Boston run2","ASV_tissue_V3_Boston run1", "ASV_CVL_V2_Boston run1", 
+#                      "ASV_CVL_V2_Boston run2", "ASV_CVL_V2_Stockholm", "ASV_CVL_V3_Boston run 1") 
+# ASV_long <- temp_ %>%
+#   modify_at(., c("ASV_CVL_V2_C.csv"), ~select(.x, -any_of(remove_from_CVL_V2))) %>% 
+#   map(., ~pivot_longer(.x, matches("^P\\d"), names_to = "ID", values_to = "Reads")) %>%
+#   set_names(names ) %>%
+#   bind_rows(., .id = "dataset") %>%
+#   separate(., dataset, into=c(NA, "Sample_type", "Visit","Place_sequenced"), sep = "_", remove = F) %>% 
+#   mutate(dataset = str_extract(.$dataset, "CVL_V\\d|tissue_V3")) %>% 
+#   group_split(dataset, .keep=F) %>% set_names(c("tissue", "CVL_V2", "CVL_V3"))
+# 
+# saveRDS(ASV_long, paste0(PATH,"results/","ASV_all_data_long_format.RDS"))
 
 #arrange all datasets to have the same rownames with all bacteria
 common_microbes_fun <- function(x) {
@@ -193,6 +208,7 @@ datasets <- lapply(dataset_names, function(x){
 names(datasets) <- dataset_names
 lapply(datasets,dim)
 lapply(datasets,colnames)
+
 #arrange all datasets to have the same rownames with all bacteria
 common_microbes <- unique(unlist(lapply(datasets,rownames)))
 datasets <- lapply(datasets, function(x) {
@@ -203,12 +219,14 @@ datasets <- lapply(datasets, function(x) {
   return(temp)
 })
 lapply(datasets,dim)
+
 # datasets <- datasets[3] #in case you wanna test in 1 dataset
 # Transform phyloseq data into normalized matricies ( log2[CP1K] )
 # datasets <- lapply(datasets,function(x){
 #     x <- t(log2( t(x) / colSums(x) * 1000 + 1))
 # })
 # lapply(datasets,dim)
+
 # Extract taxonomic information to file
 taxa_info <- lapply(dataset_names, function(x){
   x <- read.csv( paste0(PATH,"data/",x))
@@ -231,6 +249,7 @@ taxa[taxa == "NA"] <- "other"
 rownames(taxa_info) <- taxa
 taxa_info <- taxa_info[! duplicated(rownames(taxa_info)),]
 write.csv2(taxa_info, paste0(PATH,"results/taxonomy.csv"),row.names = T)
+
 ```
 
 # Merging, renaming and correcting batch effects on datasets
@@ -591,6 +610,7 @@ datasets <- lapply(datasets,function(x){
 n <- c("ASV_CVL_V3", "ASV_tissue_V3", "ASV_CVL_V2")
 map2(datasets[1:3],n,  ~write.csv(.x, file=paste0(PATH,"results/",.y,"_raw_counts.csv"),row.names = T) )
 
+# normalized files
 datasets[["ASV_CVL_V3.csv"]] <- round( t(log2( t(datasets[["ASV_CVL_V3.csv"]]) / colSums(datasets[["ASV_CVL_V3.csv"]]) * 1000 + 1 )),4)
 datasets[["ASV_tissue_V3"]] <- round(t( log2( t(datasets[["ASV_tissue_V3"]]) / colSums(datasets[["ASV_tissue_V3"]]) * 1000 + 1 )),4)
 datasets[["ASV_CVL_V2_raw"]] <- round(t( log2( t(datasets[["ASV_CVL_V2_raw"]]) / colSums(datasets[["ASV_CVL_V2_raw"]]) * 1000 + 1 )),4)
