@@ -1,5 +1,5 @@
 ---
-title: "Figure 1.Luminal Patient Grouping"
+title: "Figure 1.Luminal Study Groups"
 output: 
   pdf_document:
     fig_caption: yes
@@ -124,7 +124,7 @@ for(i in ASV){
   par(mar=c(1,5,1,1.5)) #b,l,t,r
   temp[is.nan(temp)] <- 0
 
-  o <- order( rowSums(temp_legend) , decreasing = T)
+  o <- order( rowSums(temp) , decreasing = T)
   sample_o <- names(group_annotation)[ order( group_annotation )]
   temp <- temp[o,sample_o]*100
   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
@@ -142,6 +142,20 @@ for(i in ASV){
         pch=15,cex=.7,xpd=T)
   text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T)
 
+  l <- c("BV:","Normal","Intermediate","BV")
+  legend(x = 10, y = 111, #"bottom", inset = c(0, -0.5),
+         bty = "n", horiz=TRUE, cex=0.7, xpd = T, 
+         border = "white", 
+         legend = l, x.intersp=0.5, xjust=0,
+         text.width = c(0, map_dbl(l, ~strwidth(.x)/2)) ,
+         fill=c(NA, "#d7d7d7","orange","tomato"))
+  l2 <- c("HIV:","HIV-","HIV+")
+  legend(x = 80, y = 111, # bottom position: par("usr")[3]-5
+         bty = "n", horiz=TRUE, cex=0.7, xpd = T,
+         border = "white",
+         legend = l2, x.intersp=0.5, 
+         text.width =c(0, map_dbl(l2, ~strwidth(.x)/2)),
+         fill=c(NA, "#d7d7d7", "tomato"))
 }
 
 
@@ -249,7 +263,8 @@ div_stat <- div_list %>%
 bac_communities <- bac_communities %>% 
   rownames_to_column(var = "Taxa") %>%
   mutate("bacterial communities"= factor(paste0("BC",sprintf("%02d",bac_communities$x)))) %>%
-  select(-x)
+  select(-x) %>%
+  arrange(`bacterial communities`)
 
 pages <- list("Total Relative Abundance"=r ,"Alfa Diversity"=div_stat, "Bacterial Communities"=bac_communities)
 write.xlsx(pages, file=paste0("./Suppl.Tbl/","Suppl.Tbl.01",".xlsx"))
