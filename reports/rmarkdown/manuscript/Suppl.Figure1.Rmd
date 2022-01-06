@@ -1,0 +1,60 @@
+---
+title: "Bacterial abundance across datasets"
+output: 
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+header-includes: 
+- \usepackage{float}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(niceRplots)
+})  })  })
+
+#############
+# LODA DATA #
+#############
+datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+
+#################
+# COLOR PALETTS #
+#################
+Set1 <- c("#4DAF4A", "#377EB8", "#E41A1C", "#FF7F00", "#984EA3", "#FFFF33", "#A65628", "#F781BF", "#999999")
+pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
+         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
+```
+
+```{r Bacterial abundance, echo = FALSE, eval = TRUE, fig.height=3, fig.width=7}
+par(mar=c(6,2.5,1,1)) #b,l,t,r
+
+top_all <- lapply( datasets_all_samples[2:3] , function(x){
+   sort(apply(x,1,var),decreasing = T)[1:20]} )
+top <- unique( sub( ".*[.]" , "" , names(unlist(top_all)) ) )
+
+x <- t(sapply(datasets_all_samples[2:3],function(x){
+  c(t(x))
+}))
+colnames(x) <- c(sapply(rownames(datasets_all_samples[[2]]),
+                        function(i){rep(i,ncol(datasets_all_samples[[2]]))}))
+#rownames(x) <- gsub("ASV_|_norm.*", "",rownames(x))
+rownames(x) <- c("Tissue", "Luminal")
+
+top <- sort(sapply( unique(colnames(x)),
+               function(i) { mean( x[,colnames(x)==i ] ) } ),decreasing = T)
+top <- names(top)[1:30]
+
+temp <- factor(top, levels=top)
+violist(data = x[,colnames(x)%in%top],
+        genes = rownames(x),
+        clustering = factor( colnames(x)[colnames(x)%in%top],levels = top) ,
+        srt=45, cex.axis=0.7, pt.cex=0.2,
+        transparency = 50,col = pal)
+```
