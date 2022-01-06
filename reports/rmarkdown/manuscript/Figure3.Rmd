@@ -130,10 +130,10 @@ for(i in ASV){
   #add label
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
   
-  par(mar=c(1,5,1,1.5)) #b,l,t,r
+  par(mar=c(1.5,5,1,1.5)) #b,l,t,r
   temp[is.nan(temp)] <- 0
 
-  o <- order( rowSums(temp_legend) , decreasing = T)
+  o <- order( rowSums(temp) , decreasing = T)
   sample_o <- names(group_annotation)[ order( group_annotation )]
   temp <- temp[o,sample_o]*100
   temp <- rbind(temp[c(lvl[1:16]),], Other = colSums(temp[!(row.names(temp) %in% c(lvl[1:16])), ]))
@@ -141,14 +141,30 @@ for(i in ASV){
   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",
            main=gsub("_gr","",i[1]),font.main=1,names.arg = rep("",ncol(temp)),
            col = taxa_pal[factor(rownames(temp),levels = lvl)])
-  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2, bg="white",
-        col= c("tomato","orange","#d7d7d7")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation)],
-        pch=15,cex=.7,xpd=T)
-  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-8,bg="white",
+  
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2, 
+          bg="white", pch=15,cex=.7,xpd=T, 
+          col= c("tomato","orange","#d7d7d7")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation)])
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-7,bg="white",
         col= c("#d7d7d7","tomato")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
         pch=15,cex=.7,xpd=T)
   text(par("usr")[2],par("usr")[3]-2,labels = "      BV",cex=.5,xpd=T)
-  text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T) # pos=4,
+  text(par("usr")[2],par("usr")[3]-7,labels = "       HIV",cex=.5,xpd=T) # pos=4,
+  
+ l <- c("BV:","Normal","Intermediate","BV")
+  legend(x = 10, y = 111, #"bottom", inset = c(0, -0.5),
+         bty = "n", horiz=TRUE, cex=0.7, xpd = T, 
+         border = "white", 
+         legend = l, x.intersp=0.5, xjust=0,
+         text.width = c(0, map_dbl(l, ~strwidth(.x)/2)) ,
+         fill=c(NA, "#d7d7d7","orange","tomato"))
+  l2 <- c("HIV:","HIV-","HIV+")
+  legend(x = 70, y = 111, # bottom position: par("usr")[3]-5
+         bty = "n", horiz=TRUE, cex=0.7, xpd = T,
+         border = "white",
+         legend = l2, x.intersp=0.5, 
+         text.width =c(0, map_dbl(l2, ~strwidth(.x)/2)),
+         fill=c(NA, "#d7d7d7", "tomato"))
 }
 
 
@@ -170,7 +186,7 @@ r <- raw_list %>%
   bind_rows(., .id="ID") %>%
     pivot_longer(-ID) %>% 
     pivot_wider(names_from = ID, values_from = value) %>%
-    mutate_at(vars(name), ~replace(., ASV_CVL_V3<0.5514392, "Other")) %>%
+    mutate_at(vars(name), ~replace(., ASV_CVL_V3<0.55, "Other")) %>%
     group_by(name) %>%
     summarize(across(where(is.numeric), ~sum(.))) %>%
     arrange(-ASV_CVL_V3) %>%
@@ -181,7 +197,7 @@ r <- raw_list %>%
 
 par(mar=c(6,5,2,.3)) #b,l,t,r
 barplot( r, border = NA ,ylab="abundance", xlab ="", axisnames = F,
-         col = taxa_pal[factor(rownames(r),levels = rownames(r))])
+         col = taxa_pal[factor(rownames(r),levels = lvl)])
 title(main = "Total relative abundance ", line = 0.5, cex.main = .9, font.main= 1)
 mtext("Luminal        Tissue ", line = 0, cex=.6, side=1)
 
