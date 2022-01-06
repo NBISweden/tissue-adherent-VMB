@@ -173,7 +173,8 @@ pairwise_dge.fun <- function(group, fit, design) {
   #fit2 <- contrasts.fit(fit, CONTRASTS)
   #lrt_ <- glmLRT(fit2, coef = 2:5)
   lrt <- map(s, ~ glmLRT(fit, contrast = CONTRASTS[,.x]))
-  top <- map(lrt, ~topTags(.x,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]) %>% map(., ~rownames_to_column(.x, var = "Genes"))
+  top <- map(lrt, ~topTags(.x,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]) %>% 
+         map(., ~rownames_to_column(.x, var = "Genes"))
   
   results <- map_df(lrt, ~decideTests(.x, method="separate", p.value = 0.05))
   summary <- bind_cols( "FDR<0.05"= c("Down","NotSig","Up"), summary(results))
