@@ -111,7 +111,7 @@ barlist( data = rbind(WS=mL ,
          clustering = group_annotation,srt=20,
          draw_mean_lines=F,col = pal)
 mtext("Lactobacillus", side=3, las = 1, cex = .6, line = .5,xpd=T)
-mtext("Wett Smear Bacteria Validation", side=3, las = 1, cex = .6, line =1.5,xpd=T, font = 2)
+mtext("Wet Smear Bacteria Validation", side=3, las = 1, cex = .6, line =1.5,xpd=T, font = 2)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
