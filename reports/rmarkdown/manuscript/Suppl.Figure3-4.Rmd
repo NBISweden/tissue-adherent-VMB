@@ -1,0 +1,327 @@
+---
+title: "Suppl. Figure 3. & 4. Mirobiome-KEGG correlations."
+output: 
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+header-includes: 
+- \usepackage{float}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(tidyverse)
+  library(openxlsx)
+  library(fgsea)
+  library(rafalib)
+  library(Rcpp)
+  #remotes::install_github("czarnewski/niceRplots",force=T)
+  library(niceRplots)
+})  })  })
+
+#############
+# LODA DATA #
+#############
+#Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv") 
+datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+PATH <- "../../.."
+SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
+bac_communities <- read.xlsx("./Suppl.Tbl/Suppl.Tbl.01.xlsx", sheet = "Bacterial Communities")
+
+```
+
+```{r echo=FALSE}
+counts <- t(as.data.frame( lapply(datasets_all_samples,colSums) ))
+counts[is.na(counts)] <- 0
+```
+
+
+```{r, warning=FALSE, echo = FALSE,fig.width=12,fig.height=13}
+myletter <- letters
+#reprod. <- FALSE
+reprod. <- TRUE
+
+ASV <- list(c("Luminal","ASV_CVL_V3_normalized_batch_corrected"),
+            c("Tissue","ASV_tissue_V3_normalized_batch_corrected")
+               )
+# i <- ASV[[1]]
+for(i in ASV){
+  cat(paste0("Correlation between RNAseq and ",i[1], " 16S","\n"))
+  
+  # because hclust is non reproducible 
+  if(reprod. == TRUE){
+    NESes <- read.csv2(paste0("../../../results/",i[1],"_TRX_Bact_norm_enrichment_scores",".csv"), row.names = 1)
+  }else{
+    
+    TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+    bac_dataset <- datasets_all_samples[[i[2]]]
+    samples_TRX_and_CVL3 <- colnames(counts) [ colSums(counts[c("Tissue_RNAseq_V3_normalized",i[2]),] > 0)==2 ]
+    
+    #filter TRX dataset
+    TRX <- TRX [ , samples_TRX_and_CVL3 ]
+    TRX <- TRX [ rowSums(TRX>0)>= 2 , ]
+    # only top 5000 most variabe genes are included in the correlation
+    top_vars_TRX <- names(sort(apply(TRX,1,var),decreasing = T)[1:5000] )
+    TRX <- TRX[ top_vars_TRX , ]
+    dim(TRX)
+  
+    #filter bac_dataset dataset
+    bac_dataset <- bac_dataset [ , samples_TRX_and_CVL3 ]
+    # keeping taxa that is present in at least two samples :
+    bac_dataset <- bac_dataset [ rowSums(bac_dataset>0)>= 2 , ]
+    top_vars_bacs <- names(sort(apply(bac_dataset,1,var),decreasing = T)[1:100] )
+    dim(bac_dataset)
+    
+    cors <- cor( t(rbind(TRX) ) ,  t(rbind(bac_dataset) ) )
+    
+    bacteria_use <- colnames(cors)
+    gmt <- gmtPathways(paste0(PATH, "/supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt"))
+    
+    enrichments <- lapply(bacteria_use,gmt=gmt,cors=cors,function(x,gmt,cors){
+      res <- fgsea(pathways = gmt,stats = sort(cors[,x],decreasing = T),nper=10000)
+      return(res)
+    })
+    names(enrichments) <- bacteria_use
+    
+    pvalues <- lapply(enrichments,function(x) setNames(x$pval,x$pathway) )
+    pvalues <- t(as.data.frame(pvalues))
+    pvalues <- -log10( pvalues )
+    top_pathways <- names(sort(apply(pvalues,1,median),T))[1:50]  
+
+    NESes <- lapply(enrichments,function(x) setNames(x$NES,x$pathway) )
+    NESes <- t(as.data.frame(NESes))
+    NESes[is.na(NESes)] <- 0
+    # replace all NESes values with 0 if they don't have a significant p-value < 0.05:
+    NESes[ pvalues < -log10(0.05) ] <- 0 
+    # filter out bacterium and pathways with <10 significant NES scores 
+    NESes <- NESes[rowSums(NESes!=0) >= 10 , colSums(NESes!=0) >= 10]
+    
+    set.seed(1)
+    o_kegg <- hclust( as.dist( (1-cor(NESes))/2 ),"ward.D2")$order
+    o_bacs <- hclust( as.dist( (1-cor(t(NESes) ))/2 ),"ward.D2")$order
+    NESes <- NESes[o_bacs, o_kegg]
+    
+    bact <- gsub("\\.{1}", "/", rownames(NESes))
+    bact <- gsub("\\/{2}", ". ", bact)
+    rownames(NESes) <- bact
+  
+    #write.csv2(NESes, paste0("../../../results/",i[1],"_TRX_Bact_norm_enrichment_scores",".csv"))
+  
+  }
+  
+  terms <- gsub("_", " ", colnames(NESes))
+  terms <- gsub("(GO |KEGG )", "", terms, perl = TRUE)
+  colnames(NESes) <- terms
+  
+  par(mfrow=c(1,1),mar=c(12,0,2,4)) #b,l,t,r
+  image( t(NESes[nrow(NESes):1,]),col=colorRampPalette(c("navy","grey95","firebrick"))(91),breaks=seq(-3,3,length.out = 92),
+         axes=F,border=NA,main="tissue RNAseq KEGG pathways",xlab="",ylab=i,line=.4,cex.main=1,font.main=1)
+  text(  par("usr")[c(4)] , seq(1,0,length.out = nrow(NESes)),
+        labels = rownames(NESes), srt = 0, adj = c(0,.5), xpd = TRUE, cex=.4)
+  text( seq(0,1,length.out = ncol(NESes)) , par("usr")[c(1)],
+        labels = colnames(NESes), srt = 90, adj = c(1,.5), xpd = TRUE, cex=.4)
+  
+}
+
+
+```
+
+
+**Figure 9.** Heatmaps showing the functional association of microbiome datasets with the expression profiles in the RNAseq dataset. Briefly, bacterial abundances from each dataset were correlated with the gene expression of the top 5000 highly variable genes from the RNAseq dataset, generating a correlation matrix between bacteria and genes. Then for each bacteria, we rank genes based on their correlation to that bacteria and perform gene set enrichment anlaysis (GSEA) using the KEGG gene annotation database. This, in turn, will result in a matrix associating every bacteria with every KEGG process in the tissue. The heatmap shows the normalized enrichment score (NES). Only enrichments with pvalue below 0.05 are shown.Only bacterium and pathways with at least 10 significant NES scores were included in the heatmap.
+
+```{r eval=FALSE, include=FALSE}
+g <- graph_from_adjacency_matrix(as.matrix(SNN_bacteria), mode = "undirected",diag = F,weighted = T)
+cl <- igraph::cluster_louvain(g)
+cors <- cor(t(datasets_all_samples[[i]][rowSums(datasets_all_samples[[i]] > 0)>=10,]))
+
+
+module_means <- bac_communities %>%
+  left_join(as_tibble(datasets_all_samples[[i]], rownames = "Taxa"), by="Taxa")  %>%
+  group_by(bacterial.communities) %>%
+  summarise(across(where(is.numeric), ~sum(.x))) %>%
+  mutate(across(where(is.numeric), ~.x/c(table(bac_communities$bacterial.communities))) ) %>%
+  select(-bacterial.communities) %>%
+  #column_to_rownames(var="bacterial.communities") %>%
+  as.matrix() %>%
+  `rownames<-`(unique( bac_communities$bacterial.communities)) 
+bact_df <- module_means
+
+
+all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]],
+                        datasets_all_samples[["ASV_CVL_V2_normalized_NOT_batch_corrected"]])
+#cors <- cor( t(rbind(TRX) ) ,  t(rbind(bac_dataset) ) )
+
+
+module_means_per_dataset <- lapply(datasets_all_samples[[i]],function(x){
+  return( rowsum( x[bac_communities$Taxa,] , group = bac_communities$bacterial.communities ) / c(table(bac_communities$bacterial.communities)) )
+})
+
+module_means <- bac_communities %>%
+  left_join(as_tibble(datasets_all_samples[[i]], rownames = "Taxa"), by="Taxa")  %>%
+  group_by(bacterial.communities) %>%
+  summarise(across(where(is.numeric), ~sum(.x))) %>%
+  mutate(across(where(is.numeric), ~.x/c(table(bac_communities$bacterial.communities))) )
+  
+  
+  
+
+b  <-  datasets_all_samples[[i]][bac_communities$Taxa,]
+rowsum(datasets_all_samples[[i]][bac_communities$Taxa,] , group = bac_communities$bacterial.communities )
+```
+
+```{r eval=FALSE, fig.height=8, fig.width=10, include=FALSE}
+myletter <- letters
+
+NESse_list <- list()
+pvalues_list <- list()
+
+for(i in c("ASV_tissue_V3_normalized_batch_corrected",
+           "ASV_CVL_V3_normalized_batch_corrected")){
+  
+  cat(paste0("\nCorrelation between RNAseq and ",sub("_norm.*","",i)))
+  
+  TRX <- as.matrix(datasets_all_samples[["Tissue_RNAseq_V3_normalized"]])
+  bac_dataset <- module_means_per_dataset[[i]]
+  samples_TRX_and_CVL3 <- colnames(bac_dataset)
+  
+  # mypar(4,3,mar=c(4,2,2,2))
+  #filter TRX dataset
+  TRX <- TRX [ , samples_TRX_and_CVL3 ]
+  TRX <- TRX [ rowSums(TRX>0)>= 5 , ]
+  
+  #filter bac_dataset dataset
+  bac_dataset <- bac_dataset [ , samples_TRX_and_CVL3 ]
+  dim(bac_dataset)
+  
+  cors <- cor( t(rbind(TRX) ) ,  t(rbind(bac_dataset) ) )
+  dim(cors)
+  
+  bacteria_use <- colnames(cors)
+  #gmt <- gmtPathways("../../supplementary_files/h.all.v6.2.symbols.gmt.txt")
+  gmt <- gmtPathways("../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")
+  cl <- parallel::makePSOCKcluster(parallel::detectCores()-1)
+  invisible(parallel::clusterEvalQ(cl, {c("gmt","cors");library(fgsea);library(stats);library(base)}))
+  enrichments <- parallel::parLapply(cl,bacteria_use,gmt=gmt,cors=cors,function(x,gmt,cors){
+    res <- fgseaMultilevel(pathways = gmt,stats = cors[,x])
+    return(res)
+  })
+  parallel::stopCluster(cl)
+  names(enrichments) <- paste0( "bac.com.", bacteria_use )
+  
+  allpathways <- unique(unlist(lapply(enrichments,function(x){x[,1]})))
+  allpvals <- setNames(rep(NA,length(allpathways)),allpathways)
+  
+  pvalues <- lapply(enrichments,function(x){
+    temp <- allpvals
+    temp[x$pathway] <- x$pval
+    return(temp)
+  })
+  pvalues <- t(as.data.frame(pvalues))
+  pvalues <- -log10( pvalues )
+  pvalues[is.na(pvalues)] <- 0
+  
+  allNES <- setNames(rep(NA,length(allpathways)),allpathways)
+  NESes <- lapply(enrichments,function(x) {
+    temp <- allNES
+    temp[x$pathway] <- x$NES
+    return(temp)
+  })
+  NESes <- t(as.data.frame(NESes))
+  NESes[is.na(NESes)] <- 0
+  # NESes[ pvalues < -log10(0.1) ] <- 0
+
+  NESse_list[[i]] <- NESes
+  pvalues_list[[i]] <- pvalues
+  
+}
+
+write.csv2(NESse_list,"../../results/Hallmark_NESse_list.csv")
+write.csv2(pvalues_list,"../../results/Hallmark_pvalues_list.csv")
+
+common_pathways <- unique( unlist( lapply( NESse_list , function(x) colnames(x)[colSums(x!=0)>=1] ) ) )
+
+layout(matrix(c(1,2,3,4,4),nrow = 1))
+par(mar=c(6,1,2,0))
+for( i in names(NESse_list)){
+  x <- NESse_list[[i]][,common_pathways]
+  image( x[,ncol(x):1],col=colorRampPalette(c("navy","grey95","firebrick"))(91),breaks=seq(-5,5,length.out = 92),
+         axes=F,border=NA,main=sub("_norm.*","",i),xlab="",ylab="",line=.4,cex.main=1,font.main=1)
+  # add_letter(myletter); myletter <- myletter[-1]
+  text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
+      labels = rownames(x), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+}
+empty_plot(xaxs="i",yaxs="i",
+           xlim=par("usr")[c(1,2)],ylim=par("usr")[c(3,4)])
+text(  par("usr")[c(1)],seq(1,0,length.out = ncol(x)) ,
+      labels = sub("HALLMARK_","",colnames(x)), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+  
+cat("\\clearpage")
+
+#Combined representation of the two datasets
+layout(matrix(c(1,2,2,2,2),nrow = 1))
+par(mar=c(6,1,3,0))
+x <- (NESse_list[[1]][,common_pathways] + NESse_list[[2]][,common_pathways]) / 2
+x[NESse_list[[1]][,common_pathways] == 0] <- 0
+x[NESse_list[[2]][,common_pathways] == 0] <- 0
+x <- x[, colSums(x!=0)>0]
+image( x[,ncol(x):1],col=colorRampPalette(c("navy","grey95","firebrick"))(91),breaks=seq(-5,5,length.out = 92),
+       axes=F,border=NA,main="CVL_v3 + tissue_v3\ncombined",xlab="",ylab="",line=.4,cex.main=1,font.main=1)
+# add_letter(myletter); myletter <- myletter[-1]
+text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
+    labels = rev(rownames(x)), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+empty_plot(xaxs="i",yaxs="i",
+           xlim=par("usr")[c(1,2)],ylim=par("usr")[c(3,4)],main="HALLMARK")
+text(  par("usr")[c(1)],seq(0,1,length.out = ncol(x)) ,
+      labels = rev(sub("HALLMARK_","",colnames(x))), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+
+
+
+
+#Combined representation of the two datasets
+layout(matrix(c(1,1,1,1,1,2,2),nrow = 1))
+par(mar=c(6,30,3,0))
+x <- (NESse_list[[1]][,common_pathways] + NESse_list[[2]][,common_pathways]) / 2
+x[NESse_list[[1]][,common_pathways] == 0] <- 0
+x[NESse_list[[2]][,common_pathways] == 0] <- 0
+x <- x[, colSums(x!=0)>0]
+
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+non_zeros <- colSums(TRX)!=0
+TRX <- TRX [  , non_zeros ]
+pathway_means <- t(sapply( colnames(x) , function(i){
+  i <- gmt[[i]]
+  i <- as.matrix( TRX[ rownames(TRX) %in% i , ] )
+  if(ncol(i)>1){
+    i <- ( i - apply(i,1,min) ) / ( apply(i,1,max)- apply(i,1,min) )
+    i <- colMeans(i)
+  } else {
+    i <- (i - min(i)) / (max(i) - min(i))
+  }
+  return( i - min(i) )
+} ))
+plot_dots(data=pathway_means,main="patient groups",cex.main=1,font.main=1,
+        genes=rownames(pathway_means),
+        clustering=factor(metadata$joint_clustering[non_zeros]),
+        srt=0,pal=c("blue","blue","navy","navy","grey95","grey95","firebrick3","black"))
+
+
+par(mar=c(6,2,3,2))
+image( x[,ncol(x):1],col=colorRampPalette(c("navy","grey95","firebrick"))(91),breaks=seq(-5,5,length.out = 92),
+       axes=F,border=NA,main="CVL_v3 + tissue_v3\ncombined",xlab="",ylab="",line=.4,cex.main=1,font.main=1)
+# add_letter(myletter); myletter <- myletter[-1]
+text(   seq(0,1,length.out = nrow(x)) , par("usr")[c(3)] ,
+    labels = rownames(x), srt = 90, adj = c(1,.5), xpd = TRUE, cex=1)
+# empty_plot(xaxs="i",yaxs="i",
+#            xlim=par("usr")[c(1,2)],ylim=par("usr")[c(3,4)],main=" ")
+# text(  par("usr")[c(1)],seq(1,0,length.out = ncol(x)) ,
+      # labels = sub("KEGG_","",colnames(x)), srt = 0, adj = c(0,.5), xpd = TRUE, cex=1)
+
+
+```
