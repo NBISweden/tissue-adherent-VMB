@@ -93,7 +93,7 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ### B
 ###################################
-# WETT SMEAR BACTERIAL VALIDATION #
+# WET SMEAR BACTERIAL VALIDATION #
 ###################################
 par(mar=c(1,5,4,1)) #b,l,t,r
 x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
@@ -111,7 +111,7 @@ barlist( data = rbind(WS=mL ,
          clustering = group_annotation,srt=20,
          draw_mean_lines=F,col = pal)
 mtext("Lactobacillus", side=3, las = 1, cex = .6, line = .5,xpd=T)
-mtext("Wet Smear Bacteria Validation", side=3, las = 1, cex = .6, line =1.5,xpd=T, font = 2)
+mtext("Wet Smear Bacteria Validation", side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
@@ -191,7 +191,8 @@ points( rep(-.7,length(gene_module)),
 image( t(top_picrust_data[h$order,][nrow(top_picrust_data):1,order(group_annotation[sample_use])]),
        col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
        breaks = seq(-5,5,length.out = 100),axes=F)
-mtext("Differentialy Expressed KEGG Ontology Terms", side=3, las = 1, cex = .6, line =1.5,xpd=T, font = 2)
+mtext("                        Differentially expressed KEGG Ontology terms and pathways", 
+      side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
 title(xlab="Study Groups", line=1)
 
 end <- table(pal[factor(group_annotation)[ order(group_annotation[sample_use])]] )
