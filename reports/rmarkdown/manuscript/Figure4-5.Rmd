@@ -200,7 +200,6 @@ enrich_list <- function(x, gmt_list){
 ```
 
 ```{r Across tables, fig.height=4, fig.width=7, warning=F, include=FALSE}
-
 TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
 TRX_counts <- round(2^TRX - 1)
 TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
@@ -407,7 +406,7 @@ plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
   image( t(top_TRX_counts[h$order,pull(df, "ID")][nrow(top_TRX_counts):1,]),
          col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
          breaks = seq(-5,5,length.out = 100),axes=F)
-  mtext("           Differentialy Expressed Genes", side=3, las = 1, cex = .6, line =1.5,xpd=T, font = 2)
+  mtext("                                                          Differentially expressed genes and KEGG/GO pathways", side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
   title(xlab="Study Groups", line=1)
   
   end <- table(pal[factor(names(samples))[ order(df[1])]])
@@ -477,7 +476,6 @@ plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
   
   # GO
   res_list <- pluck(enrich, "GO", "res_list")
-  #top_TRX_counts <- pluck(enrich, "GO", "top_TRX_counts")[,samples]
   
   ## Gene module enrichment
   names(res_list) <- unique( gene_module[h$order] )
@@ -556,37 +554,28 @@ arrange_plots.fun <- function(degs, group, gr_name, comparison, enrichment_db, f
 
     par(mar = c(1.2, 4.7, 2.2, 1))  #bottom, left, top, right
     barplot( c(rep(NA, each=20-length(comb)), comb),  
-             xlim=c(-1.1,1.1),
-             # xlim=c(min(c(comb,-2/abs(max(abs(DD))) ))*1.1, 
-             #                          max(c(comb,2/abs(max(abs(DD)))) )*1.1), 
-                        cex.names = .9, #mar=c(1,25,2,2), #main=paste(x, i, sep="\n"),
+             xlim=c(-1.1,1.1), cex.names = .9,
              names.arg = c(rep("", each=20-length(comb)),names_DD, names_UU ), 
-             horiz = T,las= 1, border=NA,xaxt='n',line=-.2, #xlab="-log10 p-value",
+             horiz = T, las= 1, border=NA, xaxt='n', line=-.2,
              col = c(rep(NA, each=20-length(comb)), 
                      rev(colorRampPalette( c("firebrick3","gray","navy") )(19))[(comb+1)*9+1])
     )
-    title(main=paste(x, str_replace_all(i, "_"," "), sep="\n"), line = 0.1, cex.main=.9)
+    title(main=paste(x, str_replace_all(i, "_"," "), sep="\n"), line = 0.1, cex.main=1)
     
     if(x == "L1-L2" | x == "T1-T2"){add_letter("b")}
     points_y <- rev(seq(par("usr")[4]-1.45, by=-1.2, length=length(c(UU,DD))))
              points( comb , points_y,
-                     #mar=c(1,20,2,2),
                      bg=colorRampPalette( c("navy","gray","firebrick3") )(19)[(comb+1)*9+1],
                      pch=21, col="black",cex=1.5)
              lines(x=c(0, 0), y= c(points_y[1]-.6, par("usr")[4]-1)) 
              lines(x=c(-2/abs(max(abs(DD))),-2/abs(max(abs(DD)))), 
                    y= c(points_y[1]-.6, par("usr")[4]-1), lty=c(3)) # pval=0.01
              lines(x=c(2/abs(max(abs(UU))),2/abs(max(abs(UU)))), 
-                   y= c(points_y[1]-.6, par("usr")[4]-1), lty=c(3))  # pval=0.01
+                   y= c(points_y[1]-.6, par("usr")[4]-1), lty=c(3)) # pval=0.01
              text(0,points_y[1]-1.5, "-log10 p-value", xpd=T)
     }
   }
 }
-
-dev.copy2pdf(file=paste0("./test.pdf"),
-    width = 6.6,
-    height = 6, paper = "a4"
-    )
 ```
 
 ```{r Figure 4., message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
@@ -603,6 +592,12 @@ l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
 
 sheets <- excel_sheets(paste0(out, DEG_files[1])) %>% set_names(.) %>% .[-c(1:2)]
 arrange_plots.fun(enrich_L, "Luminal_gr", "Luminal", sheets, "TF_PPI_enrichment", enrichR_files[1], Layout = l)
+
+# test figure
+# dev.copy2pdf(file=paste0("./test.pdf"),
+#     width = 6.6,
+#     height = 6, paper = "a4"
+#     )
 ```
 
 ```{r Figure 5., message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
@@ -640,6 +635,7 @@ enrich_LT <- db %>%
                               cuttoff = c(GO=2, KEGG=2) # c(GO=2, KEGG=2.7)
                               ))
 
+# Plot the L2T2 vs L2T3 heatmap:
 #pal <- c("#54ba63","#ad58c6","#d03e7a","#4cb6a9","#bb6fac","#cca442","#8fb53c","#6a7ecd","#63813e","#c46570","#b3743e","#d35238")
 #plot_heatmap.fun(enrich_LT, "KEGG", "L_T_groups", "L_T_groups")
 
@@ -660,58 +656,17 @@ df_across <- enframe(list(LtoT=enrich_LT)) %>%
 pages <- list(list("DEGs L2T2 vs L2T3"=t), df_across[[1]]$res) %>% flatten()
 write.xlsx(pages, file=paste0(out,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrichment.xlsx")) 
 ```
-
-
-
-
-```{r UMAP, eval=FALSE, fig.height=2.5, fig.width=3, include=FALSE}
-# , fig.height=3, fig.width=3.5
-###############
-#  TRX UMAP   #
-###############
-plot_UMAP.fun <- function(top_TRX_counts, group){
-  #par(mar=c(4,4,2,6)) #b,l,t,r
-  par(mar=c(2.5,2.5,2,3)) #b,l,t,r
-  #par(mar=c(10,12,2,12)) #b,l,t,r
-  set.seed(1)
-  UMAP_TRX <- uwot::umap(t(top_TRX_counts),n_neighbors = 10,
-                   metric = "correlation",min_dist = 0.1,spread = 5,
-                   negative_sample_rate = 10)
-  plot(UMAP_TRX,bg=pal[factor(group)],main="UMAP on top DGE RNAseq",
-       pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
-  mtext("UMAP1", side=1, line=0.7, cex=0.8)
-  mtext("UMAP2", side=2, line=0.7, cex=0.8)
-  legend(par("usr")[2],par("usr")[4],title.adj = 0,
-         #legend = levels(factor(metadata$Luminal_gr)),
-         legend = sort(unique(group)),
-         xjust = 0,yjust = 1, cex=0.7,
-         bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
-}
-
-plot_UMAP.fun(enrich_L$GO$top_TRX_counts, metadata$Luminal_gr)
-m <- filter(metadata, !is.na(Tissue_gr)) 
-plot_UMAP.fun(enrich_T$GO$top_TRX_counts[,m$ID], m$Tissue_gr)
-
-#plot_UMAP.fun(enrich_T$GO$top_TRX_counts, metadata$Tissue_gr)
-dev.copy2pdf(file=paste0("./UMAP",".pdf"),
-    width = 4,
-    height = 3.5, paper = "a4" #units = "cm", res = 300 
-    )
-
-
-```
-
- <!-- -->
  
 ## igraph network plot
 ```{r igraph network, echo=FALSE, warning=FALSE} 
 # 1. Change the groups of interest by assigning condition_use
-# 2. Change the number of genes to be included in the network by changing n       # , results="hold"
+# 2. Change the number of genes to be included in the network by changing n
 #    look at tempD_i and tempU_i to see how many genes was significant
 # 3. Adjust the size of the gene nodes and text in the graph by changing; square, circle and txt
 
 # combinations
-g <- sheets[-1]
+sheets <- map(DEG_files, ~excel_sheets(paste0(out, .x))[-c(1:2)] ) %>%
+  map(., ~set_names(.x))
 
 # Set enrichment conditions
 n <- 10  # maximum number of TF's to plot
@@ -724,7 +679,7 @@ txt <- .7
 i_graph <- function(temp_i, n, square, cricle){
   temp <- lapply( 1:n, function(x){ strsplit(as.character(temp_i$Genes[x]),split = ";")[[1]]  } )
   temp <- map(temp, purrr::discard, is.na) %>% compact() # removes NA
-  names(temp) <- temp_i$Term[1:length(temp)]
+  names(temp) <- temp_i$`Transcription Factor`[1:length(temp)]
   temp2 <- lapply( names(temp) , function(x){ rep(x,length(temp[[x]])) })
   temp <- cbind(unlist(temp2),unlist(temp))
   g <- graph_from_data_frame(temp,directed = F)
@@ -737,35 +692,42 @@ i_graph <- function(temp_i, n, square, cricle){
 
 
 # Test parameters
-# i <- "TF_PPI_enrichment"
+# i <- "TF_PPI_Tissue"
 # i <- "TF_TRRUST_enrichment"
-# n <- 4
-# g <- sheets[-1]
-# condition_use <- g[1]
-# g <-  g[1]
-# temp_i_names <- paste0(strsplit(i, "enrichment"),condition_use,"_UP_", gr_name,".csv") %>% set_names()
+# gr_name <- "Tissue"
+# comp <- sheets
 
 # Save all combination plots in one file
-save_pdf.fun <- function(i){
+save_pdf.fun <- function(i, gr_name, comp){
+  temp_i_name <- grep(i,list.files(paste0(out),full.names=F),value=T)
+  p <- map(comp, ~read_xlsx(paste0(out, temp_i_name), sheet = .x)) 
   
-  temp_i_names <- grep(gr_name,list.files(paste0(out,i,"/",gr_name),full.names=F),value=T) %>%
-    set_names()
-  temp_i <- imap(temp_i_names, ~read.csv2(paste0(out,i,"/",gr_name,"/",.x)))
-  obj_igraph <- imap(temp_i, ~i_graph(.x, n, square, cricle))
-  pattern <-paste(g , collapse="|")
+  p_split <- p %>%
+    imap(., ~.x %>%
+          mutate(Regulation = paste0(.y, "_", .$Regulation)) %>%
+          split(., .$Regulation)
+          ) %>% compact() %>% flatten()
+  
+  obj_igraph <- imap(p_split, ~i_graph(.x, n, square, cricle))
+  
   
   par(mar = c(0, 0, .7, 0))  #bottom, left, top, right
-  p <- imap(obj_igraph,
-       ~with(.x, 
-               plot.igraph(g, label=V(g), 
-               main = paste0(str_extract(.y,pattern)," ",str_extract(.y, "UP|DOWN")," regulated genes"),
-               layout=layout_with_kk(g), vertex.label.color="black" ,
-               vertex.size=v_size, vertex.label.cex=txt , vertex.label.font=2, 
-               vertex.shape=v_shape, vertex.color=v_color, marigin = c(-1,-4,0,0),
-               vertex.frame.color="grey60", curved=F) 
-  ))
-  #text(0,1.15, paste0(str_extract(.y,pattern)," ",str_extract(.y, "UP|DOWN")," regulated genes"), cex=1.2, font=2)
-  dev.copy2pdf(file = paste0(out, "Plots/", gr_name, "_network_", i,".pdf", sep=""))
+  pdf(file = paste0(out, "Plots/", i, "_network_",".pdf", sep=""))
+    p <- imap(obj_igraph,
+         ~with(.x, 
+                 plot.igraph(g, label=V(g), page = T,
+                 main = paste0(str_replace(.y, "_", " ")," regulated genes"),
+                 layout=layout_with_kk(g), vertex.label.color="black" ,
+                 vertex.size=v_size, vertex.label.cex=txt, vertex.label.font=2, 
+                 vertex.shape=v_shape, vertex.color=v_color, marigin = c(-1,-4,0,0),
+                 vertex.frame.color="grey60", curved=F)
+               
+    ))
+    dev.off()
 }
+
+# if(isFALSE(dir.exists(paste0(out,"Plots")))){dir.create(paste0("../",result.dir),recursive = TRUE)}
+# save_pdf.fun("TF_PPI_Luminal", "Luminal", comp = sheets[[1]])
+# save_pdf.fun("TF_PPI_Tissue", "Tissue", comp = sheets[[2]])
 
 ```
