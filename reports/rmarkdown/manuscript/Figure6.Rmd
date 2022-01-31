@@ -22,6 +22,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(edgeR)
   library(openxlsx)
   library(rstatix)
+  #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
 })  })  })
 
@@ -233,7 +234,7 @@ plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
            col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
            breaks = breaks,
            axes=F)
-    mtext( "Differentialy Expressed Proteins", side=3, las = 1, cex = .7, line =1.5,xpd=T)
+    mtext( "Differentialy Expressed Proteins", side=3, las = 1, cex = .7, font = 2, line =1.5,xpd=T)
     mtext( c("Study Groups"), side=1, las = 1, cex = .7, line = 1,xpd=T)
     
     # Study group annotation
@@ -288,11 +289,10 @@ sig_stars.fun <- function(df_krusk, df_dunn, group, n = 6, order = NULL){
   
   # select only sig. cytokines 
   sig <- df_krusk %>% filter(p.adj<0.05) %>% pull(Cytokines)
-  sig_df <- cytokine_data_log[sig,samples_use$ID] %>%
-    cbind(Max = c(rep(max(.)+n, nrow(.))))
+  sig_df <- cytokine_data_log[sig,samples_use$ID]
   
   groupings <- samples_use[[group]] [ match( colnames(sig_df[,1:ncol(sig_df)-1]) , as.character(samples_use$ID)  ) ]
-  groupings <- c(groupings, "Max")
+  groupings <- c(groupings)
   
    if(is.null(order)){
     g <- rownames(sig_df)
@@ -404,45 +404,36 @@ plot_heatmap.fun(t, "Tissue_gr", scale = T)
 # Luminal Cytokine plot 
 g <- c("IL1a", "MIG", "IP10", "IL1b", "IL12_p70", "MCP1")
 Luminal <- sig_stars.fun(s$Kruskal_Luminal_gr, s$`Dunn's_Luminal_gr`, "Luminal_gr", order = g)
-temp <- as.factor(c(Luminal$groupings, "Max"))
 stars <- Luminal$stars_df
 
-par( mar=c(1.4,5,1.5,0)) #b,l,t,r 
+par( mar=c(1.4,5,1.5,2)) #b,l,t,r 
 violist(data=Luminal$sig_df,
-          srt=45,
-          genes= g,
+          srt=45, y_padding = 2, smooth = .2,
+          genes= g, #add_ylims = T, #gives starting value of y-axis and max value of all data points
           col = pal, transparency = 50,
-          clustering=c(Luminal$groupings),smooth = 2 )
+          clustering=c(Luminal$groupings))
 segments(x0 = stars$line_x0, x1 = stars$line_x1, y0 = stars$y_, y1 = stars$y_) 
 text( stars$x , stars$y_+.05,
         labels = stars$p.adj.signif, srt = 0, xpd = TRUE, cex=1)
 title(main = "Luminal gr. Cytokines", line = 0.7, cex.main = .9)
 
-rect(7, -0.5, 5.5, par("usr")[2], density = NULL, angle = 45, xpd = TRUE,
-     col = "White", border = "White", lty = par("lty"), lwd = par("lwd")
-     )
-
 add_letter("b")
 
 # Tissue Cytokine plot
 Tissue <- sig_stars.fun(s$Kruskal_Tissue_gr, s$`Dunn's_Tissue_gr`, "Tissue_gr")
-temp <- factor(Tissue$groupings, levels=c("T1","T2","T3","T4","Max"))
 stars <- Tissue$stars_df
 
-par( mar=c(24.4,6,1.5,0)) #b,l,t,r
+par( mar=c(20.4,6,1.5,3)) #b,l,t,r
 violist(data=Tissue$sig_df,
-          srt=45, 
-          genes= rownames(Tissue$sig_df),
-          col = pal, transparency = 50,
-          clustering=Tissue$groupings, smooth = 2 )
+          srt=45, y_padding = 2, smooth = .2,
+          genes= rownames(Tissue$sig_df), 
+          col = pal, transparency = 50, #add_ylims = T,
+          clustering=Tissue$groupings )
 segments(x0 = stars$line_x0, x1 = stars$line_x1, y0 = stars$y_, y1 = stars$y_) 
 text( stars$x , stars$y_+.05,
         labels = stars$p.adj.signif, srt = 0, xpd = TRUE, cex=1)
 title(main = "Tissue gr. Cytokines", line = 0.7, cex.main = .9)
 
-rect(6, -0.5, 4.5, par("usr")[2], density = NULL, angle = 45, xpd = TRUE,
-     col = "White", border = "White", lty = par("lty"), lwd = par("lwd")
-     )
 add_letter("d")
 
 ```
@@ -461,6 +452,6 @@ p.plot_T <- recordPlot()
 
 # side by side unscaled
 plot_grid(ggdraw(p.plot),ggdraw(p.plot_T), 
-          labels = c('a', 'b'),rel_widths=c(1,1), greedy = F) # , 'c', 'd'
+          labels = c('a', 'b'),rel_widths=c(1,1), greedy = F)
 
 ```
