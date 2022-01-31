@@ -1,5 +1,5 @@
 ---
-title: "Suppl. Figure 2. Differential bacterial abundance across tissue and CVL microbiome"
+title: "Suppl. Figure 2. Differential bacterial abundance across Tissue and Luminal microbiome"
 output: 
   pdf_document:
     fig_caption: yes
@@ -84,21 +84,24 @@ res <- res[abs(res$pvalue) < pvt,]
 res <- res[ (res$perc.1 > min_pct) | (res$perc.2 > min_pct) ,]
 # dim(res)
 
-write.xlsx(res, file=paste0("../../../results/","DBA_across_Luminal_vs_Tissue",".xlsx"))
+#write.xlsx(res, file=paste0("../../../results/","DBA_across_Luminal_vs_Tissue",".xlsx"))
 
-ord <- factor(sapply(unique(as.character(res$bacteria)),function(x){getcluster(all_microbiome, x, datasets)}))
+ord <- getcluster(data = all_microbiome, genes =  unique(as.character(res$bacteria)), clustering =  datasets)
+ord <- ord[unique(as.character(res$bacteria))]
+
 
 figlabels <- letters
 par(mfrow=c(1,2),mar=c(2,12,1,3.1))
-#par(mar=c(2,17,1,2)) #b,l,t,r
-plot_dots( all_microbiome , names(sort(ord)) , clustering = datasets,
+plot_dots( all_microbiome, genes = names(sort(ord)) , clustering = datasets,
            show_grid = T,cex.main=1,font.main=1,
            cex.row = .8,cex.col = .8,srt = 0)
 add_letter("a")
-barlist( all_microbiome , names(sort(ord)) , clustering = datasets,
+barlist( all_microbiome, names(sort(ord)) , clustering = datasets,
          show_grid = T,cex.main=1,font.main=1,
          cex.axis = .8,srt = 0)
 add_letter("b")
+
+dev.off()
 ```
 
 **Suppl. Figure 2.** Differential bacterial abundance across tissue and CVL microbiome week3 datasets. The results are shown both as **a)** Dot plots and **b)** barplots Bacteria with log2FC above `r fct` and p-value below `r pvt` (from the wilcoxon test) were considered significant and were sorted by the highest expression. The colour scale indicates the difference in total abundance between the datsets as a proportion, where Max is the higest abundace of the two datasets and the other becomes a proportion of this value.The size of the dots indicates the average abundance of the given bacteria in the given dataset. 
