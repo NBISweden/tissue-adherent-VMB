@@ -1,5 +1,5 @@
 ---
-title: "Bacterial abundance across datasets"
+title: "Suppl. Figure 1. Bacterial abundance across datasets"
 output: 
   pdf_document:
     fig_caption: yes
@@ -16,6 +16,7 @@ editor_options:
 ##################
 #setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
 })  })  })
 
@@ -32,8 +33,8 @@ pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
          RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
 ```
 
-```{r Bacterial abundance, echo = FALSE, eval = TRUE, fig.height=3, fig.width=7}
-par(mar=c(6,2.5,1,1)) #b,l,t,r
+```{r Bacterial abundance, echo = FALSE, eval = TRUE,  fig.asp=.5}
+par(mar=c(6,2.5,0,0)) #b,l,t,r
 
 top_all <- lapply( datasets_all_samples[2:3] , function(x){
    sort(apply(x,1,var),decreasing = T)[1:20]} )
@@ -44,7 +45,7 @@ x <- t(sapply(datasets_all_samples[2:3],function(x){
 }))
 colnames(x) <- c(sapply(rownames(datasets_all_samples[[2]]),
                         function(i){rep(i,ncol(datasets_all_samples[[2]]))}))
-#rownames(x) <- gsub("ASV_|_norm.*", "",rownames(x))
+
 rownames(x) <- c("Tissue", "Luminal")
 
 top <- sort(sapply( unique(colnames(x)),
