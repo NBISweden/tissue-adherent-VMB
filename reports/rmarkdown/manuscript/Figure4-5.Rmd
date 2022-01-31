@@ -390,8 +390,8 @@ plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
                   nrow = 2,ncol = 5,byrow = T),widths = c(1,3.5,.36,8,8))
   }else{layout(Layout[[1]],Layout[[2]],Layout[[3]])}
 
-  ## Heatmap
-  par(mar=c(4,.1,2.5,.1))
+  # Dendogram
+  par(mar=c(4,.1,2.5,.1)) #bottom, left, top, right  
   plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.2),horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T)
   title(xlab="Height", line=2)
   abline(v=cuttoff,xpd=F,col="red",lty=2)
@@ -403,33 +403,38 @@ plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
   #add label
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
   
+  # Heatmap
   image( t(top_TRX_counts[h$order,pull(df, "ID")][nrow(top_TRX_counts):1,]),
          col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
          breaks = seq(-5,5,length.out = 100),axes=F)
   mtext("                                                          Differentially expressed genes and KEGG/GO pathways", side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
   title(xlab="Study Groups", line=1)
   
+  # Study Group brackets
   end <- table(pal[factor(names(samples))[ order(df[1])]])
   end <- end[order(factor(names(end), levels = pal))]
   end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/length(samples)-.017) )
-  start <- c(0, map_dbl(end[1:4], ~.x+0.015))
+  start <- c(0, map_dbl(end[1:4], ~.x+0.017))
+  end <- c(end[1:length(end)-1], par("usr")[2]-.005)
   
-  axis(1, at = c(start, end), label = F, pos =1.027 , xpd=T, col="white",col.ticks="black")
-  map2(start, end, ~lines(x=c(.y, .x), y= c(1.027, 1.027), xpd=T, cex=.8))
+  axis(1, at = c(start, end), label = F, pos =1.029 , xpd=T, col="white",col.ticks="black")
+  map2(start, end, ~lines(x=c(.y, .x), y= c(1.029, 1.029), xpd=T, cex=.8))
   # text labels
   t <- map2(start, end, ~(.x+.y)/2)
-  map2(t,levels(factor(names(samples))), ~text(x=.x, y=1.043, .y,xpd=T, cex=.8))
+  par(mar=c(3,.2,2,.2)) #bottom, left, top, right  
+  map2(t,levels(factor(names(samples))), ~text(x=.x, y=1.045, .y,xpd=T, cex=.8))
   
   ## Meta info bars
-  points( seq(0,1,length.out = length(samples)),rep(par("usr")[4],length(samples))+.005,
+  par(mar=c(3,.1,2,.1)) #bottom, left, top, right  
+  map(c(.0025, .007), ~points( seq(0,1,length.out = length(samples)),rep(par("usr")[4],length(samples))+.x,
           col=pal[factor(names(samples))[ order(df[1])]],
-          pch=15,xpd=T,cex=.7)
+          pch=15,xpd=F,cex=.3) )
   points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.008,
           col=c("tomato","orange","#d7d7d7")[ factor(metadata[samples,"BV_Diagnosis_v3"][order(df[1])]) ],
-          pch=15,xpd=T,cex=.45) 
+          pch=15,xpd=F,cex=.3) 
   points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.022,
           col= c("#d7d7d7","tomato")[ factor(metadata[samples,"HIVstatus"][order(df[1])]) ],
-          pch=15,xpd=T,cex=.45)
+          pch=15,xpd=F,cex=.3)
   
   ## Gene module enrichment
   names(res_list) <- unique( gene_module[h$order] )
@@ -450,12 +455,13 @@ plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
   module_color <- unlist(lapply(names(res_list),function(x){ rep(x,N) }))
   
   temp <- factor( rev(gene_module), levels = unique( gene_module[h$order] ))
+  par(mar=c(4,0,2.5,.1)) #bottom, left, top, right  
   plot_sankey( data.frame(temp,temp), pal = taxa_pal[as.numeric(levels(temp))], 
                use_w2 = F , plot_labels = T ,gapv = .01,gap2v = 0 ,xaxs="i",
                yaxs="i",plot_weights = F)
   
-  text(par("usr")[1],par("usr")[3]-.008,labels = "    BV",cex=.6, xpd=T)
-  text(par("usr")[1],par("usr")[3]-.028,labels = "    HIV",cex=.6, xpd=T)
+  text(par("usr")[1]+0.008,par("usr")[3]-.008,labels = "     BV",cex=.6, xpd=T)
+  text(par("usr")[1]+0.008,par("usr")[3]-.028,labels = "      HIV",cex=.6, xpd=T)
   
   # KEGG
   if(name == "Tissue")
@@ -594,10 +600,10 @@ sheets <- excel_sheets(paste0(out, DEG_files[1])) %>% set_names(.) %>% .[-c(1:2)
 arrange_plots.fun(enrich_L, "Luminal_gr", "Luminal", sheets, "TF_PPI_enrichment", enrichR_files[1], Layout = l)
 
 # test figure
-# dev.copy2pdf(file=paste0("./test.pdf"),
-#     width = 6.6,
-#     height = 6, paper = "a4"
-#     )
+dev.copy2pdf(file=paste0("./test.pdf"),
+    width = 6.6,
+    height = 6, paper = "a4"
+    )
 ```
 
 ```{r Figure 5., message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
@@ -619,6 +625,11 @@ l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
 
 sheets <- excel_sheets(paste0(out, DEG_files[2])) %>% set_names(.) %>% .[-c(1:2)]
 arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", enrichR_files[2], Layout = l)
+
+dev.copy2pdf(file=paste0("./test.pdf"),
+    width = 6.6,
+    height = 6, paper = "a4"
+    )
 ```
 
 
