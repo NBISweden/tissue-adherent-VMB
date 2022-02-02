@@ -20,7 +20,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(scales)
   library(RColorBrewer)
-  remotes::install_github("czarnewski/niceRplots",force=T)
+  # remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
   library(openxlsx)
 })  })  })
@@ -69,8 +69,9 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 
 ```
 
-```{r Figure 3., echo=FALSE, warning=FALSE, message=FALSE, fig.width=6 ,fig.asp=1, fig.pos="t"}
-### A + B
+```{r Figure 3., echo=FALSE, warning=FALSE, message=FALSE,  fig.pos="t"}
+#  fig.width=6 ,fig.asp=1, fig.height=7,
+### A
 #############################
 # DIVERSITY + TAX ABUNDANCE #
 #############################
@@ -79,10 +80,9 @@ figlabels <- letters
 layout(matrix(c(1,1,1,1,1,1,
                 2,2,2,2,2,2,
                 3,3,6,7,4,4,
-                3,3,6,5,4,4,
-                8,8,8,8,8,8) , ncol= 6,byrow = T),
+                3,3,6,5,4,4) , ncol= 6,byrow = T),
                                widths = c(1.2,1,1.83,1.7,.85,1.4),
-                               heights = c(.7,1.5,.8,1.5,1,.8,.2))
+                               heights = c(.7,1.6,1,1.1,1,.8,.2))
 
 ASV <- list(#c("Luminal_gr","ASV_CVL_V3_normalized_batch_corrected"),
              c("Tissue_gr","ASV_tissue_V3_normalized_batch_corrected")
@@ -168,7 +168,7 @@ for(i in ASV){
 }
 
 
-### C
+### B
 ############################
 # TOTAL RELATIVE ABUNDANCE #
 ############################
@@ -195,7 +195,7 @@ r <- raw_list %>%
     column_to_rownames(var = "name") %>%
     as.matrix()
 
-par(mar=c(6,5,2,.3)) #b,l,t,r
+par(mar=c(1.5,5,2,.3)) #b,l,t,r
 barplot( r, border = NA ,ylab="abundance", xlab ="", axisnames = F,
          col = taxa_pal[factor(rownames(r),levels = lvl)])
 title(main = "Total relative abundance ", line = 0.5, cex.main = .9, font.main= 1)
@@ -205,11 +205,11 @@ mtext("Luminal        Tissue ", line = 0, cex=.6, side=1)
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 
-### D
+### C
 #############################
 # LUMINAL-TISSUE COMPARISON #
 #############################
-par(mar=c(5,1.1,2,2)) #b,l,t,r
+par(mar=c(0,1.1,2,2)) #b,l,t,r
 x <- as.character(metadata[,"Luminal_gr"])
 x[is.na(x)] <- "NA"
 y <- as.character(metadata[,"Tissue_gr"])
@@ -239,7 +239,7 @@ legend(x = -0.04,
        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "Study Groups",
        pt.bg = pal)
 
-par(mar=c(0,.2,1,.4)) #b,l,t,r
+par(mar=c(0,.2,1.5,.4)) #b,l,t,r
 empty_plot()
 legend(x = par("usr")[c(1)],
          y = par("usr")[c(4)],
@@ -247,7 +247,7 @@ legend(x = par("usr")[c(1)],
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
          pt.bg = taxa_pal)
 
-par(mar=c(0,0,1,1)) #b,l,t,r
+par(mar=c(0,0,1.5,1)) #b,l,t,r
 empty_plot()
 legend(x = par("usr")[c(1)],
          y = par("usr")[c(4)],
@@ -255,6 +255,5 @@ legend(x = par("usr")[c(1)],
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
          pt.bg = taxa_pal[13:17])
 
-empty_plot()
 ```
 
