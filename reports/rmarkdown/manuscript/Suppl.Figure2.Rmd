@@ -3,18 +3,28 @@ title: "Suppl. Figure 2. Differential bacterial abundance across Tissue and Lumi
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
+
 ```{r echo=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
@@ -40,7 +50,7 @@ pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 ```
 
 
-```{r Suppl. Figure 9, eval=T,warning=FALSE, message=FALSE,echo = FALSE,fig.width=10,fig.height=9}
+```{r Suppl.Fig.2 Diff_bact_abundance, eval=T,warning=FALSE, message=FALSE,echo = FALSE,fig.width=10,fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])
 datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ))
@@ -89,7 +99,10 @@ res <- res[ (res$perc.1 > min_pct) | (res$perc.2 > min_pct) ,]
 ord <- getcluster(data = all_microbiome, genes =  unique(as.character(res$bacteria)), clustering =  datasets)
 ord <- ord[unique(as.character(res$bacteria))]
 
-
+### A & B
+####################################
+# DIFFERENTIAL BACTERIAL ABUNDANCE #
+####################################
 figlabels <- letters
 par(mfrow=c(1,2),mar=c(2,12,1,3.1))
 plot_dots( all_microbiome, genes = names(sort(ord)) , clustering = datasets,

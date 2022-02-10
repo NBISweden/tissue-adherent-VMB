@@ -3,18 +3,28 @@ title: "Suppl. Figure 1. Bacterial abundance across datasets"
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
+
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
@@ -33,9 +43,7 @@ pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
          RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
 ```
 
-```{r Bacterial abundance, echo = FALSE, eval = TRUE,  fig.asp=.5}
-par(mar=c(6,2.5,0,0)) #b,l,t,r
-
+```{r Suppl.Fig.1 Bacterial_abundance, echo = FALSE, eval = TRUE,  fig.asp=.5}
 top_all <- lapply( datasets_all_samples[2:3] , function(x){
    sort(apply(x,1,var),decreasing = T)[1:20]} )
 top <- unique( sub( ".*[.]" , "" , names(unlist(top_all)) ) )
@@ -52,7 +60,10 @@ top <- sort(sapply( unique(colnames(x)),
                function(i) { mean( x[,colnames(x)==i ] ) } ),decreasing = T)
 top <- names(top)[1:30]
 
-temp <- factor(top, levels=top)
+###################################
+# BACTERIAL ABUNDANCE IN DATASETS #
+###################################
+par(mar=c(6,2.5,0,0)) #b,l,t,r
 violist(data = x[,colnames(x)%in%top],
         genes = rownames(x),
         clustering = factor( colnames(x)[colnames(x)%in%top],levels = top) ,

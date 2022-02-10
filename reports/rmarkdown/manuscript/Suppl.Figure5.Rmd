@@ -3,20 +3,28 @@ title: "Suppl. Figure 5. Rarefaction curves"
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
-
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(vegan)
@@ -121,7 +129,11 @@ raremax <- map(seqtabs, ~min(rowSums(.x)))
 
 ```
 
-```{r Print rare curves, warning=FALSE, echo=FALSE, fig.align="center", fig.height=6, fig.width=8, fig.asp=0.75,}
+```{r Suppl.Fig5 Rarefraction_plot, warning=FALSE, echo=FALSE, fig.align="center", fig.height=6, fig.width=8, fig.asp=0.75,}
+### A & B
+###########################
+# RAREFRACTION CURVE PLOT #
+###########################
 plot <- ggarrange(
           #rare_plot[[1]] + theme(axis.title.x=element_blank(),plot.margin=unit(c(.5,.5,.5,.5),"cm")),
           #rare_plot[[3]] + theme(axis.title.x=element_blank()),
