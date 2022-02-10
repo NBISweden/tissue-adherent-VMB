@@ -1,5 +1,5 @@
 ---
-title: "`r params$project_title`"
+title: "Improve Taxonomy Assignment"
 editor_options:
   chunk_output_type: console
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -11,11 +11,6 @@ output:
     toc: yes
     toc_float:
       collapsed: no
-params:
-  organisation: Karolinska Institutet
-  pi_mail: krisina.broliden@ki.se
-  pi_name: Kristina Broliden
-  project_title: Broliden_5325
 ---
 
 ```{r Setup, echo = FALSE}
@@ -24,7 +19,7 @@ knitr::opts_chunk$set(fig.width  = 10,
                       message    = FALSE,
                       warning    = FALSE)
 
-setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
 ```
 
 #Load libraries and functions
@@ -53,7 +48,7 @@ write.fasta <- function(df, file.out, open = "w"){
 # Loading data and metadata
 
 ```{r Get ASV and tax tables, message=FALSE}
-paths_p <- c('../../data/phyloseq_boston_r1.RDS',   # CVL V3
+paths_p <- c('../../data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVLv2)
              '../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
              '../../data/phyloseq_Sthlm.RDS')       # CVL V2, only v4 region
 
@@ -333,8 +328,8 @@ ASV_wCtrl <- seqtab.nochim.reshaped %>%
                   )
 
 #### ASV with all controls and replicate samples removed ####
-ASV_names <- c("ASV_CVL_V2_B1", "ASV_CVL_V3", "ASV_tissue_B1", 
-               "ASV_CVL_V2_B2", "ASV_tissue_B2", "ASV_CVL_V2_C" )
+ASV_names <- c("ASV_CVL_V2_B1", "ASV_CVL_V3_B1", "ASV_tissue_V3_B1", 
+               "ASV_CVL_V2_B2", "ASV_tissue_V3_B2", "ASV_CVL_V2_S" )
 ASV_list <- map(ASV, ~ .x %>%
                   filter(grepl("yes", .$Include)) %>%
                   group_split(Sample_type, Visit, .keep = T)
@@ -355,4 +350,5 @@ ASV_list <- map(ASV, ~ .x %>%
 imap(ASV_list, 
      ~write.csv(.x, file=paste0("../../data/",.y,".csv"), quote=FALSE, row.names=F) )
 
+saveRDS(ASV, paste0(PATH,"results/","ASV_wCtrl_long_format.RDS"))
 ```
