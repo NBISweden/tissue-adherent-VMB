@@ -3,7 +3,7 @@ title: "Graph Based Clustering"
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
+    toc: true
 header-includes: 
 - \usepackage{float}
 editor_options: 
