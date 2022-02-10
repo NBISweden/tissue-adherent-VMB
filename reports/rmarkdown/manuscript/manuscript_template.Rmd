@@ -1833,6 +1833,8 @@ colnames(x) <- c(sapply(rownames(datasets_all_samples[[2]]),
                         function(i){rep(i,ncol(datasets_all_samples[[2]]))}))
 rownames(x) <- gsub("ASV_|_norm.*", "",rownames(x))
 
+hist(x,breaks = 400)
+
 top <- sort(sapply( unique(colnames(x)),
                function(i) { mean( x[,colnames(x)==i ] ) } ),decreasing = T)
 top <- names(top)[1:30]
