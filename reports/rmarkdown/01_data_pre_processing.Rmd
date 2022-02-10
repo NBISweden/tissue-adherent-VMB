@@ -1,5 +1,5 @@
 ---
-title: "`r params$project_title`"
+title: "Normalization"
 editor_options:
   chunk_output_type: console
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -11,17 +11,6 @@ output:
     toc: yes
     toc_float:
       collapsed: no
-params:
-  organisation: Karolinska Institutet
-  pi_mail: prin.cipal@ki.se
-  pi_name: Prin Cipal
-  project_title: Broliden_5325
-  redmine_issue: '#5325'
-  requester_mail: kristina.broliden@ki.se
-  requester_name: Kristina Broliden
-  staff_mail: supp.ortstaff@nbis.se
-  staff_name: Supp Ortstaff
-  staff_web: https://nbis.se/about/staff/supp-ortstaff/
 ---
 
 ```{r Setup, echo = FALSE}
@@ -30,21 +19,17 @@ knitr::opts_chunk$set(fig.width  = 10,
                       message    = FALSE,
                       warning    = FALSE)
 
-setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
 ```
 
-#Load libraries and other scripts
+# Load libraries and other scripts
 
 ```{r Load data, message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
-library(igraph)
-library(rafalib)
-library(sva)
-library(batchelor)
-remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
+#remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
 library(niceRplots)
 library(tidyverse)
 })  })  })
@@ -54,13 +39,12 @@ library(tidyverse)
 #############
 PATH <- "../../" #Path to the data
 
-# Load metadata
-dataset_names <- c("ASV_tissue_V3_B2.csv",   # Tissue, Boston run 2 (95 samples)
-                     "ASV_tissue_V3_B1.csv", # Tissue, Boston run 1 (1 sample)
-                     #"ASV_CVL_V2_B1.csv", # CVL V2, Boston run 1 (27 samples)
-                     #"ASV_CVL_V2_B2.csv", # CVL V2, Boston run 2 (49 samples)
-                     #"ASV_CVL_V2_S.csv",  # CVL V2, CTMR         (62 samples)
-                     "ASV_CVL_V3_B1.csv") # CVL V3, Boston run 1 (111 samples)
+dataset_names <- c("ASV_tissue_V3_B2.csv", # Tissue, Boston run 2 (95 samples)
+                   "ASV_tissue_V3_B1.csv", # Tissue, Boston run 1 (1 sample)
+                   #"ASV_CVL_V2_B1.csv",   # CVL V2, Boston run 1 (27 samples)
+                   #"ASV_CVL_V2_B2.csv",   # CVL V2, Boston run 2 (49 samples)
+                   #"ASV_CVL_V2_S.csv",    # CVL V2, CTMR         (62 samples)
+                    "ASV_CVL_V3_B1.csv")   # CVL V3, Boston run 1 (111 samples)
 
 datasets_ <- map(dataset_names, ~read.csv( paste0(PATH,"data/",.x))) %>% set_names(., dataset_names)
 metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
@@ -133,21 +117,6 @@ temp <- map(datasets_, ~.x  %>%
 seq_taxa <- bind_rows(temp_, .id = "dataset") %>% select(1:12) %>% unique() 
 #write.csv(seq_taxa, paste0(PATH,"results/","SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
 
-# make long format raw non agglom ASV files
-# remove_from_CVL_V2 <- intersect(colnames(temp_[[5]]), colnames(temp_[[3]]))[-c(1:11)]
-# names <- c("ASV_tissue_V3_Boston run2","ASV_tissue_V3_Boston run1", "ASV_CVL_V2_Boston run1", 
-#                      "ASV_CVL_V2_Boston run2", "ASV_CVL_V2_Stockholm", "ASV_CVL_V3_Boston run 1") 
-# ASV_long <- temp_ %>%
-#   modify_at(., c("ASV_CVL_V2_C.csv"), ~select(.x, -any_of(remove_from_CVL_V2))) %>% 
-#   map(., ~pivot_longer(.x, matches("^P\\d"), names_to = "ID", values_to = "Reads")) %>%
-#   set_names(names ) %>%
-#   bind_rows(., .id = "dataset") %>%
-#   separate(., dataset, into=c(NA, "Sample_type", "Visit","Place_sequenced"), sep = "_", remove = F) %>% 
-#   mutate(dataset = str_extract(.$dataset, "CVL_V\\d|tissue_V3")) %>% 
-#   group_split(dataset, .keep=F) %>% set_names(c("tissue", "CVL_V2", "CVL_V3"))
-# 
-# saveRDS(ASV_long, paste0(PATH,"results/","ASV_all_data_long_format.RDS"))
-
 #arrange all datasets to have the same rownames with all bacteria
 common_microbes_fun <- function(x) {
   t <- bind_rows(temp) %>%
@@ -162,18 +131,9 @@ common_microbes_fun <- function(x) {
 datasets_ <- map(temp, ~common_microbes_fun(.x))
 lapply(datasets_,dim)
 
-
-# datasets <- datasets[3] #in case you wanna test in 1 dataset
-
-# Transform phyloseq data into normalized matricies ( log2[CP1K] )
-# datasets <- lapply(datasets,function(x){
-#     x <- t(log2( t(x) / colSums(x) * 1000 + 1))
-# })
-# lapply(datasets,dim)
-
 ```
 
-# Merging, renaming and correcting batch effects on datasets
+# Merging and renaming
 
 ```{r merge sequencing runs, echo = FALSE}
 datasets <- datasets_
@@ -188,6 +148,7 @@ lapply(datasets,dim)
 
 ```
 
+# normalize and save microbiome datasets
 
 ```{r save raw and norm microbiome files, echo = FALSE,fig.height=5,fig.width=5}
 
@@ -208,7 +169,7 @@ write.csv( datasets[["ASV_tissue_V3"]] , paste0(PATH,"results/ASV_tissue_V3_norm
 write.csv( datasets[["ASV_CVL_V3.csv"]] , paste0(PATH,"results/ASV_CVL_V3_normalized_batch_corrected.csv"),row.names = T )
 ```
 
-
+# normalize and save trx datasets
 
 ```{r save raw and norm trx files, echo = FALSE}
 trx <- read.csv(paste0(PATH,"data/TRX_rawcounts.csv"),row.names = 1)
