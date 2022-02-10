@@ -26,8 +26,10 @@ linkcolor: blue
 csl: nature.csl
 cslreferences: nature.csl
 bibliography: refs.bib
-editor_options: 
-  chunk_output_type: console
+editor_options:
+  chunk_output_type: console #inline
+#params:
+  #taxa_level: "Genus_lacto"
 ---
 \footnotetext[1]{University of Nowhere}
 \footnotetext[2]{University of Somewhere}
@@ -35,13 +37,15 @@ editor_options:
 
 
 ```{r Setup..., message=FALSE, warning=FALSE, include=FALSE}
+params <- "Genus_lacto"
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 options(tinytex.verbose = TRUE)
 knitr::opts_chunk$set(out.width = '100%',
                       dpi=600,
                       fig.width=10,
                       echo = FALSE,
                       # fig.pos = 'p', # Places figures on their own pages
-                      eval = TRUE, 
+                      eval = TRUE,
                       results = 'hide',
                       warning = FALSE,
                       message = FALSE )
@@ -60,22 +64,19 @@ library(rafalib)
 library(scales)
 library(dendextend)
 library(edgeR)
+library(openxlsx)
 remotes::install_github("czarnewski/niceRplots",force=T)
 library(niceRplots)
 
-#color palettes
-pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
-         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
-heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
-cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
+
 ```
 
 
 
 Abstract
 ===============================================================================
-  
-Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract 
+
+Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract Abstract
 test test test
 
 
@@ -97,7 +98,9 @@ Results
 ```{r, echo = FALSE, eval = TRUE}
 # Load reasult from the analysis
 metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1)
-patient_groups <- factor(setNames(metadata$joint_clustering,metadata$ID))
+TissueGroupM4 <- read.csv("../../../data/210411_TissueGroupM4.csv", row.names = 1)
+#patient_groups <- factor(setNames(metadata$joint_clustering,metadata$ID))
+patient_groups <- factor(setNames(metadata$ModifiedM4,metadata$ID))
 bac_communities <- as.matrix(read.csv2("../../../results/bacterial_communities.csv",row.names = 1))[,1]
 
 
@@ -112,26 +115,64 @@ picrust_taxa <- read.table("../../../data/SeqID_to_taxa.csv",header = T,row.name
 ```
 
 
+```{r}
+#color palettes
+Set1 <- c("#4DAF4A", "#377EB8", "#E41A1C", "#FF7F00", "#984EA3", "#FFFF33", "#A65628", "#F781BF", "#999999")
+pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
+         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
+heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
+cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
+```
+
 
 ```{r, echo = FALSE, eval = TRUE}
 #Assign names to patient groups
+# big_groups <- c(
+#   g1_L.crispatus= "1 NonIners",
+#   g2_L.iners=    "2 Iners",
+#   g3_Gard=   "3 Gard",
+#   g4_Prev=        "4 Prev",
+#   g5_Oth=   "5 Other"
+# )
 big_groups <- c(
-  g2_L.iners=    "5",
-  g3_L.iners2=   "4",
-  g1_L.crispatus= "2",
-  g5_Gard=        "3",
-  g6_Gard.Prev=   "6",
-  g7_Gard.Prev2=  "8",
-  g4_Gard.Lacto=  "7",
-  g8_Patho=       "1"
+  g1_L.crispatus= "NonIners",
+  g2_L.iners=     "Iners",
+  g3_Gard=        "Gard",
+  g4_Prev=        "Prev",
+  g5_Oth=         "Oth"
 )
+# big_groups <- c(
+#   g2_L.iners=    "5",
+#   g3_L.iners2=   "4",
+#   g1_L.crispatus= "2",
+#   g5_Gard=        "3",
+#   g6_Gard.Prev=   "6",
+#   g7_Gard.Prev2=  "8",
+#   g4_Gard.Lacto=  "7",
+#   g8_Patho=       "1"
+# )
 
 group_annotation <- as.character(patient_groups)
 group_annotation <- names(big_groups)[match(group_annotation,big_groups)]
-group_annotation <- as.factor(setNames(group_annotation,names(patient_groups)))
+group_annotation <- setNames(group_annotation,names(patient_groups))
+#group_annotation <- as.factor(setNames(group_annotation,names(patient_groups)))
 
 metadata$group_annotation <- group_annotation
-write.csv2(metadata,"../../../results/metadata_integration.csv",row.names = T)
+#write.csv2(metadata,"../../../results/metadata_integration_.csv",row.names = T)
+
+# modifications nessecary for dge analyser:
+metadata <- metadata %>%
+  mutate(ModifiedM4 = as.character(ModifiedM4_)) %>%
+  mutate(sexwork_months=ifelse(is.na(.$sexwork_months),
+                               mean(metadata$sexwork_months,na.rm = TRUE),.$sexwork_months))%>%
+  mutate(Contraception=ifelse(.$Contraception=="no HC", "no_HC","DMPA")) %>%
+  cbind(TissueGroupM4) %>%
+  #as_data_frame() %>%
+  #left_join(TissueGroupM4, by="ID") %>%
+  #mutate(TissueGroupM4= factor(.$TissueGroupM4)) %>%
+  select(ID, PatID, HIVstatus, Contraception, age, sexwork_months, everything())
+
+#write.csv2(metadata,"../../../results/metadata_integration_.csv",row.names = T)
 
 ```
 
@@ -143,22 +184,33 @@ bacs <- names(bac_communities)
 
 #Assign names to bacterial communities
 BC_groups <- c(
-  BC01= "BC01_Bifidobacterium",
-  BC02= "BC02_Mycoplasma",
-  BC03= "BC03_Lactobacillus.spp",
-  BC04= "BC04_Escherichia.sp",
-  BC05= "BC05_Other1",
-  BC06= "BC06_Other2",
-  BC07= "BC07_Corynebacterium.spp",
-  BC08= "BC08_Other3",
-  BC09= "BC09_Ureaplasma.sp",
-  BC10= "BC10_Campylobacter",
-  BC11= "BC11_Mobiluncus_BVAB",
-  BC12= "BC12_Faecalibacterium",
-  BC13= "BC13_Dialister",
-  BC14= "BC14_P.timonesis",
-  BC15= "BC15_T.scotoductus"
+  BC01= "BC01_Peptococcus",
+  BC02= "BC02_Lactobacillus.spp",
+  BC03= "BC03_Micrococcus",
+  BC04= "BC04_Gardnerella",
+  BC05= "BC05_Paracoccus",
+  BC06= "BC06_Pseudomonas",
+  BC07= "BC07_Prvotella",
+  BC08= "BC08_Faecalibacterium",
+  BC09= "BC09_Escherichia/Shigella"
 )
+# BC_groups <- c(
+#   BC01= "BC01_Bifidobacterium",
+#   BC02= "BC02_Mycoplasma",
+#   BC03= "BC03_Lactobacillus.spp",
+#   BC04= "BC04_Escherichia.sp",
+#   BC05= "BC05_Other1",
+#   BC06= "BC06_Other2",
+#   BC07= "BC07_Corynebacterium.spp",
+#   BC08= "BC08_Other3",
+#   BC09= "BC09_Ureaplasma.sp",
+#   BC10= "BC10_Campylobacter",
+#   BC11= "BC11_Mobiluncus_BVAB",
+#   BC12= "BC12_Faecalibacterium",
+#   BC13= "BC13_Dialister",
+#   BC14= "BC14_P.timonesis",
+#   BC15= "BC15_T.scotoductus"
+# )
 
 bac_communities <- as.character(bac_communities)
 bac_communities <- BC_groups[match(bac_communities,names(BC_groups))]
@@ -169,7 +221,7 @@ bac_communities <- as.factor(setNames(bac_communities,bacs))
 
 **Joint analysis of vaginal microbiome reveals distinct patient subgroups**
 
-To understand the longitudinal and tissue-specific microbiome profile in vaginal samples, `r nrow(metadata)` adult female sex workers were enrolled in [...]. Among those, `r sum(metadata$HIVstatus=="pos")` were previously tested positive for HIV during the cohort's sampling procedure. [Describe here what was done and when, which samples, which tissues]. 
+To understand the longitudinal and tissue-specific microbiome profile in vaginal samples, `r nrow(metadata)` adult female sex workers were enrolled in [...]. Among those, `r sum(metadata$HIVstatus=="pos")` were previously tested positive for HIV during the cohort's sampling procedure. [Describe here what was done and when, which samples, which tissues].
 
 
 To be able to better undertand the differences in microbiome profile across all datasets collected, we  performed a joint graph-based clustering analysis in order to identify co-regulated bacterial communities (see "Methods" section for details). A total of `r length(unique(bac_communities))` bacterial communities were identified.
@@ -180,7 +232,7 @@ Noticebly, bacterial community `r bac_communities["Lactobacillus iners"]` consis
 
 Patients were thus subdivided into `r length(unique(group_annotation))` groups,
 
-Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results
 
 
 \clearpage
@@ -188,7 +240,7 @@ Results Results Results Results Results Results Results Results Results Results 
 
 **Indentification of bacterial communities metabolic processes linked to Lactobacilli**
 
-Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results
 
 
 \clearpage
@@ -198,7 +250,7 @@ Results Results Results Results Results Results Results Results Results Results 
 **Indentification of bacterial communities metabolic processes linked to Lactobacilli**
 
 
-Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results 
+Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results Results
 
 
 \clearpage
@@ -207,11 +259,11 @@ Results Results Results Results Results Results Results Results Results Results 
 Discussion
 ================================================================================
 
-I have analysed data collected by Herman Bumpus [@Bumpus1898] on the relationship between sparrow (*Passer domesticus*) total length and surival following an unusually severe storm. I found that sparrows that died in the storm were longer than sparrows that survived, which suggests that higher sparrow body length decreased survival. Of course, it is not possible to definitively conclude a causal relationship between any aspect of body size and sparrow survival<!--- BD Note: maybe explain this better --->, and even the available data collected by Bumpus would permit a more thoughtful analysis than that conducted in this study (see [Appendix Table 1](#appendix)). 
+I have analysed data collected by Herman Bumpus [@Bumpus1898] on the relationship between sparrow (*Passer domesticus*) total length and surival following an unusually severe storm. I found that sparrows that died in the storm were longer than sparrows that survived, which suggests that higher sparrow body length decreased survival. Of course, it is not possible to definitively conclude a causal relationship between any aspect of body size and sparrow survival<!--- BD Note: maybe explain this better --->, and even the available data collected by Bumpus would permit a more thoughtful analysis than that conducted in this study (see [Appendix Table 1](#appendix)).
 
 <!---
 
-Here is one way to add some more detailed comments into the manuscript itself, though this can also be done within the text (see above). 
+Here is one way to add some more detailed comments into the manuscript itself, though this can also be done within the text (see above).
 
 --->
 
@@ -298,7 +350,8 @@ plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(group_annotation
       vertex.size=10,main="", layout=l,
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
-       legend = levels(factor(group_annotation)),xjust = 0,yjust = 1,
+       legend = levels(factor(group_annotation)),
+       xjust = 0,yjust = 1,
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
 
 #add label
@@ -419,9 +472,18 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 #######################
 # BACTERIAL ABUNDANCE #
 #######################
+# for Genus_lacto taxonomy:
+taxa <- read_csv("../../../results/SeqID_to_gen-lacto_tax-oth.csv") %>%
+  select(-Sequence, -Seq_ID, -taxa_other, -Species) %>%
+  unique() %>%
+  filter(!(is.na(.$Genus_lacto))) %>%
+  filter(!(.$Genus == "Granulicatella" & .$Family == "Enterococcaceae")) %>%
+  column_to_rownames(., var = "Genus_lacto")
+# For other_taxa taxonomy:
+#taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
 par(mar=c(4,5,1,12))
 temp <- t(t(2^x-1)/colSums(2^x-1))
-taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+
 taxa[is.na(taxa)] <- "NA"
 taxa <- taxa[rownames(temp),]
 temp <- rowsum(temp , taxa$Class)
@@ -429,7 +491,7 @@ temp[is.nan(temp)] <- 0
 o <- order( rowSums(temp) , decreasing = T)
 sample_o <- order( group_annotation )
 temp <- temp[o,sample_o]*100
-temp <- temp[-grep("NA",rownames(temp)),]
+#temp <- temp[-grep("NA",rownames(temp)),]
 temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
 
 taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
@@ -440,7 +502,7 @@ legend(x = par("usr")[c(2)],
        legend = rownames(temp),xjust = 0,yjust = 1,
        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
        pt.bg = taxa_pal)
-# 
+#
 # points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-1,
 #         col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][sample_o],
 #         pch=16,cex=.5,xpd=T)
@@ -448,10 +510,10 @@ legend(x = par("usr")[c(2)],
 #         col= c("grey","red")[as.numeric(metadata$HIVstatus)][sample_o],
 #         pch=16,cex=.5,xpd=T)
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2,
-        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order( group_annotation )],
+        col= c("red","orange","grey")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation )],
         pch=15,cex=.8,xpd=T)
-  text(par("usr")[1],par("usr")[3]-2,labels = "RepeatedPCR",pos=2,cex=.8,xpd=T)
-  
+  text(par("usr")[1],par("usr")[3]-2,labels = "BV Diagnosis",pos=2,cex=.8,xpd=T)
+
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-6,
         col= c("grey","red")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
         pch=15,cex=.8,xpd=T)
@@ -475,19 +537,21 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```{r, echo = FALSE, eval = TRUE,fig.asp=.6}
 # Define Layout and set labels
-layout(matrix(c(2 ,3,4,5,      6,7,17,17,          17,17,17,17,
-                1,1,1,1,      1,8,17,17,          17,17,17,17,
-                1,1,1,1,      1,9,18,18,         18,18,18,18,
-                1,1,1,1,      1,10,19,19,         19,19,19,19,
-                16,15,14,13,  12,11,20,20,         20,20,20,20 ) , ncol= 12,byrow = T),widths = 1,heights = c(1.2,1.2,1.2,1.2,1.2))
-# layout.show(12)
+layout(matrix(c(2,3,4,5,      6,7,11,11,          11,11,11,11,
+                1,1,1,1,      1,8,11,11,          11,11,11,11,
+                1,1,1,1,      1,9,12,12,         12,12,12,12,
+                1,1,1,1,      1,10,13,13,         13,13,13,13,
+                0,0,0,0,      0,0,14,14,         14,14,14,14 
+                ) , 
+              ncol= 12,byrow = T),widths = 1,heights = c(1.5,1.2,1.2,1.2,1.2))
+# layout.show(3)
 figlabels <- letters
-# 
+#
 # m <- matrix(as.character(c(1,2,3,4)),nrow = 2,ncol = 2)
 # m
 # m2 <- matrix(as.character(c(1,2,3,"m")),nrow = 2,ncol = 2)
 # m2
-# 
+#
 # matrix(c(1,2,j,3),nrow = 2,ncol = 2)
 # layout_matrix <- function(data, nrow, ncol){
 #   return( matrix(as.character(data), nrow = nrow, ncol = ncol)  )
@@ -502,19 +566,19 @@ figlabels <- letters
 #   
 #   temp2 <- matrix(1,nrow = nrow(data),ncol = ncol(data))
 #   temp3 <- temp2 * heights
-#   temp4 <- t( t( temp2 ) * widths ) 
+#   temp4 <- t( t( temp2 ) * widths )
 #   temp2 <- matrix( "" , ncol = res , nrow = res )
 #   
 #   
 #   for(i in 1:nrow(temp)){
 #     for(j in 1:ncol(temp)){
-#       temp2 <- 
+#       temp2 <-
 #     }
 #   }
 #   temp <- apply(temp,1,function(x){rep( x , widths/ )})
 #   return(   )
 # }
-# 
+#
 # m <- layout_matrix(c(1,2,3,4),2,2)
 # m2 <- layout_matrix(c(1,2,3,"m"),2,2)
 
@@ -531,7 +595,7 @@ lB <- layout_nicely(gB,niter=3000,start.temp=30)
 par(mar=c(0,0,0,10))
 plot( gB , vertex.label.cex=0.000001 , vertex.color = pal[factor(bac_communities)] ,
       edge.width=  ( E(gB)$weight / max(E(gB)$weight)) ,
-      vertex.size=10,main="", 
+      vertex.size=10,main="",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(gB)$weight / max(E(gB)$weight) * 88 )+1 ] ,layout=lB)
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
        legend = levels(factor(bac_communities)),xjust = 0,yjust = 1,
@@ -555,21 +619,21 @@ for(j in sort(unique(bac_communities)) ){
 ###################################
 # BACTERIAL VAGINOSIS COMPARISSON #
 ###################################
-taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
-taxa[is.na(taxa)] <- "NA"
+# for Genus_lacto taxonomy:
+taxa <- read_csv("../../../results/SeqID_to_gen-lacto_tax-oth.csv") %>%
+  select(-Sequence, -Seq_ID, -taxa_other, -Species) %>%
+  unique() %>%
+  filter(!(is.na(.$Genus_lacto))) %>%
+  filter(!(.$Genus == "Granulicatella" & .$Family == "Enterococcaceae")) %>%
+  column_to_rownames(., var = "Genus_lacto")
+# for other taxa
+# taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+# taxa[is.na(taxa)] <- "NA"
 
+#par(mar=c(1,10,1,15))
 par(mar=c(1,10,1,15))
 x <- taxa[match(rownames(SNN_bacteria),rownames(taxa)),2]
 y <- taxa[match(rownames(SNN_bacteria),rownames(taxa)),3]
-# plot_sankey( data.frame( x[y!="NA"] , y[y!="NA"]), color_by = 1,
-#        plot_labels = T, plot_weights = F,order_1_by = "total",
-#        order_2_by = "total",use_w1 = T,use_w2 = T,gapv = .02,gap2v = 0,smoothing = .1,
-#        pal=hue_pal()(length(unique(x))))
-
-# plot_sankey( data.frame( y[y!="NA"] , bac_communities[y!="NA"]), color_by = 1,
-#      plot_labels = T, plot_weights = F,order_1_by = "total",
-#      order_2_by = "total",use_w1 = T,use_w2 = T,gapv = .02,gap2v = 0,smoothing = .1,
-#      pal=hue_pal()(length(unique(y))))
 
 plot_sankey( data.frame( x[y!="NA"] , bac_communities[y!="NA"]), color_by = 1,
      plot_labels = T, plot_weights = F,order_1_by = "total",
@@ -587,7 +651,7 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 module_means_per_dataset <- lapply(datasets_all_samples[-1],function(x){
   return( rowsum( x[rownames(SNN_bacteria),] , group = bac_communities ) / c(table(bac_communities)) )
 })
-# 
+#
 par(mar=c(2,10,2,6))
 plot_dots_difference(data = module_means_per_dataset[[2]],
                      data2 = module_means_per_dataset[[3]],
@@ -621,7 +685,8 @@ named_picrust_data[1:20,1:3]
 dim(named_picrust_data)
 named_picrust_data <- round(named_picrust_data[ rowSums(named_picrust_data>5)>=5, ])
 
-design <- model.matrix(~group_annotation, data=metadata[sample_use,])
+design <- model.matrix(~ group_annotation+Contraception+HIVstatus+age+sexwork_months, 
+                       data=metadata[sample_use,])
 
 y <- DGEList(counts=named_picrust_data[,sample_use])
 y <- calcNormFactors(y,method = "TMM")
@@ -629,10 +694,10 @@ y <- estimateGLMCommonDisp(y)
 y <- estimateGLMTagwiseDisp(y)
 fit <- glmFit(y, design)
 
-lrt <- glmLRT(fit,coef=2:8)
+lrt <- glmLRT(fit,coef=2:9)
 top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
 colnames(top) <- sub("group_annotation","",colnames(top))
-top <- cbind(logFC.Gard=0,top)
+top <- cbind(LogFC.intercept=0,top) # with intercept
 
 
 saveRDS( y , "../../../results/Picrust_EdgeR_estimations.rds" )
@@ -668,10 +733,10 @@ image( t(top_picrust_data[h$order,][nrow(top_picrust_data):1,order(group_annotat
        col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
        breaks = seq(-5,5,length.out = 100),axes=F)
 points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[4],length(sample_use)),
-        col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
+        col=pal[factor(group_annotation[sample_use])[ order(group_annotation[sample_use])]],
         pch=16)
 points( seq(0,1,length.out = ncol(top_picrust_data)),rep(par("usr")[3],ncol(top_picrust_data))-.005,
-        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order(group_annotation[sample_use])],
+        col= c("red","orange","grey")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation )],
         pch=16,xpd=T)
 points( seq(0,1,length.out = ncol(top_picrust_data)),rep(par("usr")[3],ncol(top_picrust_data))-.01,
         col= c("grey","red")[as.numeric(metadata$HIVstatus)][order(group_annotation[sample_use])],
@@ -723,12 +788,12 @@ text( rev(pvalues)+1 , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=.8,
 #       adj=0,cex=.8,labels = names(pvalues), col = taxa_pal[factor(module_color)] )
 
 
-mypar(2,3,mar=c(2,2,2,6))
+mypar(2.5,2.5,mar=c(2.5,2.5,2,6))
 set.seed(1)
 UMAP_picrust <- uwot::umap(t(named_picrust_data),n_neighbors = 20,
                  metric = "correlation",min_dist = .2,spread = .4,
                  repulsion_strength = .4,negative_sample_rate = 3)
-plot(UMAP_picrust,bg=pal[group_annotation[sample_use]],main="UMAP on top functional profile",
+plot(UMAP_picrust,bg=pal[factor(group_annotation[sample_use])],main="UMAP on top functional profile",
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
        legend = levels(factor(group_annotation)),xjust = 0,yjust = 1,
@@ -744,7 +809,35 @@ legend(par("usr")[2],par("usr")[4],title.adj = 0,
 
 
 ```{r, echo = FALSE, eval = TRUE}
-taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
+genus_lacto.fun <- function(df){
+  genus_lacto <- df %>%
+    mutate(Genus_lacto = .$Genus, .after=Seq_ID) %>% 
+    mutate(Genus_lacto = ifelse(grepl("crispatus",.$Species), paste(.$Genus_lacto, "crispatus/acidophilus"), 
+                                ifelse(grepl("reuteri",.$Species), paste(.$Genus_lacto, "reuteri/oris/frumenti/antri"),
+                                  ifelse(grepl("gasseri",.$Species), paste(.$Genus_lacto,"gasseri/johnsonii/taiwanensis"),
+                                    ifelse(grepl("murinus",.$Species), paste(.$Genus_lacto,"murinus/animalis/apodemi/salivarius"),
+                                      ifelse(grepl("plantarum",.$Species), 
+                                           paste(.$Genus_lacto, "plantarum/fabifermentans/composti/paraplantarum/graminis/fuchuensis"),
+                                        ifelse(grepl("Lactobacillus",.$Genus), paste(.$Genus, .$Species), 
+                                              as.character(.$Genus_lacto))))))) )
+  return(genus_lacto)
+} 
+
+picrust_taxa <- read_csv("../../../results/SeqID_to_gen-lacto_tax-oth.csv") %>%
+  column_to_rownames(var = "Seq_ID") %>%
+  mutate(Genus_lacto = ifelse(is.na(.$Genus_lacto), "NA", .$Genus_lacto))
+  #mutate(Genus_lacto = ifelse(is.na(.$Genus_lacto), "NA_", .$Genus_lacto))
+
+
+# for Genus_lacto taxonomy:
+taxa <- read_csv("../../../results/SeqID_to_gen-lacto_tax-oth.csv") %>%
+  select(-Sequence, -Seq_ID, -taxa_other, -Species) %>%
+  unique() %>%
+  filter(!(is.na(.$Genus_lacto))) %>%
+  filter(!(.$Genus == "Granulicatella" & .$Family == "Enterococcaceae")) %>%
+  column_to_rownames(., var = "Genus_lacto")
+# for other taxa
+#taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
 dim(picrust_taxa)
 dim(picrust_KO_seq)
 
@@ -771,14 +864,15 @@ picrust_KO_seq <- picrust_KO_seq[,common]
 
 picrust_KO_seq[1:100,1:100]
 
-picrust_KO_seq <- rowsum(picrust_KO_seq , picrust_taxa[ match( rownames(picrust_KO_seq) , as.character(picrust_taxa$Seq_ID)  ),"final_name"])
+picrust_KO_seq <- rowsum(picrust_KO_seq , picrust_taxa[ match( rownames(picrust_KO_seq) , rownames(picrust_taxa)  ), params])
 picrust_KO_seq <- as.matrix(picrust_KO_seq)
 
 picrust_KO_seq[,1]
 
 sub(" [(].*","",names(pvalues))[1]
 
-
+#p <- sub(" [(].*","",names(pvalues))
+#x <- p 
 
 ress <- sapply( sub(" [(].*","",names(pvalues)) , function(x){
   inn <- colnames(picrust_KO_seq) [ colnames(picrust_KO_seq) %in% names(gmt_list[[x]] ) ]
@@ -826,13 +920,8 @@ add_size_legend(labels = c("0%","50%","100%"),max.cex = 2.2, min.cex = .2)
 \clearpage
 
 ## Figure 3
-
-```{r, echo = FALSE, eval = TRUE}
-# Define Layout and set labels
-layout(matrix(c(1) , ncol= 1,byrow = T),
-       heights = c(1))
-figlabels <- letters
-
+## individual group comparison DGE
+```{r}
 TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
 TRX_counts <- round(2^TRX - 1)
 TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
@@ -840,39 +929,142 @@ sample_use <- colnames(TRX_counts)[colSums(TRX_counts)!=0]
 TRX_counts <- TRX_counts[,sample_use]
 
 library(edgeR)
+#group <- "TissueGroupM4"
+#group <- "group_annotation"
+edgR_dge.fun <- function(group, confound) {
+  groups <- metadata[sample_use, group]
+  
+  if(confound==FALSE) {
+    c <- "_no_conf"
+    design <- model.matrix(~  groups, data=metadata[sample_use,])} # without confounders
+  else{
+    c <- "_w_conf"
+    # design <- model.matrix(~groups+HIVstatus+Contraception+age+sexwork_months,
+    #                      data=metadata[sample_use,])
+    design <- model.matrix(~groups+HIVstatus+Contraception,
+                         data=metadata[sample_use,])
+  }
+  #design <- model.matrix(~0 + groups+Contraception+HIVstatus+age+sexwork_months, 
+                         #data=metadata[sample_use,]) # without intercept
+  
+  colnames(design) <- sub("groups","",colnames(design))
+  colnames(design) <- sub("(Intercept)","Intercept",colnames(design))
+  
+  y <- DGEList(counts=TRX_counts[,sample_use], remove.zeros = T)
+  y <- calcNormFactors(y,method = "TMM")
+  y <- estimateGLMCommonDisp(y,design)
+  y <- estimateGLMTagwiseDisp(y,design)
+  fit <- glmFit(y, design)
+  
+  #lrt <- glmLRT(fit,coef=1:ncol(design)) # without intercept
+  lrt <- glmLRT(fit,coef=2:5) # with intercept
+  top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+  colnames(top) <- sub(group,"",colnames(top))
+  top <- cbind(LogFC.intercept=0,top) # with intercept
+  top <-  rownames_to_column(top, var = "Genes")
+  
+  saveRDS( y , paste0("../../../results/TRX_EdgeR_estimations_",group,c,".rds" ))
+  #write.xlsx(top, file=paste0("../../../results/DGE/","dge_heatmap_",group,c,".xlsx"))
+  write.xlsx(top, file=paste0("../../../results/DGE/","dge_heatmap_",group,"_2:5_conf_2.xlsx"))
+  #write.csv2( top , paste0("../../../results/DGE/TRX_EdgeR_top_dge_",group,".csv" ))
+  
+return(list(design=design, y=y, fit=fit, lrt=lrt, top=top, c=c))
+}
 
-design <- model.matrix(~  group_annotation, data=metadata[sample_use,])
+dge_M4 <- edgR_dge.fun("ModifiedM4", confound=T)
+#dge_M4_nonconfound <- edgR_dge.fun("ModifiedM4", confound=F)
+#dge_TissueM4 <- edgR_dge.fun("TissueGroupM4", confound=T)
 
-y <- DGEList(counts=TRX_counts[,sample_use], remove.zeros = T)
-y <- calcNormFactors(y,method = "TMM")
-y <- estimateGLMCommonDisp(y,design)
-y <- estimateGLMTagwiseDisp(y,design)
-fit <- glmFit(y, design)
-
-lrt <- glmLRT(fit,coef=2:8)
-top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
-colnames(top) <- sub("group_annotation","",colnames(top))
-top <- cbind(logFC.Gard=0,top)
-
-saveRDS( y , "../../../results/TRX_EdgeR_estimations.rds" )
-write.csv2( top , "../../../results/TRX_EdgeR_top_dge.csv" )
-
-top_dge <- (top$PValue < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
-top_dge <- rownames(top)[ top_dge ]
-
-top_TRX_counts <- cpm(y,normalized.lib.sizes = T,log = T)[top_dge, ]
-top_TRX_counts <- t(apply(top_TRX_counts,1,function(x){scale(x,T,T)}))
-top_TRX_counts[top_TRX_counts > 5] <- 5
-colnames(top_TRX_counts) <- colnames(TRX_counts)
+```
 
 
-h <- hclust( as.dist( (1- cor(t(top_TRX_counts)))/2 ), method = "ward.D2")
-cuttoff <- 2
-gene_module <- cutree(h, h=cuttoff)
+```{r, echo = FALSE, eval = TRUE}
+# Define Layout and set labels
+layout(matrix(c(1) , ncol= 1,byrow = T),
+       heights = c(1))
+figlabels <- letters
+
+# group_name <- "ModifiedM4"
+# top <- dge_M4$top
+# y <- dge_M4$y
+# c <- dge_M4$c
+gene_mod_enrich.fun <- function(top, y, c, db, group_name, cuttoff){
+  p_val <- pull(top, "PValue")
+  top_dge <- (p_val < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+  top_dge <- top$Genes[ top_dge ]
+  
+  top_TRX_counts <- cpm(y,normalized.lib.sizes = T,log = T)[top_dge, ]
+  top_TRX_counts <- t(apply(top_TRX_counts,1,function(x){scale(x,T,T)}))
+  top_TRX_counts[top_TRX_counts > 5] <- 5
+  colnames(top_TRX_counts) <- colnames(TRX_counts)
+  
+  
+  h <- hclust( as.dist( (1- cor(t(top_TRX_counts)))/2 ), method = "ward.D2")
+  cuttoff <- cuttoff[names(cuttoff) == db]
+  gene_module <- cutree(h, h=cuttoff)
+  
+  source("../enrichment_function.R")
+  if(db == "GO"){
+  gmt_list <- fgsea::gmtPathways("../../../supplementary_files/c5.bp.v6.2.symbols.gmt.txt")}else{
+  gmt_list <- fgsea::gmtPathways("../../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")}
+  res_list <- lapply( unique( gene_module[h$order] ),function(x){
+    temp <- compute_enrichment(genes = names(gene_module)[gene_module==x],
+                              gmt_list = gmt_list,
+                              min_terms_pathway = 10,
+                              max_terms_pathway = 300,
+                              min_overlap = 3,
+                              sort_by_pvalue = T)
+    temp <- temp[!grepl("REGULATION",rownames(temp)),]
+    return(temp)
+  } )
+  res <- map(res_list, ~rownames_to_column(.x, var = "Terms")) %>% 
+    set_names(., paste0("gene_module_",  seq_along(res_list)))
+  #write.xlsx(res, file=paste0("../../../results/ENRICHMENT/",db,"_enrichment_heatmap_",group_name,c,".xlsx"))
+  write.xlsx(res, file=paste0("../../../results/ENRICHMENT/",db,"_enrichment_heatmap_",group_name,"_2:5_conf_2.xlsx"))
+  
+  return(list(res_list=res_list, top_TRX_counts=top_TRX_counts, 
+              gene_module=gene_module, cuttoff=cuttoff, h=h, c=c))
+}
+
+db <- c("GO", "KEGG")
+heatmap_cvlM4 <- map(db, ~gene_mod_enrich.fun(dge_M4$top,dge_M4$y,dge_M4$c,
+                                              .x,"ModifiedM4", 
+                                              #cuttoff= c(GO=4, KEGG=3.5)
+                                              cuttoff= c(GO=2.5, KEGG=3)
+                                              )) %>% set_names(db)
+
+heatmap_cvlM4_nonconfound <- map(db,~gene_mod_enrich.fun(dge_M4_nonconfound$top,
+                                                      dge_M4_nonconfound$y,
+                                                      dge_M4_nonconfound$c,
+                                                      .x,"ModifiedM4",
+                                                      cuttoff= c(GO=2.5, KEGG=2)
+                                                      )) %>% set_names(db)
+
+# heatmap_tissueM4 <- map(db, ~gene_mod_enrich.fun(dge_TissueM4$top,
+#                                                  dge_TissueM4$y,
+#                                                  .x,"TissueM4", 
+#                                                  cuttoff=)) %>% set_names(db)
+
+###########
+#   GO    #
+###########
+gr <- heatmap_cvlM4_nonconfound
+gr <- heatmap_cvlM4
+
+name <- "ModifiedM4"
+groups <- metadata[sample_use, name]
+conf <- pluck(gr, "GO", "c")
+h <- pluck(gr, "GO", "h")
+cuttoff <- pluck(gr, "GO", "cuttoff")
+res_list <- pluck(gr, "GO", "res_list")
+top_TRX_counts <- pluck(gr, "GO", "top_TRX_counts")
+gene_module <- pluck(gr, "GO", "gene_module")
+
 
 layout(matrix(c(1,2,3,4,
               1,2,3,4),
-              nrow = 2,ncol = 4,byrow = T),widths = c(1,2,.5,6))
+              nrow = 2,ncol = 4,byrow = T),widths = c(1,2,.4,6)) #1,2,.3,8
+## Heatmap
 par(mar=c(4,.1,2,.1))
 plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.2),horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T,xlab="height")
 # rect.dendrogram(rev(as.dendrogram(h)),h = 2,horiz = TRUE)
@@ -883,39 +1075,109 @@ points( rep(-.1,length(gene_module)),
         pch=16,cex=.5,xpd=T)
 
 
-image( t(top_TRX_counts[h$order,order(group_annotation[sample_use])][nrow(top_TRX_counts):1,]),
+image( t(top_TRX_counts[h$order,order(groups)][nrow(top_TRX_counts):1,]),
        col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
        breaks = seq(-5,5,length.out = 100),axes=F , xlab="patient groups")
-points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[3] - .01,length(sample_use)),
-        col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
-        pch=16,xpd=T)
 
+## Meta info bars
+points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[4],length(sample_use)),
+        col=pal[factor(groups)[ order(groups)]],
+        pch=16)
 points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.005,
-        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order(group_annotation[sample_use])],
+        col= c("red","orange","grey")[as.numeric(metadata[sample_use,"BV_Diagnosis_v3"])][order( groups )],
+        pch=16,xpd=T) 
+points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.015,
+        col= c("grey","red")[as.numeric(metadata[sample_use,"HIVstatus"])][order(groups)],
         pch=16,xpd=T)
-points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.01,
-        col= c("grey","red")[as.numeric(metadata$HIVstatus)][order(group_annotation[sample_use])],
-        pch=16,xpd=T)
 
-
-
-source("../enrichment_function.R")
-gmt_list <- fgsea::gmtPathways("../../../supplementary_files/c5.bp.v6.2.symbols.gmt.txt")
-res_list <- lapply( unique( gene_module[h$order] ),function(x){
-  temp <- compute_enrichment(genes = names(gene_module)[gene_module==x],
-                            gmt_list = gmt_list,
-                            min_terms_pathway = 10,
-                            max_terms_pathway = 300,
-                            min_overlap = 3,
-                            sort_by_pvalue = T)
-  temp <- temp[!grepl("REGULATION",rownames(temp)),]
-  return(temp)
-} )
+## Gene module enrichment
 names(res_list) <- unique( gene_module[h$order] )
 
 pvalues <- unlist(lapply(res_list,function(x){ -log10(x$pvalue) [1:5] }))
 pvalues[is.na(pvalues)] <- 0
 terms <- unlist(lapply(res_list,function(x){ rownames(x) [1:5] }))
+#terms <- unlist(lapply(res_list,function(x){ x$Terms [1:5] }))
+terms[is.na(terms)] <- ""
+genes <- unlist(lapply(res_list,function(x){ x$genes [1:5] }))
+genes[is.na(genes)] <- ""
+
+pvalues <- setNames(pvalues,paste0(terms," (",genes,")"))
+module_color <- unlist(lapply(names(res_list),function(x){ rep(x,5) }))
+
+temp <- factor( rev(gene_module), levels = unique( gene_module[h$order] ))
+plot_sankey( data.frame(temp,temp), pal = taxa_pal[as.numeric(levels(temp))] , use_w2 = F , plot_labels = T ,gapv = .01,gap2v = 0 ,xaxs="i",yaxs="i",plot_weights = F)
+
+par(mar=c(4,.1,2,20))
+
+barplot( rev(pvalues) , horiz = T , col= taxa_pal[factor(rev(module_color))],
+         xaxs="i",yaxs="i",xlim=c(0,1.2*max(pvalues)),ylab="",xlab="-log10(pvalue)",las=1,names.arg = "",xpd = FALSE)
+points( rev(pvalues), seq(1,length(pvalues) )*1.2-.5,pch=21,bg=taxa_pal[factor(rev(module_color))] )
+text( rev(pvalues)+1.5 , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=.8,xpd=T,
+      labels = rev(names(pvalues)))
+text( rev(pvalues)+1.5 , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=.8,
+      labels = rev(sub(" [(].*","",names(pvalues)) ),col = paste0(taxa_pal[factor(rev(module_color))],90) ,xpd=T)
+# text( rep(max(pvalues)+.5,length(pvalues)) , seq(length(pvalues),1 )*1.2-.5,
+#       adj=0,cex=.8,labels = names(pvalues), col = taxa_pal[factor(module_color)] )
+
+#dev.copy2pdf(file=paste0("../../../results/Plots/","2:5_DGE_heatmap_GO_",name,conf,".pdf"), 
+dev.copy2pdf(file=paste0("../../../results/Plots/","2:5_DGE_heatmap_GO_","M4_conf_2",".pdf"),
+    width = 6.5,
+    height = 6, paper = "a4" #units = "cm", res = 300 
+    )
+
+###########
+#  KEGG   #
+###########
+gr <- heatmap_cvlM4_nonconfound
+gr <- heatmap_cvlM4
+
+name <- "ModifiedM4"
+groups <- metadata[sample_use, name]
+conf <- pluck(gr, "KEGG", "c")
+cuttoff <- pluck(gr, "KEGG", "cuttoff")
+h <- pluck(gr, "KEGG", "h")
+res_list <- pluck(gr, "KEGG", "res_list")
+top_TRX_counts <- pluck(gr, "KEGG", "top_TRX_counts")
+gene_module <- pluck(gr, "KEGG", "gene_module")
+
+
+layout(matrix(c(1,2,3,4,
+              1,2,3,4),
+              nrow = 2,ncol = 4,byrow = T),widths = c(1,2,.4,6)) #1,2,.3,8
+par(mar=c(4,.1,2,.1))
+
+## Heatmap
+plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.2),horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T,xlab="height")
+# rect.dendrogram(rev(as.dendrogram(h)),h = 2,horiz = TRUE)
+abline(v=cuttoff,xpd=F,col="red",lty=2)
+points( rep(-.1,length(gene_module)),
+        seq(length(gene_module),1,length.out = length(gene_module)),
+        col=taxa_pal[factor(gene_module[h$order])],
+        pch=16,cex=.5,xpd=T)
+
+
+image( t(top_TRX_counts[h$order,][nrow(top_TRX_counts):1,order(groups)]),
+       col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
+       breaks = seq(-5,5,length.out = 100),axes=F , xlab="patient groups")
+
+## Meta info bars
+points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[4],length(sample_use)),
+        col=pal[factor(groups)[ order(groups)]],
+        pch=16)
+points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.005,
+        col= c("red","orange","grey")[as.numeric(metadata[sample_use,"BV_Diagnosis_v3"])][order( groups )],
+        pch=16,xpd=T)
+points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.015,
+        col= c("grey","red")[as.numeric(metadata[sample_use,"HIVstatus"])][order(groups)],
+        pch=16,xpd=T)
+
+## Gene module enrichment
+names(res_list) <- unique( gene_module[h$order] )
+
+pvalues <- unlist(lapply(res_list,function(x){ -log10(x$pvalue) [1:5] }))
+pvalues[is.na(pvalues)] <- 0
+terms <- unlist(lapply(res_list,function(x){ rownames(x) [1:5] }))
+#terms <- unlist(lapply(res_list,function(x){ x$Terms [1:5] }))
 terms[is.na(terms)] <- ""
 genes <- unlist(lapply(res_list,function(x){ x$genes [1:5] }))
 genes[is.na(genes)] <- ""
@@ -939,91 +1201,32 @@ text( rev(pvalues)+1 , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=.8,
 #       adj=0,cex=.8,labels = names(pvalues), col = taxa_pal[factor(module_color)] )
 
 
+#dev.copy2pdf(file=paste0("../../../results/Plots/","2:5_DGE_heatmap_KEGG_",name,conf,".pdf"), 
+dev.copy2pdf(file=paste0("../../../results/Plots/","2:5_DGE_heatmap_KEGG_","M4_conf_2",".pdf"), 
+    width = 6.5,
+    height = 6, paper = "a4" #units = "cm", res = 300
+)
 
-
-
-layout(matrix(c(1,2,3,4,
-              1,2,3,4),
-              nrow = 2,ncol = 4,byrow = T),widths = c(1,2,.5,6))
-par(mar=c(4,.1,2,.1))
-
-plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.2),horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T,xlab="height")
-# rect.dendrogram(rev(as.dendrogram(h)),h = 2,horiz = TRUE)
-abline(v=cuttoff,xpd=F,col="red",lty=2)
-points( rep(-.1,length(gene_module)),
-        seq(length(gene_module),1,length.out = length(gene_module)),
-        col=taxa_pal[factor(gene_module[h$order])],
-        pch=16,cex=.5,xpd=T)
-
-
-image( t(top_TRX_counts[h$order,][nrow(top_TRX_counts):1,order(group_annotation[sample_use])]),
-       col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
-       breaks = seq(-5,5,length.out = 100),axes=F , xlab="patient groups")
-points( seq(0,1,length.out = length(sample_use)),rep(par("usr")[3] - .01,length(sample_use)),
-        col=pal[group_annotation[sample_use][ order(group_annotation[sample_use])]],
-        pch=16,xpd=T)
-
-source("../enrichment_function.R")
-gmt_list <- fgsea::gmtPathways("../../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")
-res_list <- lapply( unique( gene_module[h$order] ),function(x){
-  temp <- compute_enrichment(genes = names(gene_module)[gene_module==x],
-                            gmt_list = gmt_list,
-                            min_terms_pathway = 10,
-                            max_terms_pathway = 300,
-                            min_overlap = 3,
-                            sort_by_pvalue = T)
-  temp <- temp[!grepl("REGULATION",rownames(temp)),]
-  return(temp)
-} )
-names(res_list) <- unique( gene_module[h$order] )
-
-pvalues <- unlist(lapply(res_list,function(x){ -log10(x$pvalue) [1:5] }))
-pvalues[is.na(pvalues)] <- 0
-terms <- unlist(lapply(res_list,function(x){ rownames(x) [1:5] }))
-terms[is.na(terms)] <- ""
-genes <- unlist(lapply(res_list,function(x){ x$genes [1:5] }))
-genes[is.na(genes)] <- ""
-
-pvalues <- setNames(pvalues,paste0(terms," (",genes,")"))
-module_color <- unlist(lapply(names(res_list),function(x){ rep(x,5) }))
-
-temp <- factor( rev(gene_module), levels = unique( gene_module[h$order] ))
-plot_sankey( data.frame(temp,temp), pal = taxa_pal[as.numeric(levels(temp))] , use_w2 = F , plot_labels = T ,gapv = .01,gap2v = 0 ,xaxs="i",yaxs="i",plot_weights = F)
-
-par(mar=c(4,.1,2,30))
-
-barplot( rev(pvalues) , horiz = T , col= taxa_pal[factor(rev(module_color))],
-         xaxs="i",yaxs="i",xlim=c(0,1.2*max(pvalues)),ylab="",xlab="-log10(pvalue)",las=1,names.arg = "")
-points( rev(pvalues), seq(1,length(pvalues) )*1.2-.5,pch=21,bg=taxa_pal[factor(rev(module_color))] )
-text( rev(pvalues)+1 , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=.8,xpd=T,
-      labels = rev(names(pvalues)))
-text( rev(pvalues)+1 , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=.8,
-      labels = rev(sub(" [(].*","",names(pvalues)) ),col = paste0(taxa_pal[factor(rev(module_color))],90) ,xpd=T)
-# text( rep(max(pvalues)+.5,length(pvalues)) , seq(length(pvalues),1 )*1.2-.5,
-#       adj=0,cex=.8,labels = names(pvalues), col = taxa_pal[factor(module_color)] )
-
-
-
-
-
-
-
-
-
-
-mypar(2,3,mar=c(2,2,2,6))
+###########
+#  UMAP   #
+###########
+mypar(3,3,mar=c(3,3,2,6))
 set.seed(1)
 UMAP_TRX <- uwot::umap(t(top_TRX_counts),n_neighbors = 10,
                  metric = "correlation",min_dist = 0.1,spread = 5,
                  negative_sample_rate = 10)
-plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main="UMAP on top DGE RNAseq",
+plot(UMAP_TRX,bg=pal[factor(groups)],main="UMAP on top DGE RNAseq",
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
 legend(par("usr")[2],par("usr")[4],title.adj = 0,
-       legend = levels(factor(group_annotation)),xjust = 0,yjust = 1,
+       #legend = levels(factor(groups)),
+       legend = sort(unique(groups)),
+       xjust = 0,yjust = 1,
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
 
 
-
+###############
+#  HALLMARK   #
+###############
 
 NESse_list <- read.csv2("../../../results/Hallmark_NESse_list.csv",row.names = 1)
 NESse_list <- lapply(unique(sub("[.].*","",colnames(NESse_list))),function(x){
@@ -1053,7 +1256,7 @@ df %>% group_by(bc)  %>% top_n(3,NES) -> top_per_bc
 df %>% group_by(bc)  %>% top_n(-3,NES) ->  bottom_per_bc
 
 as.data.frame(top_per_bc)
-  
+
 mypar(1,2,mar=c(4,10,2,4))
 for(i in 1:2){
 x <- NESse_list[[i]]
@@ -1092,6 +1295,105 @@ add_size_legend(labels = c("> 0.01","< 1e-6","< 1e-10"),max.cex = 2.2, min.cex =
 (**c**) Schematic representation of ########## .
 (**d**) Schematic representation of ########## .
 
+
+```{r}
+## individual group comparision ##
+# for information about how to get pairwise comparison se:
+# edgeR User’s Guide section 3.4.2 Blocking and 4.2.8  Differential expression
+# https://www.bioconductor.org/packages/release/bioc/vignettes/edgeR/inst/doc/edgeRUsersGuide.pdf
+pairwise_dge.fun <- function(group, fit, design) {
+  groups <- metadata[sample_use, group]
+  levels <- as.character(sort(unique(groups)))
+  
+  # without intercept:
+  n <- combn(levels,2) 
+  g <- map_chr(seq_along(1:ncol(n)), ~paste(n[1,.x], n[2,.x], sep = "-"))
+  s <- seq_along(1:ncol(n)) %>% set_names(g)
+  #name <- map_chr(seq_along(1:ncol(n)), ~paste(str_extract(n[1,.x], "^g."), str_extract(n[2,.x], "^g."), sep = "_"))
+  
+  # with intercept:
+  g <- sub(paste0("^(",levels[1], ")-(.*)"), '-\\2', g)
+  
+  CONTRASTS <- makeContrasts( contrasts=g,
+                              levels = design )
+  
+  lrt <- map(s, ~ glmLRT(fit, contrast = CONTRASTS[,.x]))
+  top <- map(lrt, ~topTags(.x,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]) %>% map(., ~rownames_to_column(.x, var = "Genes"))
+  
+  #saveRDS(top, file = "./TopTable_all_groups_06.04.2021.RDS")
+  #saveRDS(top, file = "./TopTable_ModifiedM4_pairwise_17.05.2021.RDS")
+return(list(lrt=lrt, top=top, CONTRASTS=CONTRASTS))
+}
+pairwise_dge_M4 <- pairwise_dge.fun("ModifiedM4", 
+                                    fit=dge_M4$fit, 
+                                    design=dge_M4$design )
+# pairwise_dge_TissueM4 <- pairwise_dge.fun("TissueGroupM4", 
+#                                           fit=dge_TissueM4$fit, 
+#                                           design=dge_TissueM4$design)
+
+# save TopTables 
+l_top <- list(ModifiedM4 = pairwise_dge_M4$top) # TissueM4 = pairwise_dge_TissueM4$top
+imap(l_top, ~write.xlsx(.x, #file=paste0("../../../results/DGE","dge_pairwise_",.y,".xlsx"))) # Excel
+file=paste0("../../../results/DGE/","dge_pairwise_",.y,"_2:5_conf_2",".xlsx"))) # Excel
+## end of individual group comparision ##
+
+## individual GO/KEGG comparison ##
+source("../enrichment_function.R")
+gmt_list_KEGG <- fgsea::gmtPathways("../../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")
+gmt_list_GO <- fgsea::gmtPathways("../../../supplementary_files/c5.bp.v6.2.symbols.gmt.txt")
+enrich_list <- function(x, gmt_list){
+  temp <- compute_enrichment(genes = x,
+                            gmt_list = gmt_list,
+                            min_terms_pathway = 10,
+                            max_terms_pathway = 300,
+                            min_overlap = 3,
+                            sort_by_pvalue = T)
+  temp <- temp[!grepl("REGULATION",rownames(temp)),]
+  temp <- rownames_to_column(temp, var = "Terms")
+  return(temp)
+} 
+
+#info_logFC <- map(top, ~table(abs(.x$logFC) > 1))
+#info_PValue <- map(top, ~table(.$PValue < 0.01))
+
+# up and down regulated genes seperatly
+t_split <- modify_depth(l_top, 2, ~ .x %>%
+        dplyr::filter(., .$PValue < 0.01) %>%
+        #dplyr::filter(., abs(.$logFC) < 1) %>%
+        mutate(., reg = ifelse(.$logFC > 0, "up", "down")) %>%
+        split(., .$reg)
+  )
+# up and down regulated genes toghether
+t <- modify_depth(l_top, 2,~ .x %>%
+        dplyr::filter(., .$PValue < 0.01) #%>%
+        #dplyr::filter(., abs(.$logFC) < 1) 
+  )
+
+## GO enrichment rownames(.x)
+GO_enrichment <- map_depth(t, 2, ~enrich_list(.x$Genes, gmt_list_GO))
+GO_enrichment_split <- map_depth(t_split, 3, ~enrich_list(.x$Genes, gmt_list_GO)) %>%
+  map_depth(., 2, ~bind_rows(.x, .id = "regulation")) %>% 
+  set_names(., paste0(names(.), "_split"))
+
+## KEGG enrichment
+KEGG_enrichment <- map_depth(t, 2, ~enrich_list(.x$Genes, gmt_list_KEGG))
+KEGG_enrichment_split <- map_depth(t_split, 3, ~enrich_list(.x$Genes, gmt_list_KEGG)) %>%
+  map_depth(., 2, ~bind_rows(.x, .id = "regulation")) %>% 
+  set_names(., paste0(names(.), "_split"))
+ 
+## save files
+enrich_KEGG <- list(KEGG_enrichment, KEGG_enrichment_split) %>% flatten()
+enrich_GO <- list(GO_enrichment, GO_enrichment_split) %>% flatten()
+imap(enrich_KEGG, ~write.xlsx(.x, #file=paste0("../../../results/ENRICHMEN/T","GO_enrichment_pairwise_",.y,".xlsx"))) # Excel
+file=paste0("../../../results/ENRICHMENT/","GO_enrichment_pairwise_",.y,"_2:5_conf_2",".xlsx"))) # Excel
+imap(enrich_GO, ~write.xlsx(.x, #file=paste0("../../../results/ENRICHMENT/","KEGG_enrichment_pairwise_",.y,".xlsx"))) # Excel
+file=paste0("../../../results/ENRICHMENT/","KEGG_enrichment_pairwise_",.y, "_2:5_conf_2",".xlsx"))) # Excel
+
+## end of individual GO comparison ##
+```
+
+
+
 \clearpage
 
 
@@ -1116,10 +1418,10 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
            "ASV_CVL_V2_normalized_NOT_batch_corrected",
            "ASV_tissue_V3_normalized_batch_corrected")){
   x <- datasets_all_samples[[i]]
-  
+
   par(mar=c(1,5,1,1))
   temp <- t(t(2^x-1)/colSums(2^x-1))
-  
+
   shann <- vegan::diversity(t(temp),index = c("shannon") )
   simp <- vegan::diversity(t(temp),index = c("simpson") )
   invsimp <- vegan::diversity(t(temp),index = c("invsimpson") )
@@ -1132,27 +1434,27 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
          # clustering = group_annotation,
          draw_mean_lines=F,col = pal[factor(group_annotation[order(group_annotation)])])
 
-  
+
   #add label
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-  
+
   par(mar=c(3,5,1,1))
   # taxa <- read.csv2("../../../results/taxonomy.csv",row.names = 1,stringsAsFactors = F,as.is = T)
   # taxa[is.na(taxa)] <- "NA"
   # taxa <- taxa[rownames(temp),]
   # temp <- rowsum(temp , taxa$Class)
   temp[is.nan(temp)] <- 0
-  
-  if(is.null(temp_legend)){ 
+
+  if(is.null(temp_legend)){
     temp_legend <- temp   #Use the same legend from the 1st dataset
   }
-  
+
   o <- order( rowSums(temp_legend) , decreasing = T)
   sample_o <- names(group_annotation)[ order( group_annotation )]
   temp <- temp[o,sample_o]*100
   # temp <- temp[-grep("NA",rownames(temp)),]
   temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
-  
+
   taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
   barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=sub("_nor.*","",i),font.main=1,
            col = taxa_pal[factor(rownames(temp),levels = rownames(temp))] ,names.arg = rep("",ncol(temp)))
@@ -1162,10 +1464,10 @@ for(i in c("ASV_CVL_V3_normalized_batch_corrected",
   #        bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
   #        pt.bg = taxa_pal)
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2,
-        col= c("grey","red")[(!is.na(metadata$RepeatedPCR))+1][order( group_annotation )],
+        col= c("grey","red", "black")[(!is.na(metadata$BV_Diagnosis_v3))+1][order( group_annotation )],
         pch=15,cex=1,xpd=T)
   text(par("usr")[1],par("usr")[3]-2,labels = "RepeatedPCR",pos=2,cex=.8,xpd=T)
-  
+
   points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-6,
         col= c("grey","red")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
         pch=15,cex=1,xpd=T)
@@ -1178,7 +1480,9 @@ par(mar=c(4,0,1,0))
 empty_plot()
 legend(x = par("usr")[c(1)],
          y = par("usr")[c(4)],title.adj = 0,
-         legend = levels(group_annotation),xjust = 0,yjust = 1,
+         legend = sort(unique(group_annotation)),
+         #legend = levels(group_annotation),
+         xjust = 0,yjust = 1,
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "patient groups",
          pt.bg = pal)
 
@@ -1203,8 +1507,8 @@ temp_legend <- NULL
 continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
 continuous_metadata <- metadata[,continuous_parameters]
 # continuous_metadata <- cbind(continuous_metadata , t(module_means_per_dataset[[i]]) )
-  
-  
+
+
 mypar(1,4,mar=c(12,1,1,0))
 
 for(i in c("ASV_CVL_V3_normalized_batch_corrected",
@@ -1352,7 +1656,7 @@ datasets <- datasets_all_samples[grep("ASV",names(datasets_all_samples))]
 datasets <- lapply(datasets,t)
 datasets <- t( as.data.frame(datasets) )
 
-group_means <- sapply(levels(group_annotation), function(x){
+group_means <- sapply(levels(factor(group_annotation)), function(x){
   rowMeans( datasets[ , group_annotation == x ] )
 })
 
@@ -1385,18 +1689,20 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 ## Figure S4
 
 ```{r, echo = FALSE, eval = TRUE,fig.asp=1.3}
-layout( matrix(1:(16*8), 16,8,byrow = F) )
+#layout( matrix(1:(16*8), 16,8,byrow = F) )
+layout( matrix(1:(10*8), 10,8,byrow = F) )
 par(mar=c(.5,.5,1,.5))
 
 figlabels <- letters
 for(j in names(module_means_per_dataset)){
-  
-  plot(UMAP_picrust,bg=pal[group_annotation],main=gsub("ASV_|_norm.*","",j),
+
+  plot(UMAP_picrust,bg=pal[factor(group_annotation[sample_use])],
+       main=gsub("ASV_|_norm.*","",j),
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-  
+
   for(i in 1:nrow(module_means_per_dataset[[j]])){
-  
+
     xx <- module_means_per_dataset[[j]][i,]
     xx <- xx / max(xx)
     o <- order(xx)
@@ -1426,19 +1732,20 @@ for(i in 1:nrow(module_means_per_dataset[[j]])){
 ## Figure S5
 
 ```{r, echo = FALSE, eval = TRUE,fig.asp=1.3}
-layout( matrix(1:(16*8), 16,8,byrow = F) )
+#layout( matrix(1:(16*8), 16,8,byrow = F) )
+layout( matrix(1:(10*8), 10,8,byrow = F) )
 par(mar=c(.5,.5,1,.5))
 
 
 figlabels <- letters
 for(j in names(module_means_per_dataset)){
-  
-  plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main=gsub("ASV_|_norm.*","",j),
+
+  plot(UMAP_TRX,bg=pal[factor(group_annotation[sample_use])],main=gsub("ASV_|_norm.*","",j),
      pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
   add_letter(figlabels[1]); figlabels <- figlabels[-1]
-  
+
   for(i in 1:nrow(module_means_per_dataset[[j]])){
-  
+
     xx <- module_means_per_dataset[[j]][i,][sample_use]
     xx <- xx / max(xx)
     o <- order(xx)
@@ -1526,6 +1833,8 @@ colnames(x) <- c(sapply(rownames(datasets_all_samples[[2]]),
                         function(i){rep(i,ncol(datasets_all_samples[[2]]))}))
 rownames(x) <- gsub("ASV_|_norm.*", "",rownames(x))
 
+hist(x,breaks = 400)
+
 top <- sort(sapply( unique(colnames(x)),
                function(i) { mean( x[,colnames(x)==i ] ) } ),decreasing = T)
 top <- names(top)[1:30]
@@ -1544,10 +1853,45 @@ violist(data = x[,colnames(x)%in%top],
 ## Figure S9
 
 
-```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
+figlabels <- letters
 
+cytokine_data <- read.csv("../../../data/210125_Cytokines_visit3CVL.csv")
+cytokine_data$ID <- metadata [ match( cytokine_data$PatID , as.character(metadata$PatID)  ) ,"ID" ]
+cytokine_data <- cytokine_data[ !is.na(cytokine_data$ID) , ]
+rownames(cytokine_data) <- cytokine_data$ID
+cytokine_data <- cytokine_data[,grepl("CVL",colnames(cytokine_data))]
+colnames(cytokine_data) <- sub("CVL_","",colnames(cytokine_data))
+cytokine_data <- t(cytokine_data)
+cytokine_data[is.na(cytokine_data)] <- 0.35
+cytokine_data <- log2(cytokine_data+1)
+
+groupings <- metadata$group_annotation [ match( colnames(cytokine_data) , as.character(metadata$ID)  ) ]
+mypar(1,3,mar=c(6,5,1,5))
+
+plot_dots(data=cytokine_data,
+          srt=45,
+          genes=rownames(cytokine_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+barlist(data=cytokine_data,
+          srt=45,
+          genes=rownames(cytokine_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+violist(data=cytokine_data,
+          srt=45,
+          genes=rownames(cytokine_data),
+          col = pal, transparency = 50,
+          clustering=groupings,smooth = 2 )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```
+
 
 
 \clearpage
@@ -1555,7 +1899,265 @@ violist(data = x[,colnames(x)%in%top],
 ## Figure S10
 
 
-```{r, echo = FALSE, eval = TRUE, fig.show='hide'}
+```{r, echo = FALSE, eval = TRUE,fig.asp=.8}
+figlabels <- letters
+
+IF_data <- read.csv("../../../data/200105_CD4Ecad_Visit3LAMIQ.csv")
+IF_data$ID <- metadata [ match( IF_data$PatID , as.character(metadata$PatID)  ) ,"ID" ]
+IF_data <- IF_data[ !is.na(IF_data$ID) , ]
+rownames(IF_data) <- IF_data$ID
+IF_data <- IF_data [ , -c(1:3)]
+IF_data <- IF_data [ , -ncol(IF_data)]
+IF_data <- t(IF_data)
+# IF_data[is.na(IF_data)] <- 0
+# IF_data <- log2(IF_data+1)
+
+groupings <- metadata$group_annotation [ match( colnames(IF_data) , as.character(metadata$ID)  ) ]
+
+
+mypar(1,3,mar=c(6,15,1,4))
+plot_dots(data=IF_data,
+          srt=45,
+          genes=rownames(IF_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+barlist(data=IF_data,
+          srt=45,
+          genes=rownames(IF_data),
+          col = pal,
+          clustering=groupings )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+violist(data=IF_data,
+          srt=45,
+          genes=rownames(IF_data),
+          col = pal, transparency = 50,
+          clustering=groupings,smooth = 2 )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+```
+
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
+
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+
+
+mypar(1,3,mar=c(6,15,1,4))
+plot_dots(data=as.matrix(t(metadata[,continuous_parameters])),
+          srt=45,
+          genes=continuous_parameters,
+          col = pal,
+          clustering=metadata$group_annotation )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+barlist(data=as.matrix(t(metadata[,continuous_parameters])),
+          srt=45,
+          genes=continuous_parameters,
+          col = pal,
+          clustering=metadata$group_annotation )
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+# violist(data=as.matrix(t(metadata[,continuous_parameters])),
+#           srt=45,
+#           genes=continuous_parameters,
+#           col = pal, transparency = 50,
+#           clustering=metadata$group_annotation,smooth = 2 )
+# add_letter(figlabels[1]); figlabels <- figlabels[-1]
+# 
+# m <-  na.omit(as.matrix(t(metadata[,continuous_parameters])))
+# m <- metadata[,continuous_parameters] %>% as.data.frame() %>%
+#   rownames_to_column(var = "ID") %>% pivot_longer(-ID, names_to= "Param", values_to= "Values") %>% pivot_wider(names_from = "ID", values_from="Values") %>%
+#   column_to_rownames(var = "Param")
+```
+
+
+\clearpage
+
+## Figure S11
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=1.2}
+figlabels <- letters
+
+g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+l <- layout_with_fr(g,niter=3000,start.temp=30)
+
+
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+
+
+mypar(6,6,mar=c(1,1,1,1))
+
+plot(l,
+       col=pal[factor(group_annotation[sample_use])],
+       main="SNN Louvain clustering",xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+empty_plot()
+legend("topleft",title.adj = 0,
+       legend = sort(unique(metadata$group_annotation)),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+
+for(i in continuous_parameters){
+  xx <- metadata[,i]
+  xx[is.na(xx)] <- 0
+  xx <- xx / max(xx)
+  o <- order(xx)
+  plot(l[o,],
+       col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+
+}
+
+```
+
+
+
+\clearpage
+
+## Figure S12
+
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=1}
+figlabels <- letters
+
+g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+l <- layout_with_fr(g,niter=3000,start.temp=30)
+
+
+categorical_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
+                         "Bacterio_KOH_v2","Bacterio_KOH_v3","Bacterio_TV_v3",
+                         "BV_Clue_Cells_v2","BV_Clue_Cells_v3",
+                         "BV_Diagnosis_v2","BV_Diagnosis_v3",
+                         "BV_Lactobacillus_v2","BV_Lactobacillus_v3",
+                         "BV_Monbilicus_v2","BV_Monbilicus_v3",
+                         "BV_Vaginal_Garda_v2","BV_Vaginal_Garda_v3",
+                         "blood_cervix_v2","blood_cervix_v3",
+                         "cervical_inflammation_v2","cervical_inflammation_v3",
+                         "HIVstatus","Contraception",
+                         "CT_v2","CT_v3","regular_partner",
+                         "vaginal_douching_v2","vaginal_douching_v3")
+
+mypar(6,5,mar=c(1,1,1,8))
+plot(l,
+       col=pal[factor(group_annotation[sample_use])],
+       main="SNN Louvain clustering",xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(factor(group_annotation[sample_use])),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+
+for(i in categorical_parameters){
+  xx <- factor(metadata[,i])
+  plot(l[,],
+       col=pal[xx],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(xx),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+}
+```
+
+
+\clearpage
+
+## Figure S13
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=.5}
+
+continuous_parameters <- c("age","Count_CD4_v2","Count_CD4_v3","Plasma_S_Prog_ng_mL_v3","Plasma_S_Estradiol_pg_mL_v3","Conc_T4_v2","Conc_T3_v2","Conc_Progesteron_v2","Conc_Estradiol_v2","Conc_Cortisol_v2","Freq_CD4_v2","Freq_CD4_v3","Freq_Lympho_v2","Freq_Lympho_v3","visit_clients7days_v2")
+
+common <- colnames(top_TRX_counts)[colnames(top_TRX_counts) %in% rownames(metadata)]
+
+mypar(6,6,mar=c(1,1,1,1))
+
+plot(UMAP_TRX,
+       col=pal[factor(group_annotation[sample_use])],
+       main=""UMAP trx"",xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+empty_plot()
+legend("topleft",title.adj = 0,
+       legend = levels(factor(group_annotation[sample_use])),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+
+for(i in continuous_parameters){
+  xx <- metadata[common,i]
+  xx[is.na(xx)] <- 0
+  xx <- xx / max(xx)
+  o <- order(xx)
+  plot(UMAP_TRX[o,],
+       col=colorRampPalette( c("grey95","navy")) (99)[ 1 + (xx[o]*98) ],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+
+}
+```
+
+
+\clearpage
+
+## Figure S14
+
+```{r, echo = FALSE, eval = TRUE,fig.asp=1}
+figlabels <- letters
+
+# g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+# set.seed(1)
+# l <- layout_with_fr(g,niter=3000,start.temp=30)
+# 
+
+categorical_parameters <- c("Antibiotics","Antibiotics_v2","Antibiotics_v3",
+                         "Bacterio_KOH_v2","Bacterio_KOH_v3","Bacterio_TV_v3",
+                         "BV_Clue_Cells_v2","BV_Clue_Cells_v3",
+                         "BV_Diagnosis_v2","BV_Diagnosis_v3",
+                         "BV_Lactobacillus_v2","BV_Lactobacillus_v3",
+                         "BV_Monbilicus_v2","BV_Monbilicus_v3",
+                         "BV_Vaginal_Garda_v2","BV_Vaginal_Garda_v3",
+                         "blood_cervix_v2","blood_cervix_v3",
+                         "cervical_inflammation_v2","cervical_inflammation_v3",
+                         "HIVstatus","Contraception",
+                         "CT_v2","CT_v3","regular_partner",
+                         "vaginal_douching_v2","vaginal_douching_v3")
+
+common <- colnames(top_TRX_counts)[colnames(top_TRX_counts) %in% rownames(metadata)]
+
+mypar(6,5,mar=c(1,1,1,8))
+plot(UMAP_TRX,
+       col=pal[factor(group_annotation[sample_use])],
+       main="UMAP trx",xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(factor(group_annotation[sample_use])),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+
+for(i in categorical_parameters){
+  xx <- factor(metadata[common,i])
+  plot(UMAP_TRX[,],
+       col=pal[xx],
+       main=i,xpd=T,
+       pch=16,xlab="",ylab="",frame=F,axes=F,font.main=1,cex.main=1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(xx),xjust = 0,yjust = 1,
+       bty = "n",pch = 16,col = pal,pt.cex = 1,xpd=T)
+}
+```
+
+
+
+
+\clearpage
+
+## Figure S15
+
+
+```{r, echo = FALSE, eval = F, fig.width=6, fig.height=10}
 paths_p <- c('../../../data/phyloseq_boston_r1.RDS',   # CVL V3
              '../../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
              '../../../data/phyloseq_Sthlm.RDS')       # CVL V2, only v4 region
@@ -1568,11 +2170,11 @@ ps_filt <- map(ps_list, ~ .x %>%
   subset_samples(., Include_final == "yes"))
 
 # separate tissue from CVLv2 samples in the second Boston run
-CVLv2 <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "CVL" & Visit == "v2") 
+CVLv2 <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "CVL" & Visit == "v2")
 tissue <- ps_filt[["boston_r2"]] %>% subset_samples(., Sample_type == "tissue" & Visit == "v3")
-  
+
 # merge the lists
-ps_types <- c(ps_filt, "CVLv2"=CVLv2, "tissue"=tissue) 
+ps_types <- c(ps_filt, "CVLv2"=CVLv2, "tissue"=tissue)
 # Get ASV tables
 seqtabs <- map(ps_types, ~data.frame(.x@otu_table@.Data))
 
@@ -1582,7 +2184,7 @@ rare_runs <- map(seqtabs, ~ .x %>%
 )
 
 ggplot_df_fun <- function(rare_obj, count) {
-  # Add sample names 
+  # Add sample names
   names(rare_obj) <- c(paste0("sample",sprintf("%03.0f", 1:length(rare_obj))))
 
   # Coerce data into "long" form.
@@ -1591,11 +2193,11 @@ ggplot_df_fun <- function(rare_obj, count) {
               mutate(Sample = .y) %>%
               mutate(`Sample size` = as.numeric(gsub("N","",`Sample size`)))
   )
-  # Get nr. of counts in each sample 
+  # Get nr. of counts in each sample
   c <- formatC(count, format="f", big.mark = " ", digits=0)
   rare_df_col <- rare_df %>%
     dplyr::rename(ASV = "value") %>%
-    group_by(Sample) %>% 
+    group_by(Sample) %>%
     nest() %>%
     mutate(Counts = map(data, ~max(.$`Sample size`))) %>%
     unnest(c(data, Counts)) %>%
@@ -1611,11 +2213,11 @@ title <- c("Run B1. CVLv3", "Run B2. CVLv2 + TISSUEv3","Run Sthlm CVLv2", "Run B
 
 # Extract data frame from the rarecurve object
 rare_df_col<- map2(rare_runs, count, ~ggplot_df_fun(.x, .y))
-# Create Plot 
-rare_plot <- map(rare_df_col, 
+# Create Plot
+rare_plot <- map(rare_df_col,
               ~ggplot(.x, aes(x = `Sample size`, y = ASV)) +
               theme_bw() +
-              scale_color_manual(values=c('tomato', alpha('black', 0.1))) + 
+              scale_color_manual(values=c('tomato', alpha('black', 0.1))) +
               geom_line(aes(color = Counts, group = Sample)) +
               theme(plot.title = element_text(hjust = 0.5),
                     plot.margin=unit(c(0,0,0.5,0),"cm"))
@@ -1624,30 +2226,39 @@ raremax <- map(seqtabs, ~min(rowSums(.x)))
 r_plot <- pmap(list(rare_plot, raremax, limit, title),
                ~ ..1 + xlim(c(0,..3)) +
                labs(title=paste0("Sequencing ", ..4)) +
-               geom_vline(xintercept = ..2, 
-                          linetype='dashed', 
+               geom_vline(xintercept = ..2,
+                          linetype='dashed',
                           color='slategray' )
 )
 
 # Save png
-#imap(r_plot, ~ggsave(filename = paste0('Rarefaction_plot_', .y, '.png'), plot = .x, 
-#        path = paste0("../../../results/"), 
+#imap(r_plot, ~ggsave(filename = paste0('Rarefaction_plot_', .y, '.png'), plot = .x,
+#        path = paste0("../../../results/"),
 #        width = 10, height = 5,)
 #)
 
 ```
 
-```{r Print rare curves, fig.width=6, fig.height=10, fig.align="center"}
+```{r Print rare curves, eval=F, fig.width=6, fig.height=10, fig.align="center"}
 ggarrange(r_plot[[1]] + theme(axis.title.x=element_blank()),
           r_plot[[3]] + theme(axis.title.x=element_blank()),
           r_plot[[4]] + theme(axis.title.x=element_blank()),
           r_plot[[5]],
-          ncol = 1, 
+          ncol = 1,
           labels = c("A","B","C","D")
           )
 ```
 
 **Supp. Figure 10. Rarefraction curves**. **A** Boston 1 sequencing run, **B** Sthlm sequencing run and **C** and **D** shows Boston sequencing run 2 split in two plots showing the CVL visit 2 samples and the the TISSUE visit 3 samples respectively
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1700,4 +2311,3 @@ TABLES (SUPPL)
 ```
 
 \clearpage
-
