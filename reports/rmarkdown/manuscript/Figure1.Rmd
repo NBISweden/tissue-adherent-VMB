@@ -1,146 +1,282 @@
 ---
-output: pdf_document
+title: "Figure 1.Luminal Study Groups"
+output: 
+  pdf_document:
+    fig_caption: yes
+header-includes: 
+- \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
 
-
-```{r, echo=F,  warning=FALSE,message=FALSE}
+```{r Load data, message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
-  library(Seurat)
-  library(rafalib)
-  library(igraph)
+  library(tidyverse)
   library(scales)
+  library(igraph)
   library(RColorBrewer)
-  library(MASS)
-  library(spatstat)
-  library(magick)
+  remotes::install_github("czarnewski/niceRplots",force=T)
+  library(niceRplots)
+  library(openxlsx)
 })  })  })
-
-
-
-#############################
-# SOURCE PLOTTING FUNCTIONS #
-#############################
-source("~/repos/niceRplots/R/helper_functions.R")
-source("~/repos/niceRplots/R/plotting_functions.R")
-source("~/repos/niceRplots/R/add_fig_label.R")
-```
-
-
-
-```{r fig1, echo = FALSE, eval = TRUE, warning=FALSE,message=FALSE,fig.width = 12, fig.height = 5, fig.cap = "Figure 1. Box plot of the total lengths of live and dead sparrows following a snowstorm in Providence, RI, as originally collected by Hermon Bumpus. The central horizontal line shows median values. Boxes and whiskers show inter-quartile ranges and extreme values, respectively."}
 
 #############
 # LODA DATA #
 #############
-ALL_DATA <- readRDS("~/Box/Projects/J_Mjosberg/NBIS_housekeeping_normalization/analysis_all_tissues/all_ilc_dataset.rds")
-pal <- c(scales::hue_pal()(8),RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2") )
+datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1)
+group_annotation <- factor(setNames(metadata$Luminal_gr,metadata$ID))
+
+SNN_patients <- read.csv("../../../results/patient_SNN_graph.csv",row.names = 1)
+bac_communities <- read.csv2("../../../results/bacterial_communities.csv",row.names = 1)
+
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+sample_use <- colnames(TRX)[colSums(TRX)!=0]
+
+#################
+# COLOR PALETTS #
+#################
+lvl <- c("L. iners", "Gardnerella", "L. crispatus/acidophilus","Prevotella", "Atopobium","Sneathia", "L. jensenii", "Megasphaera", "Streptococcus", "Anaerococcus", "BVAB2", "Escherichia/Shigella", "BVAB1", "Dialister", "Mycoplasma", "Bifidobacterium", "Other")
+
+pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
+taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+#show_col(pal)
+```
 
 
-########################
-# DEFINE FIGURE LAYOUT #
-########################
-layout(matrix(c(1,2,5,
-                1,2,6,
-                1,2,7,
-                1,2,8,
-                1,2,9,
-                1,3,10,
-                1,3,11,
-                1,3,12,
-                1,3,13,
-                1,3,14,
-                1,4,15,
-                1,4,16,
-                1,4,16,
-                17,4,16,
-                17,4,16),
-              nrow = 15, byrow = T), 
-   widths=c(3,1.5,1.5), heights=c(1,1))
-#layout.show(16)
-
-
-
-################
-# PLOT FIGURES #
-################
+```{r Figure 1, echo=FALSE, fig.pos="t", fig.width=6, fig.height=5, fig.asp=1, message=FALSE, warning=FALSE}
 figlabels <- letters
+# fig.height=7, fig.asp=1,
 
-
+layout(matrix(c(1,1,1,1,1,1,
+                2,2,2,2,2,2,
+                3,3,3,3,3,3,
+                5,6,7,7,8,8,
+                5,4,7,7,8,8,
+                5,4,7,7,8,8) , ncol= 6,byrow = T),
+                               widths = c(1.87,1.42,.7,.8,.8,.7,.8),
+                               heights = c(1.3,.55,1.33,.65,.9,0)) 
 ### A
-################
-par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
-plot_meta(ALL_DATA,red = "umap",feat = "RNA_snn_res.3", label = T, frame=F, main="",cex = .7)
-fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
-legend("topright", legend = "", col = "white", pch = 16, bty="n",
-       pt.cex = 1,cex = 1,title = "Clustering")
+#################################
+# COHORT SCHEMATIC ILLUSTRATION #
+#################################
+par(mar=c(0,3.3,0,1)) #b,l,t,r
+fig1a <- magick::image_read("../../../supplementary_files/Scematic figure.pdf", density = 900 )
+plot(c(0,1),c(0,1),axes=F,type="n",xlab="",ylab="",xaxs="i",yaxs="i")
+rasterImage(fig1a, 0, 0, 1, 1)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 
 ### B
-################
-par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
-plot_meta(ALL_DATA,red = "umap",feat = "Tissue", label = T, frame=F, main="")
-fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
-legend("topright", legend = levels(ALL_DATA$Tissue), col = pal[1:3], pch = 16, bty="n",
-       pt.cex = 1,cex = 1,title = "Tissue")
+#############################
+# DIVERSITY + TAX ABUNDANCE #
+#############################
 
+ASV <- list(c("Luminal_gr","ASV_CVL_V3_normalized_batch_corrected"),
+          c("Tissue_gr","ASV_tissue_V3_normalized_batch_corrected")
+         )
+div_list <- list()
+for(i in ASV){
+  x <- datasets_all_samples[[i[2]]]
+  gr <- factor(setNames(metadata[[i[1]]],metadata$ID))
 
+  temp <- t(t(2^x-1)/colSums(2^x-1))
 
-### C
-################
-par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
-plot_meta(ALL_DATA,red = "umap",feat = "Celltype", label = T, frame=F, main="")
-fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
-legend("topright", legend = levels(ALL_DATA$Celltype), col = pal[1:4], pch = 16, bty="n",
-       pt.cex = 1,cex = 1,title = "Celltype")
+  shann <- vegan::diversity(t(temp),index = c("shannon") )
+  simp <- vegan::diversity(t(temp),index = c("simpson") )
+  invsimp <- vegan::diversity(t(temp),index = c("invsimpson") )
+  divers <- as.matrix(rbind(shann,simp,invsimp) )
+  divers[is.infinite(divers)] <- 0
+  rownames(divers) <- c("Shannon","Simpson","Inv Simpson")
+  
+  div <- tibble(ID=names(shann),shann, simp, invsimp ) %>% rename_with(., ~paste0(c("ID","Shannon","Simpson","Inv Simpson")))
+  div_list[[length(div_list) + 1]] <- div
+  
+  if(i[2] == "ASV_tissue_V3_normalized_batch_corrected"){break}
+  
+  par(mar=c(0,5,1.5,1.5)) #b,l,t,r
+  barlist( data = divers[,order(group_annotation)],
+         main = "", xlab="", #bg="white", #cex=.6, 
+         genes = c("Shannon","Simpson","Inv Simpson"),
+         draw_mean_lines=F,col = pal[gr[order(group_annotation)]])
+  
+  if(i[2] == "ASV_CVL_V3_normalized_batch_corrected"){
+    end <- table(pal[factor(group_annotation[order(group_annotation)])])
+    end <- end[order(factor(names(end), levels = pal))]
+    end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/length(colnames(divers)))-.2 )
+    start <- c(0.5, map_dbl(end[1:4], ~.x+0.7))
+    
+    axis(1, at = c(start, end), label = F, pos =3.3 , xpd=T, col="white",col.ticks="black")
+    map2(start, end, ~lines(x=c(.y, .x), y= c(3.3, 3.3), xpd=T, cex=.8))
+    t <- map2(start, end, ~(.x+.y)/2)
+    map2(t,levels(gr), ~text(x=.x, y=3.8, .y,xpd=T))
+  }
+  
+  #add label
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
+  par(mar=c(1.5,5,1,1.5)) #b,l,t,r
+  temp[is.nan(temp)] <- 0
 
+  o <- order( rowSums(temp) , decreasing = T)
+  sample_o <- names(group_annotation)[ order( group_annotation )]
+  temp <- temp[o,sample_o]*100
+  temp <- rbind(temp[1:16,], Other = colSums(temp[17:nrow(temp),]) )
 
+  barplot( temp, las=2 , border = NA , yaxs="i", xaxs="i",ylab="abundance",main=gsub("_gr","",i[1]),font.main=1,
+           col = taxa_pal[factor(rownames(temp),levels = lvl)] ,names.arg = rep("",ncol(temp)))
 
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-2, bg="white",
+        col= c("tomato","orange","#d7d7d7")[as.numeric(metadata$BV_Diagnosis_v3)][order( group_annotation )],
+        pch=15,cex=.7,xpd=T)
+  text(par("usr")[2],par("usr")[3]-2,labels = "      BV",cex=.5,xpd=T)
+  points( (1:ncol(temp))*1.2 -.5, rep(par("usr")[3],ncol(temp))-8,bg="white",
+        col= c("#d7d7d7","tomato")[as.numeric(metadata$HIVstatus)][order( group_annotation )],
+        pch=15,cex=.7,xpd=T)
+  text(par("usr")[2],par("usr")[3]-8,labels = "       HIV",cex=.5,xpd=T)
 
-### D
-################
-par(mar = c(0,0,0,0), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
-plot_meta(ALL_DATA,red = "umap",feat = "Donor", label = T, frame=F, main="")
-fig_label(figlabels[1],cex = 3,font = 2,region = "plot") ; figlabels <- figlabels[-1]
-legend("topright", legend = "", col = "white", pch = 16, bty="n",
-       pt.cex = 1,cex = 1,title = "Donor")
-
-
-
-
-### E
-################
-my_gene_list <- c("PTGDR2","TNFSF10","TMEM273","KRT1","HPGD","FAM110A","ZP1","PKIB","TESPA1","CSGALNACT1")
-par(mar=c(0.5,6,0,.5))
-for(i in my_gene_list){ 
-try({violins(data = ALL_DATA,gene = i,clustering = "Celltype",assay = "RNA",plot_y_axis = F,plot_x_axis = F,ylab="",main="",bw = 1)
-mtext(side = 2, text = i, line = 1,las=1,cex = .8)})
+  l <- c("BV:","Normal","Intermediate","BV")
+  legend(x = 10, y = 111, #"bottom", inset = c(0, -0.5),
+         bty = "n", horiz=TRUE, cex=0.7, xpd = T, 
+         border = "white", 
+         legend = l, x.intersp=0.5, xjust=0,
+         text.width = c(0, map_dbl(l, ~strwidth(.x)/2)) ,
+         fill=c(NA, "#d7d7d7","orange","tomato"))
+  l2 <- c("HIV:","HIV-","HIV+")
+  legend(x = 80, y = 111, # bottom position: par("usr")[3]-5
+         bty = "n", horiz=TRUE, cex=0.7, xpd = T,
+         border = "white",
+         legend = l2, x.intersp=0.5, 
+         text.width =c(0, map_dbl(l2, ~strwidth(.x)/2)),
+         fill=c(NA, "#d7d7d7", "tomato"))
 }
-mtext(side = 1, at=1:5, text = sort(unique(ALL_DATA@meta.data[,"Celltype"])), line = 1, las=1)
-text(1:5, par("usr")[3], labels = sort(unique(ALL_DATA@meta.data[,"Celltype"])), srt = 45, adj = c(1,0.5), xpd = T, cex=1)
 
 
-### F
-################
-my_image <- image_read("images/sparrow.jpg")
-par(mar = c(1, 1, .5, .5), mgp = c(3, 0.5, 0),cex.lab = 1, cex.main = 1.2)
-plot(my_image)
-fig_label(figlabels[1],cex = 3,font = 2,region = "figure") ; figlabels <- figlabels[-1]
+###########
+# LEGENDS #
+###########
+par(mar=c(0,0,0,.5)) #b,l,t,r
+empty_plot()
+legend(x = -0.04, y = 1.04, 
+       legend = c("L1 L. crispatus/jensenii", "L2 L. iners", "L3 Gardnerella", "L4 High diverse", "L5 Other"),
+       xjust = 0,yjust = 1,title.adj = 0,  ncol =1,
+       bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,title = "Study Groups",
+       pt.bg = pal)
 
 
+par(mar=c(0,3.3,0,.5)) #b,l,t,r
+empty_plot()
+legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],
+         legend = lvl[1:12],xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+         pt.bg = taxa_pal)
 
 
-### G
-################
+par(mar=c(0,0,0,1)) #b,l,t,r
+empty_plot()
+legend(x = par("usr")[c(1)],
+         y = par("usr")[c(4)],
+         legend = lvl[13:17],xjust = 0,yjust = 1,
+         bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
+         pt.bg = taxa_pal[13:17])
 
 
+### C + D
+####################
+# PATIENT GROUPING #
+####################
+
+### Louvain ###
+g <- graph_from_adjacency_matrix(as.matrix(SNN_patients), mode = "undirected",diag = F,weighted = T)
+set.seed(1)
+l <- layout_with_fr(g,niter=3000,start.temp=30)
+
+par(mar=c(0,0,0,1)) #b,l,t,r
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(group_annotation)] ,
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,
+      vertex.size=10, layout=l,
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+title(main = "Louvain", line = -1, cex.main = 1)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+### UMAP ###
+all_microbiome <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+all_microbiome <- all_microbiome[ rowSums(all_microbiome>0) >= 3 ,  ]
+cors <- cor(all_microbiome[,], method = "pearson")
+adj <- (1-cors)/2
+U <- uwot::umap(adj,n_neighbors = 30)
+plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(group_annotation)] , 
+      edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=U,
+      vertex.size=10,
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+title(main = "UMAP", line = -1, cex.main = 1)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+```
 
 
+```{r Suppl. Table 1., include=FALSE}
+# Total Relative Abundance 
+raw <- c("ASV_CVL_V3", "ASV_tissue_V3") %>% set_names()
+raw_list <- raw %>%
+  map(., ~read_csv(paste0("../../../results/",.x,"_raw_counts.csv")))  %>%
+  map(., ~column_to_rownames(., var = "X1")) %>%          
+  map(., ~dplyr::select(., any_of(sample_use))) 
+            
+r <- raw_list %>%
+  map(., ~mutate(.,across(where(is.numeric), ~ ./sum(.))) ) %>%
+  map(., ~(rowSums(.x)/length(colnames(.x)) )*100 ) %>%
+  bind_rows(., .id="ID") %>%
+    pivot_longer(-ID) %>% 
+    pivot_wider(names_from = ID, values_from = value) %>%
+    mutate_at(vars(name), ~replace(., ASV_CVL_V3<0.5514392, "Other")) %>%
+    group_by(name) %>%
+    summarize(across(where(is.numeric), ~sum(.))) %>%
+    arrange(-ASV_CVL_V3) %>%
+    dplyr::rename(Luminal="ASV_CVL_V3",Tissue="ASV_tissue_V3") %>%
+    rename(Taxa="name") %>%
+  mutate(across(where(is.numeric), ~round(.x, digits = 1)))
+  
+# Alfa Diversity Stats
+div_stat <- div_list %>%
+  set_names(map(ASV,1)) %>%
+  map(., ~summarise_all(.x, list(median=median, IQR=IQR), na.rm = TRUE)) %>%
+  map(., ~pivot_longer(.x, everything(), names_sep = "_", names_to = c(".value", "Stats"), )) %>%
+  bind_rows(.id = "Sample type") %>%
+  select(-ID) %>%
+  mutate("Sample type" = gsub("_gr", "", .$"Sample type")) %>%
+  mutate(across(where(is.numeric), ~round(.x, digits = 2)))
+
+# Bacterial Communities
+bac_communities <- bac_communities %>% 
+  rownames_to_column(var = "Taxa") %>%
+  mutate("bacterial communities"= factor(paste0("BC",sprintf("%02d",bac_communities$x)))) %>%
+  select(-x) %>%
+  arrange(`bacterial communities`)
+
+pages <- list("Total Relative Abundance"=r ,"Alfa Diversity"=div_stat, "Bacterial Communities"=bac_communities)
+write.xlsx(pages, file=paste0("./Suppl.Tbl/","Suppl.Tbl.01",".xlsx"))
 
 ```

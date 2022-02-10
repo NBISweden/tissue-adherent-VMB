@@ -1,0 +1,474 @@
+---
+title: "Figure 6. Differential Protein expression"
+output: 
+  pdf_document:
+    fig_caption: yes
+header-includes: 
+- \usepackage{float}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(tidyverse)
+  library(edgeR)
+  library(openxlsx)
+  library(rstatix)
+  #remotes::install_github("czarnewski/niceRplots",force=T)
+  library(niceRplots)
+})  })  })
+
+#############
+# LODA DATA #
+#############
+datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv")
+cytokine_data <- read.csv("../../../data/210125_Cytokines_visit3CVL.csv")
+metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+
+#################
+# COLOR PALETTS #
+#################
+pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
+taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+```
+
+```{r DPE Functions, message=FALSE, warning=FALSE, include=FALSE}
+################################
+# DEG's FUNCTION ACROSS GROUPS #
+################################
+#group <- "Tissue_gr"
+#group <- "Luminal_gr"
+#group <- "L_T_groups"
+limma_dpe.fun <- function(group, confound) {
+  groups <- metadata[sample_use, group]
+  n_gr <- length(na.omit(unique(groups)))
+  
+  if(any(is.na(groups))) {
+    groups <- replace_na(groups, "X")
+  }
+  
+  if(confound==FALSE) {
+    c <- "_no_conf"
+    design <- model.matrix(~  groups, data=metadata[sample_use,]) } # without confounders
+  else{
+    c <- "_conf"
+    # design <- model.matrix(~groups+HIVstatus+Contraception+age+sexwork_months,
+    #                      data=metadata[sample_use,])
+    design <- model.matrix(~ groups+Contraception,
+                         data=metadata[sample_use,])
+  }
+  #design <- model.matrix(~0 + groups+Contraception+HIVstatus+age+sexwork_months, 
+                         #data=metadata[sample_use,]) # without intercept
+  
+  colnames(design) <- sub("groups","",colnames(design))
+  colnames(design) <- sub("\\(Intercept\\)","Intercept",colnames(design))
+  colnames(design) <- sub(" ","_",colnames(design))
+  
+  y <- Protein[,sample_use]
+  fit <- lmFit(y, design)
+  fit2 <- contrasts.fit(fit, coefficients=2:n_gr)
+  efit <- eBayes(fit2)
+  
+  # DPE across all groups
+  top <- topTable(efit, adjust.method = "BH",number = "all") # ANOVA
+  top <- cbind(LogFC.intercept=0,top) # with intercept
+  top <-  rownames_to_column(top, var = "Antibody")
+  
+return(list(design=design, y=y, fit=fit, efit=efit, top=top, c=c))
+}
+
+###########################
+# DEG's FUNCTION PAIRWISE #
+###########################
+pairwise_dpe.fun <- function(group, fit, design) {
+  groups <- metadata[sample_use, group]
+  levels <- as.character(sort(unique(groups)))
+  
+  # without intercept:
+  n <- combn(levels,2) 
+  g <- map_chr(seq_along(1:ncol(n)), ~paste(n[1,.x], n[2,.x], sep = "-"))
+  s <- seq_along(1:ncol(n)) %>% set_names(g)
+  #name <- map_chr(seq_along(1:ncol(n)), ~paste(str_extract(n[1,.x], "^g."), str_extract(n[2,.x], "^g."), sep = "_"))
+  
+  # with intercept:
+  g <- sub(paste0("^(",levels[1], ")-(.*)"), '-\\2', g)
+  
+  CONTRASTS <- makeContrasts( contrasts=g,
+                              levels = design )
+  
+  
+  # DPE pairwise comparison
+  fit2 <- contrasts.fit(fit, CONTRASTS)
+  efit <- eBayes(fit2)
+  top <- map(s, ~ topTable(efit, coef=.x, adjust.method = "BH",number = "all",sort.by = "P")) %>%
+    map(., ~rownames_to_column(.x, var = "Antibody"))
+  
+  results <- decideTests(fit2, method="separate", p.value = 0.05)
+  summary <- rownames_to_column(as.data.frame.array(summary(results)), var="FDR<0.05")
+  top <- c(summary = list(summary), top)
+  
+  #saveRDS(top, file = "./TopTable_all_groups_06.04.2021.RDS")
+  #saveRDS(top, file = "./TopTable_ModifiedM4_pairwise_17.05.2021.RDS")
+return(list(efit=efit, top=top, CONTRASTS=CONTRASTS))
+}
+
+
+
+```
+
+```{r format data, echo=FALSE, warning=FALSE, message=FALSE}
+to_remove <- c("CSTB_HPA017380","SPINK5_HPA009067","SPRR3_HPA024330","FGA_HPA064755","S100A12_HPA002881","KRT1_HPA019797","KRT1_HPA062908","LGMN_HPA001426","TACSTD2_HPA043104","FLNA_HPA001115","GPX3_HPA071520","CSTA_HPA001031","SERPINB5_HPA019132","ITIH2_HPA059150","NCF2_HPA002327","ANXA3_HPA013431")
+
+Protein <- Protein_V3 %>%
+  left_join(select(metadata, PatID, ID), by="PatID") %>%
+  select(ID, contains("HPA")) %>%
+  filter(!is.na(.$ID)) %>%
+  pivot_longer(., -ID, names_to = "Antibody") %>%
+  pivot_wider(names_from = "ID", values_from = "value" ) %>%
+  filter(!(Antibody %in% to_remove)) %>%
+  column_to_rownames(var = "Antibody") 
+
+# Replace missing values with average in sexwork_months column
+m <- round(sum(metadata$sexwork_months, na.rm = T)/nrow(metadata))
+metadata <- metadata %>%
+  mutate(sexwork_months = ifelse(is.na(.$sexwork_months), m, .$sexwork_months))
+
+```
+
+```{r Across and Pairwise tables, include=FALSE}
+# Samples to use
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+sample_use <- intersect(metadata$ID, colnames(TRX)[colSums(TRX)!=0])
+sample_use <- intersect(colnames(Protein), sample_use)
+
+# Across groups DPE
+dpe_L <- limma_dpe.fun("Luminal_gr", confound=T)
+dpe_T <- limma_dpe.fun("Tissue_gr", confound=T)
+
+# L2 to T2/T3
+metadata <- metadata %>% 
+  mutate(L_T_groups = paste0(.$Luminal_gr, .$Tissue_gr)) %>%
+  mutate(L_T_groups = ifelse(grepl("L2T2|L2T3", .$L_T_groups), .$L_T_groups, NA))
+
+dpe_LT <- limma_dpe.fun("L_T_groups", confound=T)
+
+
+# Pairwise DPE's
+pairwise_dpe_L <- pairwise_dpe.fun("Luminal_gr", 
+                                    fit=dpe_L$fit, 
+                                    design=dpe_L$design )
+pairwise_dge_T <- pairwise_dpe.fun("Tissue_gr",
+                                   fit=dpe_T$fit,
+                                   design=dpe_T$design)
+
+```
+
+```{r heatmap functions, echo=FALSE}
+top_dpe.fun <- function(top){
+  p_val <- pull(top, "P.Value")
+  top_dpe <- (p_val < 0.05) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+  top_dpe <- top$Antibody[ top_dpe ]
+  
+  top_PROT_mfi <- Protein[top_dpe, sample_use]
+  
+  return(top_PROT_mfi)
+}
+
+# top_PROT_mfi <- t
+# gr <- "Luminal_gr"
+# plot_heatmap.fun(t, "Luminal_gr", scale = T)
+plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
+  df <- na.omit(metadata[sample_use, c(gr, "ID")])
+  df <- arrange(df, df[1])
+  samples <- df[, "ID"]
+  names(samples) <- df[, gr]
+  
+  if(scale == TRUE) {
+    n <- colnames(top_PROT_mfi)
+    top_PROT_mfi <- t(apply(top_PROT_mfi,1,function(x){scale(x,T,T)}))
+    colnames(top_PROT_mfi) <- n
+    breaks = seq(-5,5,length.out = 100)
+  }else{breaks = seq(0,5,length.out = 100)}
+  
+  h <- hclust( as.dist( (1- cor(t(top_PROT_mfi)))/2 ), method = "ward.D2")
+
+  if(layout == "multi") {
+    layout(matrix(c(1,2,5,6,
+                    7,7,8,8,
+                    3,3,4,4),
+           nrow = 3, ncol = 4,byrow = T),
+           widths = c(1,2,.8,2), heights = c(1,1,.01) ) }
+  if(layout == "single") {
+    layout(matrix(c(1,2),
+                    nrow = 1, ncol = 2,byrow = T),widths = c(1,2) ) }
+  
+    
+    ## Dendogram
+    par(mgp=c(0,0.2,0), mar=c(4,.6,2.5,.2)) #(bottom, left, top, right) 
+    plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.01),
+          horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T, cex.axis = .7 )
+    #title(xlab="height", line=3)
+    mtext( c("Height"), side=1, las = 1, cex = .7, line =1,xpd=T)
+    
+    
+    if(gr == "Tissue_gr") {
+      height <-1.5 
+      add_letter("c")
+    }else{height <- round(max(h$height))
+      add_letter("a")}
+    #lines(x=c(0,height), y=c(0.45,0.45), col="black", lty=1, lwd = 2.5) # only for grob
+    
+    ## Heatmap
+    par(mar=c(4,.2,2.5,2.5)) #(bottom, left, top, right) 
+    image( t(top_PROT_mfi[h$order,pull(df, "ID")][nrow(top_PROT_mfi):1,]),
+           col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
+           breaks = breaks,
+           axes=F)
+    mtext( "Differentialy Expressed Proteins", side=3, las = 1, cex = .7, font = 2, line =1.5,xpd=T)
+    mtext( c("Study Groups"), side=1, las = 1, cex = .7, line = 1,xpd=T)
+    
+    # Study group annotation
+    end <- table(pal[factor(names(samples))[ order(df[1])]])
+    end <- end[order(factor(names(end), levels = pal))]
+    end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/length(samples)-.017) )
+    start <- c(0, map_dbl(end[1:4], ~.x+0.015))
+    
+    axis(1, at = c(start, end), label = F, pos =1.03 , xpd=T, col="white",col.ticks="black")
+    map2(start, end, ~lines(x=c(.y, .x), y= c(1.03, 1.03), xpd=T, cex=.8))
+    # text labels
+    t <- map2(start, end, ~(.x+.y)/2)
+    map2(t,levels(factor(names(samples))), ~text(x=.x, y=1.04, .y,xpd=T, cex=.8))
+    
+    # Boxes 
+    if(gr == "Luminal_gr") {
+      lines(x=c(0,.603,.603,0,0),
+            y=c(.488,.488,1.006, 1.006,.488), col="red", lty=1, lwd = 1.5)
+      lines(x=c(.39,.94,.94,.39,.39),
+            y=c(.488,.488,-0.008, -0.008,.488), col="red", lty=1, lwd = 1.5)}
+    if(gr == "Tissue_gr") {
+      lines(x=c(.653,.95,.95,.653,.653),
+            y=c(.735,.735,1.011, 1.011,.735), col="red", lty=1, lwd = 1.5)
+      lines(x=c(.653,.95,.95,.653,.653),
+            y=c(.735,.735,-0.012, -0.012,.735), col="red", lty=1, lwd = 1.5)
+    }
+    
+    ## Meta info bars
+    points( seq(0,1,length.out = length(samples)),rep(par("usr")[4],length(samples))+.005,
+            col=pal[factor(names(samples))[ order(df[1])]],
+            pch=15,xpd=T,cex=.7)
+    
+    points( seq(0,1,length.out = ncol(top_PROT_mfi)),rep(par("usr")[3],ncol(top_PROT_mfi))-.008,
+            col=c("tomato","orange","#d7d7d7")[ factor(metadata[samples,"BV_Diagnosis_v3"][order(df[1])]) ],
+            pch=15,xpd=T,cex=.5) 
+    points( seq(0,1,length.out = ncol(top_PROT_mfi)),rep(par("usr")[3],ncol(top_PROT_mfi))-.022,
+            col= c("#d7d7d7","tomato")[ factor(metadata[samples,"HIVstatus"][order(df[1])]) ],
+            pch=15,xpd=T,cex=.5)
+    
+    mtext( paste0(" ", gsub("_.+","",rownames(top_PROT_mfi)[rev(h$order)])), side=4, las = 1, cex = .45,
+           at=seq(0,1,length.out = length(rownames(top_PROT_mfi))), xpd=T)
+    
+    mtext( c(" BV"," HIV"), side=4, las = 1, cex = .45,
+           at=c(par("usr")[3]-.008,par("usr")[3]-.022), xpd=T)
+}
+
+```
+
+```{r sig. cytokines function, include=FALSE}
+sig_stars.fun <- function(df_krusk, df_dunn, group, n = 6, order = NULL){
+  samples_use <- metadata[,c(group, "ID")] %>% na.omit() %>% filter(ID %in% colnames(cytokine_data))
+  
+  # select only sig. cytokines 
+  sig <- df_krusk %>% filter(p.adj<0.05) %>% pull(Cytokines)
+  sig_df <- cytokine_data_log[sig,samples_use$ID]
+  
+  groupings <- samples_use[[group]] [ match( colnames(sig_df[,1:ncol(sig_df)-1]) , as.character(samples_use$ID)  ) ]
+  groupings <- c(groupings)
+  
+   if(is.null(order)){
+    g <- rownames(sig_df)
+  }else{g <- order}
+  
+  stars_df <- df_dunn %>%
+    mutate(x = (as.integer(str_extract(.$group1, "\\d")) + 
+                  as.integer(str_extract(.$group2, "\\d")))/2) %>%
+    mutate(line_x0 = as.integer(str_extract(.$group1, "\\d"))) %>%
+    mutate(line_x1 = as.integer(str_extract(.$group2, "\\d"))) %>%
+    mutate(y = (as.numeric(factor(Cytokines, levels = rev(g))))-.3) %>%
+    arrange(group1, group2) %>%
+    dplyr::group_by(Cytokines) %>%
+    nest() %>%
+    mutate(y_ = map(data, ~accumulate(.$y, ~.x + .1))) %>%
+    unnest(c(data, y_))
+  
+  return(list(sig_df=sig_df, stars_df=stars_df, groupings=groupings, samples_use=samples_use))
+}
+```
+
+```{r Cytokine stats tests, include=FALSE}
+cytokine_data$ID <- metadata [ match( cytokine_data$PatID , as.character(metadata$PatID)  ) ,"ID" ]
+cytokine_data <- cytokine_data[ !is.na(cytokine_data$ID) , ]
+rownames(cytokine_data) <- cytokine_data$ID
+cytokine_data <- cytokine_data[,grepl("CVL",colnames(cytokine_data))]
+colnames(cytokine_data) <- sub("CVL_","",colnames(cytokine_data))
+cytokine_data <- t(cytokine_data)
+cytokine_data[is.na(cytokine_data)] <- 0.01
+cytokine_data <- log2(cytokine_data+1)
+cytokine_data_log <- cytokine_data
+
+cyto2 <- as.data.frame(t(cytokine_data))
+cyto2$ID<-row.names(cyto2)
+
+#select data and re-format to long format
+cytogr.long <- metadata %>%
+  select(ID, Luminal_gr, Tissue_gr) %>%
+  left_join(.,cyto2, by="ID") %>%
+  pivot_longer(c(-Luminal_gr, -Tissue_gr, -ID), names_to = "Cytokines", values_to = "value") 
+
+test.krusk_dunn.fun <- function(df, var, group) {
+  var <- enquo(var)
+  
+  stat.test.krusk <- df %>%
+  group_by(!!(var)) %>%
+  kruskal_test(., as.formula(paste("value", "~", group))) %>%
+  adjust_pvalue(method = "BH") %>%
+  select(-.y., -n, -df) %>%
+  arrange(p) %>%
+  rename(p.value = "p") %>%
+  add_significance()
+
+# select the significant proteins from kruskal
+sig <- stat.test.krusk %>% filter(p.adj<0.05) %>% pull(!!var)
+
+### Post hoc test
+stat.test.dunn <- df %>%
+  filter(!!var %in% sig) %>%
+  group_by(!!var) %>%
+  dunn_test(., as.formula(paste("value", "~", group))) %>%
+  #dunn_test(value ~ !!group) %>%
+  select(-.y.) %>%
+  arrange(p) %>%
+  rename(p.value = "p") %>%
+  filter(p.adj<0.05)
+
+  sig2 <- stat.test.dunn[stat.test.dunn$p.adj<0.05,]
+  
+ l <- list(stat.test.krusk, stat.test.dunn)
+ n <-  c("Kruskal", "Dunn's") %>% paste0(., "_", group, sep = "")
+ l <- set_names(l, n)
+
+return(l)
+}
+
+n <- c("Luminal_gr", "Tissue_gr") %>% set_names(c("Luminal", "Tissue"))
+stat <- imap(n, ~test.krusk_dunn.fun(cytogr.long, Cytokines, .x))
+s <- flatten(stat)
+```
+
+```{r Suppl. Tbl. 15 16 & 17, include=FALSE}
+names <- c("15 Luminal", "16 Tissue") %>% set_names()
+
+# save TopTables pairwise
+l_top_p <- list(pairwise_dpe_L$top, pairwise_dge_T$top)  %>% set_names(names)
+
+# save TopTables across + cytokines
+l_top_a <- list( list(Across = dpe_L$top), list(Across = dpe_T$top))  %>% set_names(names)
+l <- list(l_top_a, stat, l_top_p)
+p_list <- imap(names, ~flatten(map_depth(l, 1, .x))) 
+
+imap(p_list, ~write.xlsx(.x,file=paste0("./Suppl.Tbl/","Suppl.Tbl.",.y,"_Proteins.xlsx"))) # Excel
+write.xlsx(list("L2T2 vs L2T3"=dpe_LT$top),file=paste0("./Suppl.Tbl/","Suppl.Tbl.17"," L2T2_L2T3_Proteins.xlsx"))
+```
+
+```{r Figure 6, echo = FALSE, eval = TRUE, fig.height=10, fig.width=7}
+figlabels <- letters
+####################################
+# TOP DIFF. EXPRESSED PROT HEATMAP #
+####################################
+### A
+# Luminal groups
+t <- top_dpe.fun(dpe_L$top)
+plot_heatmap.fun(t, "Luminal_gr", scale = T, layout = "multi")
+
+### C
+# Tissue groups
+t <- top_dpe.fun(dpe_T$top)
+par(mfg = c(2,1)) # adds the remaning plots to the previous layout
+plot_heatmap.fun(t, "Tissue_gr", scale = T)
+
+
+##############################
+# SIG. CYTOKINES VIOLIN PLOT #
+##############################
+### B
+# Luminal groups
+g <- c("IL1a", "MIG", "IP10", "IL1b", "IL12_p70", "MCP1")
+Luminal <- sig_stars.fun(s$Kruskal_Luminal_gr, s$`Dunn's_Luminal_gr`, "Luminal_gr", order = g)
+stars <- Luminal$stars_df
+
+par( mar=c(1.4,5,1.5,2)) #b,l,t,r 
+violist(data=Luminal$sig_df,
+          srt=45, y_padding = 2, smooth = .2,
+          genes= g, #add_ylims = T, #gives starting value of y-axis and max value of all data points
+          col = pal, transparency = 50,
+          clustering=c(Luminal$groupings))
+segments(x0 = stars$line_x0, x1 = stars$line_x1, y0 = stars$y_, y1 = stars$y_) 
+text( stars$x , stars$y_+.05,
+        labels = stars$p.adj.signif, srt = 0, xpd = TRUE, cex=1)
+title(main = "Luminal gr. Cytokines", line = 0.7, cex.main = .9)
+
+add_letter("b")
+
+### D
+# Tissue groups
+Tissue <- sig_stars.fun(s$Kruskal_Tissue_gr, s$`Dunn's_Tissue_gr`, "Tissue_gr")
+stars <- Tissue$stars_df
+
+par( mar=c(20.4,6,1.5,3)) #b,l,t,r
+violist(data=Tissue$sig_df,
+          srt=45, y_padding = 2, smooth = .2,
+          genes= rownames(Tissue$sig_df), 
+          col = pal, transparency = 50, #add_ylims = T,
+          clustering=Tissue$groupings )
+segments(x0 = stars$line_x0, x1 = stars$line_x1, y0 = stars$y_, y1 = stars$y_) 
+text( stars$x , stars$y_+.05,
+        labels = stars$p.adj.signif, srt = 0, xpd = TRUE, cex=1)
+title(main = "Tissue gr. Cytokines", line = 0.7, cex.main = .9)
+
+add_letter("d")
+
+```
+
+**Figure 3. Protein Heatmap**. **a** and **b** top differentially expressed proteins scaled by row, for Luminal and Tissue respectively. (p-value < 0.05) **b** and **d** sig. cytokines for Luminal and Tissue respectively. 
+
+
+```{r All dpe plot, eval=FALSE, fig.height=6, fig.width=6, include=FALSE}
+library(cowplot)
+
+plot_heatmap.fun(Protein[,sample_use], "Luminal_gr")
+p.plot <- recordPlot()
+
+plot_heatmap.fun(Protein[,sample_use], "Tissue_gr")
+p.plot_T <- recordPlot()
+
+# side by side unscaled
+plot_grid(ggdraw(p.plot),ggdraw(p.plot_T), 
+          labels = c('a', 'b'),rel_widths=c(1,1), greedy = F)
+
+```
