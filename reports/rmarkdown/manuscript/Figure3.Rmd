@@ -3,19 +3,29 @@ title: "Figure 3. Tissue Microbiome Abundances"
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
+
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(scales)
@@ -24,7 +34,6 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(niceRplots)
   library(openxlsx)
 })  })  })
-
 
 #############
 # LODA DATA #
@@ -44,18 +53,6 @@ m <- metadata %>%
   mutate(L = map(data, ~arrange(.x, Tissue_gr))) %>%
   unnest(L)
 
-# m <- metadata %>%
-#   select(ID, Luminal_gr, Tissue_gr) %>%
-#   left_join(div, by="ID") %>%
-#   arrange(Tissue_gr) %>%
-#   group_by(Tissue_gr) %>%
-#   nest() %>%
-#   mutate(L = map(data, ~arrange(.x, Luminal_gr, Shannon))) %>%
-#   unnest(L)
-
-# metadata <- metadata %>%
-#   arrange(factor(ID, levels = m$ID))
-
 group_annotation <- factor(setNames(m$Luminal_gr,m$ID))
 group_annotation <- factor(setNames(metadata$Luminal_gr,metadata$ID))
 group_annotation <- factor(setNames(metadata$Tissue_gr,metadata$ID))
@@ -69,8 +66,8 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 
 ```
 
-```{r Figure 3., echo=FALSE, warning=FALSE, message=FALSE,  fig.pos="t"}
-#  fig.width=6 ,fig.asp=1, fig.height=7,
+```{r Figure 3, echo=FALSE, warning=FALSE, message=FALSE, fig.width=6, fig.pos="t"}
+# fig.asp=1, fig.height=7,
 ### A
 #############################
 # DIVERSITY + TAX ABUNDANCE #

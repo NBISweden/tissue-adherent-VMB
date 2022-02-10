@@ -3,20 +3,28 @@ title: "DGE's and Enrichment"
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
-
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(edgeR)
@@ -517,6 +525,11 @@ plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
 ###########################
 # ASSEMBLE PLOTS FUNCTION #
 ###########################
+# comparison <- sheets
+# enrichment_db <- "TF_PPI_enrichment"
+# degs <- enrich_T
+# group <- "Tissue_gr" 
+# gr_name <- "Tissue"
 arrange_plots.fun <- function(degs, group, gr_name, comparison, enrichment_db, file, Layout){
   
   ### A
@@ -584,7 +597,7 @@ arrange_plots.fun <- function(degs, group, gr_name, comparison, enrichment_db, f
 }
 ```
 
-```{r Figure 4., message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
+```{r Figure 4, message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
 # Layout
 l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
                          1,2,3,4,4,4,5,5,5,
@@ -600,19 +613,13 @@ sheets <- excel_sheets(paste0(out, DEG_files[1])) %>% set_names(.) %>% .[-c(1:2)
 arrange_plots.fun(enrich_L, "Luminal_gr", "Luminal", sheets, "TF_PPI_enrichment", enrichR_files[1], Layout = l)
 
 # test figure
-dev.copy2pdf(file=paste0("./test.pdf"),
-    width = 6.6,
-    height = 6, paper = "a4"
-    )
+# dev.copy2pdf(file=paste0("./test.pdf"),
+#     width = 6.6,
+#     height = 6, paper = "a4"
+#     )
 ```
 
-```{r Figure 5., message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
-# comparison <- sheets
-# enrichment_db <- "TF_PPI_enrichment"
-# degs <- enrich_T
-# group <- "Tissue_gr" 
-# gr_name <- "Tissue"
-
+```{r Figure 5, message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
 # Layout
 l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
                          1,2,3,4,4,4,5,5,5,
@@ -626,10 +633,10 @@ l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
 sheets <- excel_sheets(paste0(out, DEG_files[2])) %>% set_names(.) %>% .[-c(1:2)]
 arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", enrichR_files[2], Layout = l)
 
-dev.copy2pdf(file=paste0("./test.pdf"),
-    width = 6.6,
-    height = 6, paper = "a4"
-    )
+# dev.copy2pdf(file=paste0("./test.pdf"),
+#     width = 6.6,
+#     height = 6, paper = "a4"
+#     )
 ```
 
 

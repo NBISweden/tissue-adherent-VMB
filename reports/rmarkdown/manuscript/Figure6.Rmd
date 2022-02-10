@@ -3,20 +3,28 @@ title: "Figure 6. Differential Protein expression"
 output: 
   pdf_document:
     fig_caption: yes
-    keep_tex: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
 ---
 
-
+```{r setup}
+knitr::opts_chunk$set(
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(edgeR)
@@ -29,12 +37,11 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 #############
 # LODA DATA #
 #############
-Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv") 
 datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv")
 cytokine_data <- read.csv("../../../data/210125_Cytokines_visit3CVL.csv")
+metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
 
-#color palettes
 #################
 # COLOR PALETTS #
 #################
@@ -389,19 +396,28 @@ imap(p_list, ~write.xlsx(.x,file=paste0("./Suppl.Tbl/","Suppl.Tbl.",.y,"_Protein
 write.xlsx(list("L2T2 vs L2T3"=dpe_LT$top),file=paste0("./Suppl.Tbl/","Suppl.Tbl.17"," L2T2_L2T3_Proteins.xlsx"))
 ```
 
-```{r Figure 6., echo = FALSE, eval = TRUE, fig.height=10, fig.width=7}
+```{r Figure 6, echo = FALSE, eval = TRUE, fig.height=10, fig.width=7}
 figlabels <- letters
-
-# top differentially expressed proteins Luminal groups
+####################################
+# TOP DIFF. EXPRESSED PROT HEATMAP #
+####################################
+### A
+# Luminal groups
 t <- top_dpe.fun(dpe_L$top)
 plot_heatmap.fun(t, "Luminal_gr", scale = T, layout = "multi")
 
-# top differentially expressed proteins Tissue groups
+### C
+# Tissue groups
 t <- top_dpe.fun(dpe_T$top)
 par(mfg = c(2,1)) # adds the remaning plots to the previous layout
 plot_heatmap.fun(t, "Tissue_gr", scale = T)
 
-# Luminal Cytokine plot 
+
+##############################
+# SIG. CYTOKINES VIOLIN PLOT #
+##############################
+### B
+# Luminal groups
 g <- c("IL1a", "MIG", "IP10", "IL1b", "IL12_p70", "MCP1")
 Luminal <- sig_stars.fun(s$Kruskal_Luminal_gr, s$`Dunn's_Luminal_gr`, "Luminal_gr", order = g)
 stars <- Luminal$stars_df
@@ -419,7 +435,8 @@ title(main = "Luminal gr. Cytokines", line = 0.7, cex.main = .9)
 
 add_letter("b")
 
-# Tissue Cytokine plot
+### D
+# Tissue groups
 Tissue <- sig_stars.fun(s$Kruskal_Tissue_gr, s$`Dunn's_Tissue_gr`, "Tissue_gr")
 stars <- Tissue$stars_df
 
