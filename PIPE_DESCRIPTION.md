@@ -32,67 +32,83 @@ input:
       
 Output:
 
-      "../../results/Seq_ID_key.csv"
-      "../../results/BVAB_Query.fasta"
-      "../../results/optivag_Query.fasta"
-      "../../results/BVAB_hits.tsv"
-      "../../results/optivag_hits.tsv"
-      "../../data/SeqID_to_taxa.csv"
-      "../../results/Unnasigned_tax_report.csv"
+      "../results/01_taxonomy_improved_output/Seq_ID_key.csv"
+      "../results/01_taxonomy_improved_output/BVAB_Query.fasta"
+      "../results/01_taxonomy_improved_output/optivag_Query.fasta"
+      "../results/01_taxonomy_improved_output/BVAB_hits.tsv"
+      "../results/01_taxonomy_improved_output/optivag_hits.tsv"
+      "../results/01_taxonomy_improved_output/SeqID_to_taxa.csv"
+      "../results/01_taxonomy_improved_output/Unnasigned_tax_report.csv"
       
-      "../../data/"ASV_CVL_V3.csv"
-      "../../data/ASV_tissue_B1.csv"
-      "../../data/ASV_tissue_B2.csv"
+      "../results/01_taxonomy_improved_output/"ASV_CVL_V3.csv"
+      "../results/01_taxonomy_improved_output/ASV_tissue_B1.csv"
+      "../results/01_taxonomy_improved_output/ASV_tissue_B2.csv"
 
 ### 02_data_preprocessing
-input: 
+input:
       
-      "../../data/Clinical_visit_2_3_updatesept28.csv"
-      
-      "../../data/"ASV_CVL_V3.csv"
-      "../../data/ASV_tissue_B1.csv"
-      "../../data/ASV_tissue_B2.csv"
+      "../results/01_taxonomy_improved_output/data/"ASV_CVL_V3.csv"
+      "../results/01_taxonomy_improved_output/data/ASV_tissue_B1.csv"
+      "../results/01_taxonomy_improved_output/data/ASV_tissue_B2.csv"
       
 Output:
       
-      "../results/encoder.h5"
-      "../results/decoder.h5"
-      "../results/aen.h5"
+      "../results/02_data_preprocessing_output/ASV_Luminal_raw_counts.csv"
+      "../results/02_data_preprocessing_output/ASV_Tissue_raw_counts.csv"
+
+### 03_normalize_data
+input:
       
-      "../results/ASV_tissue_V3_normalized_batch_corrected.csv"
-      "../results/ASV_CVL_V3_normalized_batch_corrected.csv"
-      "../results/Tissue_RNAseq_V3_normalized.csv"
+      "../data/","Raw_gene_counts_matrix.csv"
+      "../results/02_data_preprocessing_output/ASV_Luminal_raw_counts.csv"
+      "../results/02_data_preprocessing_output/ASV_Tissue_raw_counts.csv"
       
-### 03_clustering
+Output:
+    
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
+      "../results/03_normalize_data_output/Tissue_RNAseq_normalized.csv"
+      "../results/03_normalize_data_output/ASV_tissue_normalized.csv"
+      "../results/03_normalize_data_output/ASV_luminal_normalized.csv"
+
+### 04_clustering
 input: 
       
-      "../../../results/datasets_all_samples.RDS"
-      "../../../results/metadata_integration.csv"
+      "../data/", "metadata.csv"
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
       
 Output:
 
-      "../../results/patient_SNN_graph.csv"
-      "../../results/bacteria_SNN_graph.csv"
+      "../results/04_clustering_output/participant_SNN_graph.csv"
+      "../results/04_clustering_output/bacterial_communities.csv"
+      "../results/04_clustering_output/bacterial_SNN_graph.csv"
 
 ### 04_run_picrust
 input: 
 
-    
+      "../results/01_taxonomy_improved_output/ASV_CVL_V3_B1.csv"
+      
+      "https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/description_mapfiles/ko_info.tsv.gz"
+      "https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/pathway_mapfiles/KEGG_pathways_to_KO.tsv"
+      "https://raw.githubusercontent.com/picrust/picrust2/master/picrust2/default_files/description_mapfiles/KEGG_pathways_info.tsv.gz"
 
 Output:
-
-    "../results/picrust_outfiles/" # dirctory with all outfiles from picrust
-    Files needed for further anlysis:
-    "../results/picrust_outfiles/pred_metagenome_unstrat.tsv"
-    "../results/picrust_outfiles/KO_predicted.tsv"
+      
+      "../results/05_picrust_output/Picrust_input_Luminal.fasta"
+      "../results/05_picrust_output/Picrust_input_Luminal.tsv"
+      
+      "../results/05_picrust_output/" # dirctory with all outfiles from picrust
+      Files needed for further anlysis:
+      "../results/05_picrust_output/picrust_outfiles/out_2021-01-20/pred_metagenome_unstrat.tsv"
+      "../results/05_picrust_output/out_2021-01-20/KO_predicted.tsv"
 
 ### Figure1.Rmd
 input: 
 
-      "../../../results/datasets_all_samples.RDS"
-      "../../../results/metadata_integration.csv"
-      "../../../results/bacteria_SNN_graph.csv"
-      "../../../results/bacterial_communities.csv"
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
+      "../data/", "metadata.csv"
+      "../../resources/Scematic figure.pdf"
+      "../results/04_clustering_output/participant_SNN_graph.csv"
+      "../results/04_clustering_output/bacterial_communities.csv"
       
 Output:
 
@@ -101,11 +117,11 @@ Output:
 ### Figure2.Rmd
 input: 
 
-      "../../../results/datasets_all_samples.RDS"
-      "../../../results/metadata_integration.csv"
-      "../../../results/bacteria_SNN_graph.csv"
-      "../../../results/bacterial_communities.csv"
-      "../results/picrust_outfiles/pred_metagenome_unstrat.tsv"
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
+      "../data/", "metadata.csv"
+      "../results/04_clustering_output/participant_SNN_graph.csv"
+      "../results/04_clustering_output/bacterial_communities.csv"
+      "../results/05_picrust_output/picrust_outfiles/out_2021-01-20/pred_metagenome_unstrat.tsv"
       
 Output:
 
@@ -116,58 +132,49 @@ Output:
 ### Figure3.Rmd
 input: 
 
-      "../../../results/datasets_all_samples.RDS"
-      "../../../results/metadata_integration.csv"
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
+      "../data/", "metadata.csv"
+      "../results/02_data_preprocessing_output/ASV_Luminal_raw_counts.csv"
+      "../results/02_data_preprocessing_output/ASV_Tissue_raw_counts.csv"
       
 Output:
 
       "./Figures/Figure 1.pdf"
 
-### 02b_evaluating_batch_correction
+### Figure4-5.Rmd
 input: 
 
-      "../../results/Tissue_RNAseq_V3_normalized.csv"
-      "../../results/ASV_tissue_V3_normalized_batch_corrected.csv"
-      "../../results/ASV_CVL_V3_normalized_batch_corrected.csv"
-      "../../results/ASV_CVL_V2_normalized_batch_corrected.csv"
-      "../../results/ASV_CVL_V2_normalized_NOT_batch_corrected.csv"
-      
-      "../../results/batches_CVL2.csv" ??
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
+      "../data/", "metadata.csv"
+      "../../resources/KEGG_GO_database/c5.bp.v6.2.symbols.gmt.txt"
+      "../../resources/KEGG_GO_database/c2.cp.kegg.v6.2.symbols.gmt.txt"
       
 Output:
 
-### 03_integrated_datasets
+      "./Suppl.Tbl/","Suppl.Tbl.04"
+      "./Suppl.Tbl/","Suppl.Tbl.05"
+      "./Suppl.Tbl/","Suppl.Tbl.06"
+      "./Suppl.Tbl/","Suppl.Tbl.07"
+      "./Suppl.Tbl/","Suppl.Tbl.08"
+      "./Suppl.Tbl/","Suppl.Tbl.09"
+      "./Suppl.Tbl/","Suppl.Tbl.10"
+      "./Suppl.Tbl/","Suppl.Tbl.11"
+      "./Suppl.Tbl/","Suppl.Tbl.12"
+      "./Figures/Figure 4.pdf"
+      "./Figures/Figure 5.pdf"
+
+### Figure6.Rmd
 input: 
 
-      "../../results/Tissue_RNAseq_V3_normalized.csv"
-      "../../results/ASV_tissue_V3_normalized_batch_corrected.csv"
-      "../../results/ASV_CVL_V3_normalized_batch_corrected.csv"
-      "../../results/ASV_CVL_V2_normalized_NOT_batch_corrected.csv"
-      
-      "../../supplementary_files/h.all.v6.2.symbols.gmt.txt" ??
+      "../results/03_normalize_data_output/datasets_all_samples.RDS"
+      "../data/", "metadata.csv"
+      "../../data/Protein_norm_MFI_Bradley_et.al.xlsx"
+      "../../data/210125_Cytokines_visit3CVL.csv"
       
 Output:
 
-      "../../results/datasets_all_samples.RDS"
-      "../../results/patient_SNN_graph.csv"
-      "../../results/metadata_integration.csv"
-      
-      "../../results/metadata_association_results_complete.csv"
-      "../../results/metadata_association_results_filtered.csv"
-      "../../results/DGE_ASV_CVL_V2_normalized_NOT_batch_corrected.csv"
-      "../../results/bacterial_communities.csv"
-      "../../results/taxonomy.csv"
-      
-      "../../results/Hallmark_NESse_list.csv"
-      "../../results/Hallmark_pvalues_list.csv"
+      "./Suppl.Tbl/","Suppl.Tbl.15"
+      "./Suppl.Tbl/","Suppl.Tbl 16"
+      "./Suppl.Tbl/","Suppl.Tbl.17"
+      "./Figures/Figure 1.pdf"
 
-### 04_
-input: 
-Output:
-
-      
-Output:
-
-### manuscript_template
-input: 
-Output:
