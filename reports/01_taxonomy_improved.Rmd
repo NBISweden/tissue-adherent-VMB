@@ -4,8 +4,6 @@ editor_options:
   chunk_output_type: console
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     code_folding: hide
     toc: yes
@@ -13,13 +11,12 @@ output:
       collapsed: no
 ---
 
-```{r Setup, echo = FALSE}
-knitr::opts_chunk$set(fig.width  = 10,
-                      results    = "hold",
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(results    = "hold",
                       message    = FALSE,
                       warning    = FALSE)
 
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports")
 ```
 
 # Load libraries, data and metadata
@@ -34,25 +31,44 @@ library(phyloseq)
 library(Biostrings)
 })  })  })
 
+#########
+# PATHS #
+#########
+result_dir <- "../results/01_taxonomy_improved_output/"
+db_dir <- "../resources/OptiVag_BVAB_database/"
+
 #############
 # LODA DATA #
 #############
-paths_p <- c('../../data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVLv2)
-             '../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
-             '../../data/phyloseq_Sthlm.RDS')       # CVL V2, only v4 region
+#### new ####
+paths_p <- c('../results/00_dada2_output/ps_objects/phyloseq_Boston_run1.RDS', # 108 Luminal samples, 1 Tissue sample
+             '../results/00_dada2_output/ps_objects/phyloseq_Boston_run2.RDS'  # 92 Tissue samples
+             )
+##### old ####
+paths_p <- c('phyloseq_boston_r1.RDS',   # 108 Luminal samples, 1 Tissue sample
+             'phyloseq_boston_r2.RDS')   # 92 Tissue samples
 
-n <- c("boston_r1", "boston_r2", "Sthlm")
+n <- c("boston_r1", "boston_r2")
 ps_list <- map(paths_p, ~readRDS(.x)) %>% set_names(n)
+
+#########################
+# SELECT SAMPLES TO USE #
+#########################
+mapping <- c("../data/Mapping/Mapping_info_Boston_run1.csv", "../data/Mapping/Mapping_info_Boston_run2.csv")
+m <- mapping %>% 
+  map(., ~read_csv(file = .x, col_names = TRUE)) %>% 
+  map(., ~pull(.x, "Sample_ID"))  %>% 
+  flatten()
+ps_list <- map(ps_list, ~subset_samples(.x, Sample_ID %in% m))
+#map2(ps_list, paths_p, ~saveRDS(.x, file = paste0("../data/", .y)))
 
 seqtabs <- map(ps_list, ~data.frame(.x@otu_table@.Data))
 taxtabs <- map(ps_list, ~as_tibble(.x@tax_table@.Data, rownames = 'Sequence'))
 sample_info <- map(ps_list, ~as_tibble(sample_data(.x), rownames = 'SampleID')) 
 
-
 ######################
 # DOWNLOAD DATABASES #
 ######################
-db_dir <- "../../data/database/"
 if( isFALSE(dir.exists(db_dir)) ) { dir.create(db_dir,recursive = TRUE) }
 
 url <- c( "https://raw.githubusercontent.com/ctmrbio/BVAB-and-Lac-sequences/master/BVAB_rRNA_database.fa",
@@ -60,10 +76,41 @@ url <- c( "https://raw.githubusercontent.com/ctmrbio/BVAB-and-Lac-sequences/mast
           "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_seqinfo.csv")
 
 walk(url, ~download.file(.x, paste0(db_dir, basename(.x)), method="auto"))
-system("gunzip ../../data/database/*.gz")
+system("gunzip ../resources/OptiVag_BVAB_database/*.gz")
 
 OptiVag <- read_csv("../../data/database/optivag_seqinfo.csv", col_names = T)
 ```
+
+```{r test identity, eval=FALSE, include=FALSE}
+paths_p <- c('../results/00_dada2_output/ps_objects/phyloseq_Boston_run1.RDS', # 108 Luminal samples, 1 Tissue sample
+             '../results/00_dada2_output/ps_objects/phyloseq_Boston_run2.RDS'  # 92 Tissue samples
+             )
+paths_p <- c('../../Gabriella_repo/data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVLv2)
+             '../../Gabriella_repo/data/phyloseq_boston_r2.RDS')       # CVL V2, only v4 region
+
+n <- c("boston_r1", "boston_r2")
+ps_list_new <- map(paths_p, ~readRDS(.x)) %>% set_names(n)
+
+seqtabs_ <- map(ps_list_new, ~data.frame(.x@otu_table@.Data))
+taxtabs_ <- map(ps_list_new, ~as_tibble(.x@tax_table@.Data, rownames = 'Sequence'))
+sample_info_ <- map(ps_list_new, ~as_tibble(sample_data(.x), rownames = 'SampleID')) 
+
+int <- intersect(colnames(seqtabs[[1]]), colnames(seqtabs_[[1]]))
+setdiff(colnames(seqtabs[[1]]), colnames(seqtabs_[[1]]))
+setdiff(colnames(seqtabs_[[1]]), colnames(seqtabs[[1]]))
+
+old <- seqtabs_[[1]][row.names(seqtabs[[1]]), int]
+new <- seqtabs[[1]][, int]
+
+all_equal(old, new)
+
+old[1,1:5]
+new[1,1:5]
+
+head(seqtabs)
+
+```
+
 
 ```{r function}
 ################## 
@@ -112,7 +159,8 @@ Seq_ID_key <-seqtab.taxa %>%
   {. ->> seqtab.taxa.all } %>% 
   select(Seq_ID, Sequence)
 
-write.csv(Seq_ID_key, file=paste0("../../results/Seq_ID_key.csv"), quote=FALSE, row.names=FALSE)
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+write.csv(Seq_ID_key, file=paste0(result_dir,"Seq_ID_key.csv"), quote=FALSE, row.names=FALSE)
 
 # Check that all sequences are unique:
 #S <- Seq_ID_key %>% group_by(Sequence) %>% summarize(n()) %>% filter(`n()`>1) %>% .$`n()` %>% sum(.)
@@ -127,8 +175,8 @@ unnasigned_0 <- seqtab.taxa.all %>%
   #filter(., Reads != 0) 
 
 # Create Query files
-write.fasta(Seq_ID_key, paste0("../../results/BVAB_Query.fasta"))
-write.fasta(unnasigned_0, paste0("../../results/optivag_Query.fasta"))
+write.fasta(Seq_ID_key, paste0(result_dir,"BVAB_Query.fasta"))
+write.fasta(unnasigned_0, paste0(result_dir,"optivag_Query.fasta"))
 ```
 
 # BLAST
@@ -140,11 +188,9 @@ write.fasta(unnasigned_0, paste0("../../results/optivag_Query.fasta"))
 fa = readDNAStringSet(paste0(db_dir,"BVAB_rRNA_database.fa"))
 ID <-  make.unique(paste0(str_match(names(fa), "^BVAB._"),"0"), sep = "")
 names(fa) = paste(ID, names(fa))
-writeXStringSet(fa, "../../data/database/BVAB_db.fasta")
+writeXStringSet(fa, paste0(db_dir,"BVAB_db.fasta"))
 
-for(name in c("BVAB", "optivag")) { 
-  db_dir     = "../../data/database/"
-  result_dir = "../../results/"
+for(name in c("BVAB", "optivag")) {
   if (isFALSE(is_empty(list.files(path = db_dir, pattern = paste0(name,".+\\.nhr"))))) {
     message("using database provided in path:")
     message(paste0(db_dir, name, "_reference.db"))
@@ -171,7 +217,7 @@ for(name in c("BVAB", "optivag")) {
            into = c("qseqid","sseqid","pident","length","mismatch","gapopen",
                     "qstart","qend","sstart","send","evalue","bitscore") )
   
-  write_tsv(blast_out, paste0("../../results/", name, "_hits.tsv"))
+  write_tsv(blast_out, paste0(result_dir, name, "_hits.tsv"))
 }
 
 ```
@@ -179,8 +225,8 @@ for(name in c("BVAB", "optivag")) {
 ## Load BLAST results
 
 ```{r Load BLAST hits, message=FALSE}
-blast_OptiVag <- read_table2(paste0("../../results/OptiVag_hits.tsv"))
-blast_BVAB <- read_table2(paste0("../../results/BVAB_hits.tsv"))
+blast_OptiVag <- read_table2(paste0(result_dir,"optivag_hits.tsv"))
+blast_BVAB <- read_table2(paste0(result_dir, "BVAB_hits.tsv"))
 
 ```
 
@@ -298,7 +344,7 @@ new_taxtable <- update_taxa %>%
   dplyr::rename(Genus="Genus_f", Species="Species_f") %>%
   select(Seq_ID, everything(), -Full_taxonomy, -Reads_per_taxa)
 
-write.csv(new_taxtable, file=paste0("../../data/SeqID_to_taxa.csv"), quote=FALSE, row.names=FALSE)
+write.csv(new_taxtable, file=paste0(result_dir,"SeqID_to_taxa.csv"), quote=FALSE, row.names=FALSE)
 ```
 
 ## Report of unasigned sequences
@@ -313,7 +359,7 @@ unnasigned_final <- new_taxtable %>%
   filter(Reads_per_taxa >100)
 
 write.csv(unnasigned_final, 
-          file=paste0("../../results/Unnasigned_tax_report.csv"), quote=FALSE, row.names=FALSE)
+          file=paste0(result_dir,"Unnasigned_tax_report.csv"), quote=FALSE, row.names=FALSE)
 
 unnasigned_final
 ```
@@ -337,8 +383,9 @@ ASV_wCtrl <- seqtab.nochim.reshaped %>%
                   )
 
 #### ASV with all controls and replicate samples removed ####
-ASV_names <- c("ASV_CVL_V2_B1", "ASV_CVL_V3_B1", "ASV_tissue_V3_B1", 
-               "ASV_CVL_V2_B2", "ASV_tissue_V3_B2", "ASV_CVL_V2_S" )
+# ASV_names <- c("ASV_CVL_V2_B1", "ASV_CVL_V3_B1", "ASV_tissue_V3_B1", 
+#                "ASV_CVL_V2_B2", "ASV_tissue_V3_B2" )
+ASV_names <- c("ASV_CVL_V3_B1", "ASV_tissue_V3_B1", "ASV_tissue_V3_B2" )
 ASV_list <- map(ASV, ~ .x %>%
                   filter(grepl("yes", .$Include)) %>%
                   group_split(Sample_type, Visit, .keep = T)
@@ -357,7 +404,7 @@ ASV_list <- map(ASV, ~ .x %>%
 
 ```{r Save ASV files}
 imap(ASV_list, 
-     ~write.csv(.x, file=paste0("../../data/",.y,".csv"), quote=FALSE, row.names=F) )
+     ~write.csv(.x, file=paste0(result_dir,.y,".csv"), quote=FALSE, row.names=F) )
 
-saveRDS(ASV, paste0(PATH,"results/","ASV_wCtrl_long_format.RDS"))
+saveRDS(ASV, paste0(result_dir,"ASV_wCtrl_long_format.RDS"))
 ```
