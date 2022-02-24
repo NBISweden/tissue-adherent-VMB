@@ -1,39 +1,72 @@
 ---
 title: "Graph Based Clustering"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
-  pdf_document:
-    toc: true
-header-includes: 
-- \usepackage{float}
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
 editor_options: 
   chunk_output_type: console
 ---
 
+```{r save new metadata file, eval=FALSE, include=FALSE }
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports")
 
+# metadata <- read.csv2("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+# 
+# meta <- metadata %>%
+#   select(ID, PatID, Contraception, HIVstatus, BV_Diagnosis_v3, Luminal_names, Tissue_names, Luminal_gr, Tissue_gr,
+#          BV_Lactobacillus_v3, BV_Monbilicus_v3, BV_Vaginal_Garda_v3)
+# 
+# write.csv(meta, "../data/metadata.csv")
+```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 6.6929133858, 
+                      message    = FALSE,
+                      warning    = FALSE)
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports")
+```
+
+```{r Load data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
 #setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(tidyverse)
   library(igraph)
   library(rafalib)
-  library(fgsea)
-  library(scales)
   #remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
   library(niceRplots)
-  library(tidyverse)
 })  })  })
+
+#########
+# PATHS #
+#########
+input_dir <- "../results/03_normalize_data_output/"
+result_dir <- "../results/04_clustering_output/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
 
 #############
 # LODA DATA #
 #############
-datasets_all_samples <- readRDS("../../results/datasets_all_samples.RDS")
-metadata <- read.csv2("../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+datasets_all_samples <- readRDS(paste0(input_dir, "datasets_all_samples.RDS"))
+# datasets_all_samples <- readRDS("../../Gabriella_repo/results/datasets_all_samples.RDS") %>%
+#   set_names(., c("Tissue_RNAseq_V3_normalized", "ASV_Tissue_normalized", "ASV_Luminal_normalized", "ASV_CVL_V2_normalized_NOT_batch_corrected"))
+metadata <- read.csv(paste0("../data/", "metadata.csv"),row.names = 1)
 
 
-#color palettes
+#########################
+# SELECT SAMPLES TO USE #
+#########################
+# datasets_all_samples <- datasets_all_samples %>%
+#   map(., ~as_tibble(.x, rownames = NA )) %>%
+#   map(., ~select(.x, any_of(metadata$ID)))
+
+
 #################
 # COLOR PALETTS #
 #################
@@ -42,9 +75,11 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 bact_pal <- c('#88CCEE', '#44AA99', '#117733', '#332288', '#DDCC77', '#999933','#CC6677', '#882255', '#AA4499', '#DDDDDD')
 ```
 
-```{r, echo = FALSE}
-
-all_microbiome <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+```{r, fig.height=6}
+###################################
+# STUDY GROUPS GRAPH CONSTRUCTION #
+####################################
+all_microbiome <- datasets_all_samples[["ASV_Luminal_normalized"]]
 all_microbiome <- all_microbiome[ rowSums(all_microbiome>0) >= 3 ,  ]
 dim(all_microbiome)
 
@@ -52,6 +87,7 @@ zscore <- t(apply(all_microbiome,1,function(i){scale(i,T,T)}))
 zscore[ zscore > 4 ] <- 4
 zscore[ zscore < -4 ] <- -4
 rownames(zscore) <- rownames(all_microbiome); colnames(zscore) <- colnames(all_microbiome)
+
 mypar(mar=c(2,15,2,2))
 top_var <- apply(all_microbiome,1,var)
 top_var_t <- sort(top_var,decreasing = T)[100]
@@ -70,7 +106,6 @@ adj <- (1-cors)/2
 #Graph construction  
 k <- 12 # k for KNN
 p <- 0.1 # prunning threshold of SNN 0.14
-
 
 #Compute KNN graph from correlation matrix
 knn <- RANN::nn2(adj,k = k)
@@ -91,12 +126,15 @@ rownames(J) <- colnames(all_microbiome)
 
 #Transforming SNN into an igraph object
 g <- graph_from_adjacency_matrix(J,mode = "undirected",diag = F,weighted = T)
-write.csv(J,"../../results/patient_SNN_graph.csv",row.names = T)
+write.csv(J,paste0(result_dir,"participant_SNN_graph.csv"),row.names = T)
 
 
 ```
 
-```{r Plot Study Groups, echo=FALSE,fig.width=10,fig.height=9}
+```{r Plot Study Groups, fig.height=9, fig.width=10}
+#####################
+# PLOT STUDY GROUPS #
+#####################
 mypar(3,3,mar=c(0,0,2,0))
 
 set.seed(1)
@@ -113,7 +151,6 @@ set.seed(1)
 U <- uwot::umap(adj,n_neighbors = 30)
 h <- hclust(as.dist(adj),method = "ward.D2")
 # metadata$joint_clustering <- cutree(h,k = 5)
-#write.csv2(metadata,"../../results/metadata_integration.csv",row.names = T)
 
 plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(cl$membership)] , 
       edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
@@ -125,7 +162,7 @@ plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(cl$membership)] 
       vertex.size=10,main="umap",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 empty_plot()
-legend("topleft",title = "Patient groups\nLouvain_gr",
+legend("topleft",title = "Participant groups\nLouvain_gr",
        legend = levels(factor(cl$membership)),
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1.2,xpd=T)
 
@@ -139,7 +176,7 @@ plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$Luminal
       vertex.size=10,main="umap",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 empty_plot()
-legend("topleft",title = "Patient groups\nLuminal_gr",
+legend("topleft",title = "Participant groups\nLuminal_gr",
        legend = levels(factor(metadata$Luminal_gr)),
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1.2,xpd=T)
 # title("Louvain clusters",cex.main=1,font.main=1)
@@ -154,17 +191,19 @@ plot( g , vertex.label.cex=0.000001 , vertex.color = pal[factor(metadata$Tissue_
       vertex.size=10,main="umap",
       edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
 empty_plot()
-legend("topleft",title = "Patient groups\nTissue_gr",
+legend("topleft",title = "Participant groups\nTissue_gr",
        legend = levels(factor(metadata$Tissue_gr)),
        bty = "n",pch = 21,pt.bg = pal,pt.cex = 1.2,xpd=T)
 # title("Louvain clusters",cex.main=1,font.main=1)
 
 ```
 
-```{r Bacterial communities, echo = FALSE}
-
-all_microbiome <- cbind(#datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
-                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+```{r Bacterial communities}
+#######################################
+# BACTERIAL GROUPS GRAPH CONSTRUCTION #
+#######################################
+all_microbiome <- cbind(#datasets_all_samples[["ASV_Tissue_normalized"]],
+                        datasets_all_samples[["ASV_Luminal_normalized"]]
                         )
 
 cors <- cor(t(all_microbiome[rowSums(all_microbiome > 0)>=10,]))
@@ -192,10 +231,13 @@ colnames(J) <- colnames(cors)
 
 #Build a graph object, perform clustering and define the force-directed layout
 g <- graph_from_adjacency_matrix(J,mode = "undirected",diag = F,weighted = T)
-write.csv(J,"../../results/bacteria_SNN_graph.csv",row.names = T)
+write.csv(J,paste0(result_dir,"bacteria_SNN_graph.csv"),row.names = T)
 
 cl <- igraph::cluster_louvain(g)
 # cl <- igraph::walktrap.community(g)
+Bact.com <- tibble(Taxa=rownames(J), Bact_com=cl$membership)
+write.csv(Bact.com,paste0(result_dir,"bacterial_communities.csv"),row.names = T)
+
 set.seed(1)
 l <- layout_with_fr(g,niter=3000,start.temp=1)
 
@@ -205,10 +247,11 @@ mU <- uwot::umap((1-cors)/2, n_neighbors = 10)
 ```
 
 
-```{r Plot BC, echo=FALSE,fig.width=10,fig.height=10}
-
+```{r Plot BC, fig.height=10, fig.width=10}
+##############################
+# PLOT BACTERIAL COMMUNITIES #
+##############################
 mypar(3,3,mar=c(0,0,2,0))
-
 plot( g , vertex.label.cex=0.000001 , vertex.color = bact_pal[factor(cl$membership)] , 
     edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=l,
     vertex.size=10, main="graph layout FR",
@@ -217,6 +260,7 @@ plot( g , vertex.label.cex=0.000001 , vertex.color = bact_pal[factor(cl$membersh
     edge.width=  ( E(g)$weight / max(E(g)$weight)) ,layout=mU,
     vertex.size=10, main="UMAP",
     edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(g)$weight / max(E(g)$weight) * 88 )+1 ] )
+
 par(mar=c(0,0,0,0))
 empty_plot()
 legend("topleft",title = "bact. communities",
@@ -224,7 +268,6 @@ legend("topleft",title = "bact. communities",
      bty = "n",pch = 21,pt.bg = pal,cex = .8,pt.cex = .9,xpd=T)
 ```
 
-
-**Figure 3.** Bacterial community embedding of `r k`-SNN graph clustered using Louvain community detection algorithm based on the normalized bacterial abundances across all microbiome datasets (including samples not present in all datasets).
+**Figure** Bacterial community embedding of `r k`-SNN graph clustered using Louvain community detection algorithm based on the normalized bacterial abundances across all microbiome datasets (including samples not present in all datasets).
 
 
