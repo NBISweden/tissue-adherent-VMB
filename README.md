@@ -1,4 +1,4 @@
-# Spatial_DMPA analysis and figures
+# Microbiome paper analysis and figures
 
 ## Table of contents
 * [General info](#general-info)
