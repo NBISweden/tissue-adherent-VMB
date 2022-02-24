@@ -1,44 +1,46 @@
 ---
-title: "Normalization"
-editor_options:
-  chunk_output_type: console
+title: "Merge sequencing runs"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
-  pdf_document:
-    toc: yes
   html_document:
-    code_folding: hide
+    code_folding: show
     toc: yes
     toc_float:
       collapsed: no
+editor_options:
+  chunk_output_type: console
 ---
 
 ```{r Setup, echo = FALSE}
-knitr::opts_chunk$set(fig.width  = 10,
-                      results    = "hold",
+knitr::opts_chunk$set(results    = "hold",
                       message    = FALSE,
                       warning    = FALSE)
 
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown")
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports")
 ```
 
 # Load libraries and other scripts
 
-```{r Load data, message=FALSE, warning=FALSE, include=FALSE}
+```{r Load data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
-#remotes::install_github("czarnewski/niceRplots",upgrade = "always",force = T)
-library(niceRplots)
 library(tidyverse)
 })  })  })
+
+#########
+# PATHS #
+#########
+#input_dir <- "../../Gabriella_repo/data/"
+input_dir <- "../results/01_taxonomy_improved_output/"
+result_dir <- "../results/02_data_preprocessing_output/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
 
 #############
 # LODA DATA #
 #############
-PATH <- "../../" #Path to the data
-
 dataset_names <- c("ASV_tissue_V3_B2.csv", # Tissue, Boston run 2 (95 samples)
                    "ASV_tissue_V3_B1.csv", # Tissue, Boston run 1 (1 sample)
                    #"ASV_CVL_V2_B1.csv",   # CVL V2, Boston run 1 (27 samples)
@@ -46,20 +48,14 @@ dataset_names <- c("ASV_tissue_V3_B2.csv", # Tissue, Boston run 2 (95 samples)
                    #"ASV_CVL_V2_S.csv",    # CVL V2, CTMR         (62 samples)
                     "ASV_CVL_V3_B1.csv")   # CVL V3, Boston run 1 (111 samples)
 
-datasets_ <- map(dataset_names, ~read.csv( paste0(PATH,"data/",.x))) %>% set_names(., dataset_names)
-metadata <- read.csv(paste0(PATH,"data/Clinical_visit_2_3_updatefeb22.csv"))
-rownames(metadata) <- as.character(metadata$ID)
+datasets <- map(dataset_names, ~read.csv(paste0(input_dir,.x))) %>% set_names(., dataset_names)
+metadata <- read.csv(paste0("../data/", "metadata.csv"),row.names = 1)
+trx <- read.csv(paste0("../data/","Raw_gene_counts_matrix.csv"),row.names = 1)
 
-#################
-# COLOR PALETTS #
-#################
-pal <- c(RColorBrewer::brewer.pal(9,"Set1"),RColorBrewer::brewer.pal(8,"Set2"),
-         RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
-heat_pal <- c("#000000", colorRampPalette(c("#000000","grey5","grey30","orange3","yellow","yellow","white"))(90))
-cor_pal <- colorRampPalette(c("navy","white","firebrick"))(90)
+map(datasets, ~dim(.x))
 ```
 
-```{r Functions, include=FALSE}
+```{r Functions}
 # create "other" taxonomy
 other_taxa.fun <- function(df) {
   other_taxa <- df %>%
@@ -102,8 +98,8 @@ return(aggregated)
 
 # Taxonomy agglomeration
 
-```{r Agglomerate Taxa, echo = FALSE}
-temp <- map(datasets_, ~.x  %>%
+```{r Agglomerate Taxa}
+temp <- map(datasets, ~.x  %>%
             select(Sequence, Seq_ID, Kingdom:Species, everything()) %>%
             filter(!(is.na(.$Kingdom))) %>% # Removes any kingdom being NA
             other_taxa.fun(.) %>% # create "other" taxonomy 
@@ -115,7 +111,7 @@ temp <- map(datasets_, ~.x  %>%
 
 # Extract taxonomic information to file
 seq_taxa <- bind_rows(temp_, .id = "dataset") %>% select(1:12) %>% unique() 
-#write.csv(seq_taxa, paste0(PATH,"results/","SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
+#write.csv(seq_taxa, paste0(result_dir,"SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
 
 #arrange all datasets to have the same rownames with all bacteria
 common_microbes_fun <- function(x) {
@@ -128,15 +124,14 @@ common_microbes_fun <- function(x) {
     column_to_rownames(var = "Taxonomy")
   return(t)
 }
-datasets_ <- map(temp, ~common_microbes_fun(.x))
-lapply(datasets_,dim)
+datasets <- map(temp, ~common_microbes_fun(.x))
+lapply(datasets,dim)
 
 ```
 
 # Merging and renaming
 
-```{r merge sequencing runs, echo = FALSE}
-datasets <- datasets_
+```{r merge sequencing runs}
 names(datasets)
 
 #No batch correction needed in tissue_V3 dataset, only add it to the other samples
@@ -148,9 +143,8 @@ lapply(datasets,dim)
 
 ```
 
-# normalize and save microbiome datasets
 
-```{r save raw and norm microbiome files, echo = FALSE,fig.height=5,fig.width=5}
+```{r save raw microbiome files, fig.height=5, fig.width=5}
 
 datasets <- lapply(datasets,function(x){
   x <- x[,sort(colnames(x))]
@@ -158,35 +152,9 @@ datasets <- lapply(datasets,function(x){
 })
 
 # raw files
-n <- c("ASV_CVL_V3", "ASV_tissue_V3")
-map2(datasets, n,  ~write.csv(.x, file=paste0(PATH,"results/",.y,"_raw_counts.csv"),row.names = T) )
+n <- c("ASV_Luminal", "ASV_Tissue")
+map2(datasets, n,  ~write.csv(.x, file=paste0(result_dir,.y,"_raw_counts.csv"),row.names = T) )
 
-# normalized files
-datasets[["ASV_CVL_V3.csv"]] <- round( t(log2( t(datasets[["ASV_CVL_V3_B1.csv"]]) / colSums(datasets[["ASV_CVL_V3_B1.csv"]]) * 1000 + 1 )),4)
-datasets[["ASV_tissue_V3"]] <- round(t( log2( t(datasets[["ASV_tissue_V3"]]) / colSums(datasets[["ASV_tissue_V3"]]) * 1000 + 1 )),4)
 
-write.csv( datasets[["ASV_tissue_V3"]] , paste0(PATH,"results/ASV_tissue_V3_normalized_batch_corrected.csv"),row.names = T )
-write.csv( datasets[["ASV_CVL_V3.csv"]] , paste0(PATH,"results/ASV_CVL_V3_normalized_batch_corrected.csv"),row.names = T )
 ```
-
-# normalize and save trx datasets
-
-```{r save raw and norm trx files, echo = FALSE}
-trx <- read.csv(paste0(PATH,"data/TRX_rawcounts.csv"),row.names = 1)
-trx <- rowsum(trx[,-c(1,2)],trx$symbol)
-colnames(trx) <- sub("ML","",colnames(trx))
-trx  <- trx[ rownames(trx) != "" , ]
-trx <- trx[ rownames(trx) != "NA" , ]
-colnames(trx) <- as.character(metadata$ID)[ match(colnames(trx) , as.character(metadata$PatID) ) ]
-trx <- trx[ rowSums(trx > 5) >= 3 , ]
-trx <- t( log2( t( trx ) / colSums(trx) * 1e6 + 1 ) )
-write.csv( trx , paste0(PATH,"results/Tissue_RNAseq_V3_normalized.csv"),row.names = T )
-```
-
-
-
-
-
-
-
 
