@@ -1,5 +1,6 @@
 ---
 title: "Figure 6. Differential Protein expression"
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 output: 
   pdf_document:
     fig_caption: yes
@@ -9,16 +10,18 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
+  fig.width = 6.6929133858,
   fig.path="./Figures/",
+  dev=c('pdf', 'png'), dpi=300,
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -29,18 +32,25 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(edgeR)
   library(openxlsx)
+  library(readxl)
   library(rstatix)
   #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
 })  })  })
 
+#########
+# PATHS #
+#########
+result_dir <- "./Suppl.Tbl/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
 #############
 # LODA DATA #
 #############
-datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv")
-cytokine_data <- read.csv("../../../data/210125_Cytokines_visit3CVL.csv")
-metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+Protein_V3 <- read_xlsx("../../data/Protein_norm_MFI_Bradley_et.al.xlsx")
+cytokine_data <- read.csv("../../data/210125_Cytokines_visit3CVL.csv")
+metadata <- read.csv("../../data/metadata.csv",row.names = 1, stringsAsFactors = F)
 
 #################
 # COLOR PALETTS #
@@ -137,18 +147,12 @@ return(list(efit=efit, top=top, CONTRASTS=CONTRASTS))
 to_remove <- c("CSTB_HPA017380","SPINK5_HPA009067","SPRR3_HPA024330","FGA_HPA064755","S100A12_HPA002881","KRT1_HPA019797","KRT1_HPA062908","LGMN_HPA001426","TACSTD2_HPA043104","FLNA_HPA001115","GPX3_HPA071520","CSTA_HPA001031","SERPINB5_HPA019132","ITIH2_HPA059150","NCF2_HPA002327","ANXA3_HPA013431")
 
 Protein <- Protein_V3 %>%
-  left_join(select(metadata, PatID, ID), by="PatID") %>%
   select(ID, contains("HPA")) %>%
-  filter(!is.na(.$ID)) %>%
+  filter(ID %in% metadata$ID) %>%
   pivot_longer(., -ID, names_to = "Antibody") %>%
   pivot_wider(names_from = "ID", values_from = "value" ) %>%
   filter(!(Antibody %in% to_remove)) %>%
   column_to_rownames(var = "Antibody") 
-
-# Replace missing values with average in sexwork_months column
-m <- round(sum(metadata$sexwork_months, na.rm = T)/nrow(metadata))
-metadata <- metadata %>%
-  mutate(sexwork_months = ifelse(is.na(.$sexwork_months), m, .$sexwork_months))
 
 ```
 
@@ -249,17 +253,18 @@ plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
     end <- end[order(factor(names(end), levels = pal))]
     end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/length(samples)-.017) )
     start <- c(0, map_dbl(end[1:4], ~.x+0.015))
+    end <- c(end[1:length(end)-1], par("usr")[2]-.005)
     
-    axis(1, at = c(start, end), label = F, pos =1.03 , xpd=T, col="white",col.ticks="black")
-    map2(start, end, ~lines(x=c(.y, .x), y= c(1.03, 1.03), xpd=T, cex=.8))
+    axis(1, at = c(start, end), label = F, pos =1.032 , xpd=T, col="white",col.ticks="black")
+    map2(start, end, ~lines(x=c(.y, .x), y= c(1.032, 1.032), xpd=T, cex=.8))
     # text labels
     t <- map2(start, end, ~(.x+.y)/2)
-    map2(t,levels(factor(names(samples))), ~text(x=.x, y=1.04, .y,xpd=T, cex=.8))
+    map2(t,levels(factor(names(samples))), ~text(x=.x, y=1.043, .y,xpd=T, cex=.8))
     
     # Boxes 
     if(gr == "Luminal_gr") {
-      lines(x=c(0,.603,.603,0,0),
-            y=c(.488,.488,1.006, 1.006,.488), col="red", lty=1, lwd = 1.5)
+      lines(x=c(0,.603,.603,-.002,-.002),
+            y=c(.488,.488,1.008, 1.008,.488), col="red", lty=1, lwd = 1.5)
       lines(x=c(.39,.94,.94,.39,.39),
             y=c(.488,.488,-0.008, -0.008,.488), col="red", lty=1, lwd = 1.5)}
     if(gr == "Tissue_gr") {
@@ -270,16 +275,17 @@ plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
     }
     
     ## Meta info bars
+    if(gr == "Luminal_gr"){size = .5}else{size=.6}
     points( seq(0,1,length.out = length(samples)),rep(par("usr")[4],length(samples))+.005,
             col=pal[factor(names(samples))[ order(df[1])]],
             pch=15,xpd=T,cex=.7)
     
     points( seq(0,1,length.out = ncol(top_PROT_mfi)),rep(par("usr")[3],ncol(top_PROT_mfi))-.008,
             col=c("tomato","orange","#d7d7d7")[ factor(metadata[samples,"BV_Diagnosis_v3"][order(df[1])]) ],
-            pch=15,xpd=T,cex=.5) 
+            pch=15,xpd=T,cex=size) 
     points( seq(0,1,length.out = ncol(top_PROT_mfi)),rep(par("usr")[3],ncol(top_PROT_mfi))-.022,
             col= c("#d7d7d7","tomato")[ factor(metadata[samples,"HIVstatus"][order(df[1])]) ],
-            pch=15,xpd=T,cex=.5)
+            pch=15,xpd=T,cex=size)
     
     mtext( paste0(" ", gsub("_.+","",rownames(top_PROT_mfi)[rev(h$order)])), side=4, las = 1, cex = .45,
            at=seq(0,1,length.out = length(rownames(top_PROT_mfi))), xpd=T)
@@ -392,8 +398,8 @@ l_top_a <- list( list(Across = dpe_L$top), list(Across = dpe_T$top))  %>% set_na
 l <- list(l_top_a, stat, l_top_p)
 p_list <- imap(names, ~flatten(map_depth(l, 1, .x))) 
 
-imap(p_list, ~write.xlsx(.x,file=paste0("./Suppl.Tbl/","Suppl.Tbl.",.y,"_Proteins.xlsx"))) # Excel
-write.xlsx(list("L2T2 vs L2T3"=dpe_LT$top),file=paste0("./Suppl.Tbl/","Suppl.Tbl.17"," L2T2_L2T3_Proteins.xlsx"))
+imap(p_list, ~write.xlsx(.x,file=paste0(result_dir,"Suppl.Tbl.",.y,"_Proteins.xlsx"))) # Excel
+write.xlsx(list("L2T2 vs L2T3"=dpe_LT$top),file=paste0(result_dir,"Suppl.Tbl.17"," L2T2_L2T3_Proteins.xlsx"))
 ```
 
 ```{r Figure 6, echo = FALSE, eval = TRUE, fig.height=10, fig.width=7}
@@ -455,7 +461,7 @@ add_letter("d")
 
 ```
 
-**Figure 3. Protein Heatmap**. **a** and **b** top differentially expressed proteins scaled by row, for Luminal and Tissue respectively. (p-value < 0.05) **b** and **d** sig. cytokines for Luminal and Tissue respectively. 
+**Figure 6. Protein Heatmap**. **a** and **c** top differentially expressed proteins scaled by row, for Luminal and Tissue respectively. (p-value < 0.05) **b** and **d** sig. cytokines for Luminal and Tissue respectively. 
 
 
 ```{r All dpe plot, eval=FALSE, fig.height=6, fig.width=6, include=FALSE}

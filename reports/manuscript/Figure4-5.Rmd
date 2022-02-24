@@ -1,5 +1,6 @@
 ---
-title: "DGE's and Enrichment"
+title: "Figure 4. & 5. DGE's and Enrichment"
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 output: 
   pdf_document:
     fig_caption: yes
@@ -9,16 +10,18 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
+  fig.width = 6.6929133858,
   fig.path="./Figures/",
+  dev=c('pdf', 'png'), dpi=300,
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -39,22 +42,28 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(rafalib)
 })  })  })
 
-
-#############
-# LODA DATA #
-#############
-datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
-sample_use <- metadata$ID
-
-gr_name <- c("Luminal", "Tissue")
-out <- paste0("./Suppl.Tbl/")
+#########
+# PATHS #
+#########
+result_dir <- "./Suppl.Tbl/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
 
 DEG_files <- c("Suppl.Tbl.04 DEGs_Luminal.xlsx",
                "Suppl.Tbl.08 DEGs_Tissue.xlsx")
 enrichR_files <- c("Suppl.Tbl.07 TF_PPI_Luminal.xlsx",
                    "Suppl.Tbl.11 TF_PPI_Tissue.xlsx")
 
+#############
+# LODA DATA #
+#############
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+metadata <- read.csv("../../data/metadata.csv",row.names = 1, stringsAsFactors = F)
+sample_use <- metadata$ID
+gr_name <- c("Luminal", "Tissue")
+
+source("../../code/enrichment_function.R")
+GO_database <- fgsea::gmtPathways("../../resources/KEGG_GO_database/c5.bp.v6.2.symbols.gmt.txt")
+KEGG_database <- fgsea::gmtPathways("../../resources/KEGG_GO_database/c2.cp.kegg.v6.2.symbols.gmt.txt")
 
 ##################
 # DEFINE CUTOFFS #
@@ -137,10 +146,9 @@ gene_mod_enrich.fun <- function(top, y, c, db, group_name, cuttoff){
   cuttoff <- cuttoff[names(cuttoff) == db]
   gene_module <- cutree(h, h=cuttoff)
   
-  source("../enrichment_function.R")
   if(db == "GO"){
-  gmt_list <- fgsea::gmtPathways("../../../supplementary_files/c5.bp.v6.2.symbols.gmt.txt")}else{
-  gmt_list <- fgsea::gmtPathways("../../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")}
+  gmt_list <- GO_database}else{
+  gmt_list <- KEGG_database}
   res_list <- lapply( unique( gene_module[h$order] ),function(x){
     temp <- compute_enrichment(genes = names(gene_module)[gene_module==x],
                               gmt_list = gmt_list,
@@ -216,11 +224,6 @@ TRX_counts <- TRX_counts[,sample_use]
 #########
 # DEG's #
 #########
-# Replace missing values with average in sexwork_months column
-m <- round(sum(metadata$sexwork_months, na.rm = T)/nrow(metadata))
-metadata <- metadata %>%
-  mutate(sexwork_months = ifelse(is.na(.$sexwork_months), m, .$sexwork_months))
-
 dge_L <- edgR_dge.fun("Luminal_gr", confound=T)
 dge_T <- edgR_dge.fun("Tissue_gr", confound=T)
 
@@ -258,10 +261,6 @@ pairwise_dge_T <- pairwise_dge.fun(group = "Tissue_gr",
 ###############################
 # PAIRWISE ENRICHMENT GO/KEGG #
 ###############################
-source("../enrichment_function.R")
-gmt_list_KEGG <- fgsea::gmtPathways("../../../supplementary_files/c2.cp.kegg.v6.2.symbols.gmt.txt")
-gmt_list_GO <- fgsea::gmtPathways("../../../supplementary_files/c5.bp.v6.2.symbols.gmt.txt")
-
 #info_logFC <- map(top_dfs[[1]], ~table(abs(.x$logFC) > 1))
 #info_PValue <- map(top_dfs[[1]], ~table(.$PValue < 0.01))
 
@@ -275,10 +274,10 @@ t_split <- modify_depth(l_top, 2, ~ .x %>%
   )
 
 ## GO enrichment 
-pairwise_GO <- map_depth(t_split, 3, ~enrich_list(.x$Genes, gmt_list_GO)) %>%
+pairwise_GO <- map_depth(t_split, 3, ~enrich_list(.x$Genes, GO_database)) %>%
   map_depth(., 2, ~bind_rows(.x, .id = "regulation")) 
 ## KEGG enrichment
-pairwise_KEGG <- map_depth(t_split, 3, ~enrich_list(.x$Genes, gmt_list_KEGG)) %>%
+pairwise_KEGG <- map_depth(t_split, 3, ~enrich_list(.x$Genes, KEGG_database)) %>%
   map_depth(., 2, ~bind_rows(.x, .id = "regulation")) 
  
 ```
@@ -286,10 +285,10 @@ pairwise_KEGG <- map_depth(t_split, 3, ~enrich_list(.x$Genes, gmt_list_KEGG)) %>
 ```{r Suppl. Tbl. 4 & 8, include=FALSE}
 # DEG's across and pairwise
 pages <- list(list(Across=dge_L$top), pairwise=pairwise_dge_L$top) %>% flatten()
-write.xlsx(pages, file=paste0(out,DEG_files[1]))
+write.xlsx(pages, file=paste0(result_dir,DEG_files[1]))
 
 pages <- list(list(Across=dge_T$top), pairwise=pairwise_dge_T$top) %>% flatten()
-write.xlsx(pages, file=paste0(out,DEG_files[2]))
+write.xlsx(pages, file=paste0(result_dir,DEG_files[2]))
 ```
 
 ```{r Suppl. Tbl. 5,6 & 9,10, eval=FALSE, include=FALSE}
@@ -305,8 +304,8 @@ df_across <- enframe(list(Luminal=enrich_L, Tissue=enrich_T)) %>%
   mutate(res = set_names(.$res, paste0(.$value_id,"_gene_module_",.$mod))) %>%
   group_split(name) %>% set_names(., map(., ~unique(.x$name)))
 
-write.xlsx(df_across[[1]]$res, file=paste0(out,"Suppl.Tbl.05 Enrichment_Across_Luminal",".xlsx"))
-write.xlsx(df_across[[2]]$res, file=paste0(out,"Suppl.Tbl.09 Enrichment_Across_Tissue",".xlsx"))
+write.xlsx(df_across[[1]]$res, file=paste0(result_dir,"Suppl.Tbl.05 Enrichment_Across_Luminal",".xlsx"))
+write.xlsx(df_across[[2]]$res, file=paste0(result_dir,"Suppl.Tbl.09 Enrichment_Across_Tissue",".xlsx"))
 
 # Enrichment pairwise
 df_pairwise <- enframe(list(GO=pairwise_GO, KEGG=pairwise_KEGG)) %>%
@@ -316,15 +315,18 @@ df_pairwise <- enframe(list(GO=pairwise_GO, KEGG=pairwise_KEGG)) %>%
   mutate(value = set_names(.$value, paste0(.$name,"_",.$value_id...3))) %>%
   group_split(value_id...4) %>% set_names(., map(., ~unique(.x$value_id...4)))
   
-write.xlsx(df_pairwise[[1]]$value, file=paste0(out,"Suppl.Tbl.06 Enrichment_Pairwise_Luminal",".xlsx"))
-write.xlsx(df_pairwise[[2]]$value, file=paste0(out,"Suppl.Tbl.10 Enrichment_Pairwise_Tissue",".xlsx"))
+write.xlsx(df_pairwise[[1]]$value, file=paste0(result_dir,"Suppl.Tbl.06 Enrichment_Pairwise_Luminal",".xlsx"))
+write.xlsx(df_pairwise[[2]]$value, file=paste0(result_dir,"Suppl.Tbl.10 Enrichment_Pairwise_Tissue",".xlsx"))
 ```
 
 ```{r TF PPI Analysis function, include=FALSE}
-TF_PPI_analysis.fun <- function(out, filename, gr_name, outfile) {
+# filename <- DEG_files[1]
+# gr_name <- gr_name[1]
+# outfile <- enrichR_files[1]
+TF_PPI_analysis.fun <- function(result_dir, filename, gr_name, outfile) {
   # Get DEG's files and filter p-value < 0.01
-  sheets <- excel_sheets(paste0(out, filename)) %>% set_names(.) %>% .[-c(1:2)]
-  detables <- map(sheets, ~read_xlsx(paste0(out, filename), sheet = .x, col_names = TRUE)) %>%
+  sheets <- excel_sheets(paste0(result_dir, filename)) %>% set_names(.) %>% .[-c(1:2)]
+  detables <- map(sheets, ~read_xlsx(paste0(result_dir, filename), sheet = .x, col_names = TRUE)) %>%
     map(.,~mutate(.x, DE = ifelse(.x$PValue > dge_cutoff , 0, ifelse(.x$logFC < 0, -1, 1 )))) %>% 
     map(.,~filter(., .$PValue <= 0.01))
     
@@ -357,13 +359,13 @@ TF_PPI_analysis.fun <- function(out, filename, gr_name, outfile) {
       l <- set_names(list(l), paste0(i))
       save_l <- append(save_l, l ) 
     } 
-    write.xlsx(save_l, file=paste0(out, outfile), row.names=FALSE)
+    write.xlsx(save_l, file=paste0(result_dir, outfile), row.names=FALSE)
   }
 ```
 
 ```{r TF PPI Analysis, eval=FALSE, include=FALSE}
-TF_PPI_analysis.fun(out, DEG_files[1], gr_name[1], enrichR_files[1]) # writes Suppl.Tbl.07
-TF_PPI_analysis.fun(out, DEG_files[2], gr_name[2], enrichR_files[2]) # writes Suppl.Tbl.11
+TF_PPI_analysis.fun(result_dir, DEG_files[1], gr_name[1], enrichR_files[1]) # writes Suppl.Tbl.07
+TF_PPI_analysis.fun(result_dir, DEG_files[2], gr_name[2], enrichR_files[2]) # writes Suppl.Tbl.11
 ```
 
 
@@ -552,8 +554,8 @@ arrange_plots.fun <- function(degs, group, gr_name, comparison, enrichment_db, f
     names_DD <- ""
     names_UU <- ""
     
-    f_DOWN <- read_xlsx(paste0(out, file), sheet = x) %>% filter(Regulation == "down")
-    f_UP <- read_xlsx(paste0(out, file), sheet = x) %>% filter(Regulation == "up")
+    f_DOWN <- read_xlsx(paste0(result_dir, file), sheet = x) %>% filter(Regulation == "down")
+    f_UP <- read_xlsx(paste0(result_dir, file), sheet = x) %>% filter(Regulation == "up")
     
     if (is.data.frame(f_DOWN) && nrow(f_DOWN)>0){
       tempD_e <- f_DOWN
@@ -609,7 +611,7 @@ l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
           )
 #layout.show(layout(l[[1]],l[[2]],l[[3]]))
 
-sheets <- excel_sheets(paste0(out, DEG_files[1])) %>% set_names(.) %>% .[-c(1:2)]
+sheets <- excel_sheets(paste0(result_dir, DEG_files[1])) %>% set_names(.) %>% .[-c(1:2)]
 arrange_plots.fun(enrich_L, "Luminal_gr", "Luminal", sheets, "TF_PPI_enrichment", enrichR_files[1], Layout = l)
 
 # test figure
@@ -619,7 +621,8 @@ arrange_plots.fun(enrich_L, "Luminal_gr", "Luminal", sheets, "TF_PPI_enrichment"
 #     )
 ```
 
-```{r Figure 5, message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
+```{r Figure 5, message=FALSE, warning=FALSE, echo=FALSE, fig.height=6, crop = TRUE}
+knitr::knit_hooks$set(crop = knitr::hook_pdfcrop)
 # Layout
 l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
                          1,2,3,4,4,4,5,5,5,
@@ -630,7 +633,7 @@ l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
           heigth = c(1,1,1.5)
           )
 
-sheets <- excel_sheets(paste0(out, DEG_files[2])) %>% set_names(.) %>% .[-c(1:2)]
+sheets <- excel_sheets(paste0(result_dir, DEG_files[2])) %>% set_names(.) %>% .[-c(1:2)]
 arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", enrichR_files[2], Layout = l)
 
 # dev.copy2pdf(file=paste0("./test.pdf"),
@@ -672,18 +675,18 @@ df_across <- enframe(list(LtoT=enrich_LT)) %>%
 
 
 pages <- list(list("DEGs L2T2 vs L2T3"=t), df_across[[1]]$res) %>% flatten()
-write.xlsx(pages, file=paste0(out,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrichment.xlsx")) 
+write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrichment.xlsx")) 
 ```
  
 ## igraph network plot
-```{r igraph network, echo=FALSE, warning=FALSE} 
+```{r igraph network, eval=FALSE, warning=FALSE, include=FALSE}
 # 1. Change the groups of interest by assigning condition_use
 # 2. Change the number of genes to be included in the network by changing n
 #    look at tempD_i and tempU_i to see how many genes was significant
 # 3. Adjust the size of the gene nodes and text in the graph by changing; square, circle and txt
 
 # combinations
-sheets <- map(DEG_files, ~excel_sheets(paste0(out, .x))[-c(1:2)] ) %>%
+sheets <- map(DEG_files, ~excel_sheets(paste0(result_dir, .x))[-c(1:2)] ) %>%
   map(., ~set_names(.x))
 
 # Set enrichment conditions
@@ -717,8 +720,8 @@ i_graph <- function(temp_i, n, square, cricle){
 
 # Save all combination plots in one file
 save_pdf.fun <- function(i, gr_name, comp){
-  temp_i_name <- grep(i,list.files(paste0(out),full.names=F),value=T)
-  p <- map(comp, ~read_xlsx(paste0(out, temp_i_name), sheet = .x)) 
+  temp_i_name <- grep(i,list.files(paste0(result_dir),full.names=F),value=T)
+  p <- map(comp, ~read_xlsx(paste0(result_dir, temp_i_name), sheet = .x)) 
   
   p_split <- p %>%
     imap(., ~.x %>%
@@ -730,7 +733,7 @@ save_pdf.fun <- function(i, gr_name, comp){
   
   
   par(mar = c(0, 0, .7, 0))  #bottom, left, top, right
-  pdf(file = paste0(out, "Plots/", i, "_network_",".pdf", sep=""))
+  pdf(file = paste0(result_dir, "Plots/", i, "_network_",".pdf", sep=""))
     p <- imap(obj_igraph,
          ~with(.x, 
                  plot.igraph(g, label=V(g), page = T,
@@ -744,7 +747,7 @@ save_pdf.fun <- function(i, gr_name, comp){
     dev.off()
 }
 
-# if(isFALSE(dir.exists(paste0(out,"Plots")))){dir.create(paste0("../",result.dir),recursive = TRUE)}
+# if(isFALSE(dir.exists(paste0(result_dir,"")))){dir.create(paste0("../",result.dir),recursive = TRUE)}
 # save_pdf.fun("TF_PPI_Luminal", "Luminal", comp = sheets[[1]])
 # save_pdf.fun("TF_PPI_Tissue", "Tissue", comp = sheets[[2]])
 

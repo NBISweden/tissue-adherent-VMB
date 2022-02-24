@@ -1,5 +1,6 @@
 ---
 title: "Figure 2. Bacterial Communities and Function"
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 output: 
   pdf_document:
     fig_caption: yes
@@ -9,23 +10,24 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
+  fig.width = 6.6929133858,
   fig.path="./Figures/",
+  dev=c('pdf', 'png'), dpi=300,
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
 ```{r Load data, message=FALSE, warning=FALSE, include=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
   library(edgeR)
@@ -37,22 +39,29 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(niceRplots)
 })  })  })
 
+#########
+# PATHS #
+#########
+result_dir <- "./Suppl.Tbl/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
 #############
 # LODA DATA #
 #############
-datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+metadata <- read.csv("../../data/metadata.csv",row.names = 1, stringsAsFactors = F)
 sample_use <- metadata$ID
-
-SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
-bac_communities <- as.matrix(read.csv2("../../../results/bacterial_communities.csv",row.names = 1))[,1]
-
 group_annotation <- factor(setNames(metadata$Luminal_gr,metadata$ID))
 gr <- "Luminal"
 
-picrust_data <- read.table("../../../data/pred_metagenome_unstrat.tsv",header = T,row.names = 1)
-picrust_KO_seq <- read.table("../../../data/KO_predicted.tsv",header = T,row.names = 1)
-picrust_taxa <- read.table("../../../data/SeqID_to_taxa.csv",header = T,row.names = 1,sep = ",")
+SNN_bacteria <- read.csv("../../results/04_clustering_output/bacteria_SNN_graph.csv",row.names = 1)
+bac_communities <- as.matrix(read.csv("../../results/04_clustering_output/bacterial_communities.csv",row.names = 2))[,2]
+
+picrust_data <- read.table("../../results/05_picrust_output/out_2021-01-20/KO_metagenome_out/pred_metagenome_unstrat.tsv", header = T,row.names = 1)
+ko_names <- readLines('../../resources/picrust_data/ko_info.tsv')
+kegg_names <- read.delim('../../resources/picrust_data/KEGG_pathways_info.tsv',header = F)
+gmt_list <- fgsea::gmtPathways("../../resources/picrust_data/KEGG_pathways_to_KO.tsv")
+source("../../code/enrichment_function.R")
 
 AA <- c("(?<!Phenyl)Alanine " = "Ala", "Arginine" = "Arg", "Asparagine" = "Asn", "Aspartic acid" = "Asp", "Cysteine" = "Cys", "Glutamic acid" = "Glu", "Glutamine" = "Gln", "Glycine" = "Gly", "Histidine" = "His", "Hydroxyproline" = "Hyp", "Isoleucine" = "Ile", "Leucine" = "Leu", "Lysine" = "Lys", "Methionine" = "Met", "Phenylalanine" = "Phe", "Proline" = "Pro", "Pyroglutamatic" = "Glp", "Serine" = "Ser", "Threonine" = "Thr", "Tryptophan" = "Trp", "Tyrosine" = "Tyr", "Valine" = "Val")
 AA_ <- set_names(AA, map_chr(names(AA), ~ paste0("(?i)", .))) # make case insensitive
@@ -106,7 +115,7 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 # WET SMEAR BACTERIAL VALIDATION #
 ###################################
 par(mar=c(1,5,4,1)) #b,l,t,r
-x <- datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]]
+x <- datasets_all_samples[["ASV_Luminal_normalized"]]
 xL <- rowsum(x , grepl("L.",rownames(x)) )[2,] / sum(grepl("L.",rownames(x)))
 xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
 xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
@@ -149,7 +158,6 @@ picrust_data <- round(picrust_data[ rowSums(picrust_data>5)>=10, ])
 TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
 sample_use <- intersect(colnames(TRX)[colSums(TRX)!=0], colnames(picrust_data))
 
-ko_names <- readLines('../../../data/ko_info.tsv')
 ko_names <- strsplit(ko_names,"\t")
 ko_names <- setNames(unlist(lapply(ko_names,function(x){x[2]})), unlist(lapply(ko_names,function(x){x[1]})))
 ko_names <- sub(" [[].*","",ko_names)
@@ -231,9 +239,6 @@ points( seq(0,1,length.out = ncol(top_picrust_data)),
         rep(par("usr")[3],ncol(top_picrust_data))-.024, pch=15, xpd=F,cex=.3,
         col= c("#d7d7d7","tomato")[as.factor(metadata$HIVstatus)][order(group_annotation[sample_use])])
 
-source("../enrichment_function.R")
-gmt_list <- fgsea::gmtPathways("../../../data/KEGG_pathways_to_KO.tsv")
-kegg_names <- read.delim('../../../data/KEGG_pathways_info.tsv',header = F)
 names(gmt_list) <- kegg_names [ match ( names(gmt_list), as.character(kegg_names[,1]) ) , 2 ]
 gmt_list <- lapply(gmt_list , function(x){
   na.omit(ko_names[x])
@@ -320,5 +325,5 @@ empty_plot()
 top <- top %>% as_tibble(rownames="KO Terms") 
 
 pages <- list(list("Across"=top), res) %>% flatten()
-write.xlsx(pages, file=paste0("./Suppl.Tbl/","Suppl.Tbl.02",".xlsx"))
+write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.02",".xlsx"))
 ```
