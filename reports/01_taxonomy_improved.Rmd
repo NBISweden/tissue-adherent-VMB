@@ -1,14 +1,14 @@
 ---
 title: "Improve Taxonomy Assignment"
-editor_options:
-  chunk_output_type: console
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output:
   html_document:
-    code_folding: hide
+    code_folding: show
     toc: yes
     toc_float:
       collapsed: no
+editor_options:
+  chunk_output_type: console
 ---
 
 ```{r Setup, include=FALSE}
@@ -21,7 +21,7 @@ knitr::opts_chunk$set(results    = "hold",
 
 # Load libraries, data and metadata
 
-```{r Load data, message=FALSE, warning=FALSE, include=FALSE}
+```{r Load data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -143,7 +143,7 @@ seqtab.taxa <- seqtab.nochim.reshaped %>%
 
 ## Creat Short ID For Sequences across runs
 
-```{r SeqID dict, include=FALSE, results='hide'}
+```{r SeqID dict, results='hide'}
 ########################
 # CREATE SEQUENCE ID's #
 ########################
