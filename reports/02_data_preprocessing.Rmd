@@ -49,7 +49,6 @@ dataset_names <- c("ASV_tissue_V3_B2.csv", # Tissue, Boston run 2 (95 samples)
                     "ASV_CVL_V3_B1.csv")   # CVL V3, Boston run 1 (111 samples)
 
 datasets <- map(dataset_names, ~read.csv(paste0(input_dir,.x))) %>% set_names(., dataset_names)
-metadata <- read.csv(paste0("../data/", "metadata.csv"),row.names = 1)
 trx <- read.csv(paste0("../data/","Raw_gene_counts_matrix.csv"),row.names = 1)
 
 map(datasets, ~dim(.x))
