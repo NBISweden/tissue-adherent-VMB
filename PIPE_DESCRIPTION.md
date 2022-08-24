@@ -24,8 +24,8 @@ Output:
 ### 01_taxonomy_improved
 input: 
 
-      '../../data/phyloseq_boston_r1.RDS',   
-      '../../data/phyloseq_boston_r2.RDS',   
+      "../../data/phyloseq_boston_r1.RDS",   
+      "../../data/phyloseq_boston_r2.RDS",   
       "https://raw.githubusercontent.com/ctmrbio/BVAB-and-Lac-sequences/master/BVAB_rRNA_database.fa",
       "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_db.fasta.gz",
       "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_seqinfo.csv"
@@ -59,7 +59,7 @@ Output:
 ### 03_normalize_data
 input:
       
-      "../data/","Raw_gene_counts_matrix.csv"
+      "../data/Raw_gene_counts_matrix.csv"
       "../results/02_data_preprocessing_output/ASV_Luminal_raw_counts.csv"
       "../results/02_data_preprocessing_output/ASV_Tissue_raw_counts.csv"
       
@@ -73,7 +73,7 @@ Output:
 ### 04_clustering
 input: 
       
-      "../data/", "metadata.csv"
+      "../data/metadata.csv"
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
       
 Output:
@@ -105,27 +105,29 @@ Output:
 input: 
 
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
-      "../data/", "metadata.csv"
+      "../data/metadata.csv"
       "../../resources/Scematic figure.pdf"
       "../results/04_clustering_output/participant_SNN_graph.csv"
       "../results/04_clustering_output/bacterial_communities.csv"
       
 Output:
 
-      "./Suppl.Tbl/","Suppl.Tbl.01"
+      "./Figures/Figure 1.pdf"
+      "./Suppl.Tbl/Suppl.Tbl.01.xlsx"
+      "./Suppl.Tbl/alpha_diversity.xlsx"
 
 ### Figure2.Rmd
 input: 
 
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
-      "../data/", "metadata.csv"
+      "../data/metadata.csv"
       "../results/04_clustering_output/participant_SNN_graph.csv"
       "../results/04_clustering_output/bacterial_communities.csv"
       "../results/05_picrust_output/picrust_outfiles/out_2021-01-20/pred_metagenome_unstrat.tsv"
       
 Output:
 
-      "./Suppl.Tbl/","Suppl.Tbl.02"
+      "./Suppl.Tbl/Suppl.Tbl.02"
       "./Figures/Figure 2.pdf"
 
 
@@ -133,19 +135,19 @@ Output:
 input: 
 
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
-      "../data/", "metadata.csv"
+      "../data/metadata.csv"
       "../results/02_data_preprocessing_output/ASV_Luminal_raw_counts.csv"
       "../results/02_data_preprocessing_output/ASV_Tissue_raw_counts.csv"
       
 Output:
 
-      "./Figures/Figure 1.pdf"
+      "./Figures/Figure 3.pdf"
 
 ### Figure4-5.Rmd
 input: 
 
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
-      "../data/", "metadata.csv"
+      "../data/metadata.csv"
       "../../resources/KEGG_GO_database/c5.bp.v6.2.symbols.gmt.txt"
       "../../resources/KEGG_GO_database/c2.cp.kegg.v6.2.symbols.gmt.txt"
       
@@ -167,7 +169,7 @@ Output:
 input: 
 
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
-      "../data/", "metadata.csv"
+      "../data/metadata.csv"
       "../../data/Protein_norm_MFI_Bradley_et.al.xlsx"
       "../../data/210125_Cytokines_visit3CVL.csv"
       
@@ -176,5 +178,5 @@ Output:
       "./Suppl.Tbl/","Suppl.Tbl.15"
       "./Suppl.Tbl/","Suppl.Tbl 16"
       "./Suppl.Tbl/","Suppl.Tbl.17"
-      "./Figures/Figure 1.pdf"
+      "./Figures/Figure 6.pdf"
 
