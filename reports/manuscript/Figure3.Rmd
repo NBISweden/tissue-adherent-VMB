@@ -1,20 +1,24 @@
 ---
 title: "Figure 3. Tissue Microbiome Abundances"
 geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-output: 
-  pdf_document:
-    fig_caption: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/Figure3/", ...)
+    })
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
+  results = "hold",
+  message    = FALSE,
+  warning    = FALSE,
   fig.width = 6.6929133858,
   fig.path="./Figures/",
-  dev=c('pdf', 'png'), dpi=300,
+  fig.align = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -24,7 +28,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################

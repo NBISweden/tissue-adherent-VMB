@@ -1,20 +1,24 @@
 ---
 title: "Figure 4. & 5. DGE's and Enrichment"
 geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-output: 
-  pdf_document:
-    fig_caption: yes
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/Figure4-5/", ...)
+    })
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
+  results = "hold",
+  message    = FALSE,
+  warning    = FALSE,
   fig.width = 6.6929133858,
   fig.path="./Figures/",
-  dev=c('pdf', 'png'), dpi=300,
+  fig.align = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -24,7 +28,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -81,7 +85,7 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 ```
 
 ## Heatmap DGEs and enrichment
-```{r Across functions, message=FALSE, warning=FALSE, include=FALSE}
+```{r Across functions, message=FALSE, warning=FALSE}
 ##################
 # DEG's FUNCTION #
 ##################
@@ -166,7 +170,7 @@ gene_mod_enrich.fun <- function(top, y, c, db, group_name, cuttoff){
 
 ```
 
-```{r Pairwise functions, message=FALSE, warning=FALSE, include=FALSE}
+```{r Pairwise functions, message=FALSE, warning=FALSE}
 ###########################
 # PAIRWISE DEG's FUNCTION #
 ###########################
@@ -215,7 +219,7 @@ enrich_list <- function(x, gmt_list){
 } 
 ```
 
-```{r Across tables, fig.height=4, fig.width=7, warning=F, include=FALSE}
+```{r Across tables, fig.height=4, fig.width=7, warning=F}
 TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
 TRX_counts <- round(2^TRX - 1)
 TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
@@ -247,7 +251,7 @@ enrich_T <- db %>%
 
 ```
 
-```{r Pairwise tables, include=FALSE}
+```{r Pairwise tables}
 ##################
 # PAIRWISE DEG's #
 ##################
@@ -282,7 +286,7 @@ pairwise_KEGG <- map_depth(t_split, 3, ~enrich_list(.x$Genes, KEGG_database)) %>
  
 ```
 
-```{r Suppl. Tbl. 4 & 8, include=FALSE}
+```{r Suppl. Tbl. 4 & 8}
 # DEG's across and pairwise
 pages <- list(list(Across=dge_L$top), pairwise=pairwise_dge_L$top) %>% flatten()
 write.xlsx(pages, file=paste0(result_dir,DEG_files[1]))
@@ -291,7 +295,7 @@ pages <- list(list(Across=dge_T$top), pairwise=pairwise_dge_T$top) %>% flatten()
 write.xlsx(pages, file=paste0(result_dir,DEG_files[2]))
 ```
 
-```{r Suppl. Tbl. 5,6 & 9,10, eval=FALSE, include=FALSE}
+```{r Suppl. Tbl. 5,6 & 9,10, eval=FALSE}
 # Enrichment Across
 df_across <- enframe(list(Luminal=enrich_L, Tissue=enrich_T)) %>%  
   unnest_longer(value) %>%
@@ -643,7 +647,7 @@ arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", 
 ```
 
 
-```{r Suppl. Tbl. 12, include=FALSE}
+```{r Suppl. Tbl. 12}
 metadata <- metadata %>% 
   mutate(L_T_groups = paste0(.$Luminal_gr, .$Tissue_gr)) %>%
   mutate(L_T_groups = ifelse(grepl("L2T2|L2T3", .$L_T_groups), .$L_T_groups, NA))
@@ -679,7 +683,7 @@ write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrich
 ```
  
 ## igraph network plot
-```{r igraph network, eval=FALSE, warning=FALSE, include=FALSE}
+```{r igraph network, eval=FALSE, warning=FALSE}
 # 1. Change the groups of interest by assigning condition_use
 # 2. Change the number of genes to be included in the network by changing n
 #    look at tempD_i and tempU_i to see how many genes was significant
