@@ -1,24 +1,27 @@
 ---
 title: "Suppl. Figure 5. Rarefaction curves"
-output: 
-  pdf_document:
-    fig_caption: yes
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/SupplFigure5/", ...)
+    })
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  fig.path="./Figures/",
+  fig.path="./Suppl.Figures/",
+  fig.align = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -37,7 +40,8 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 #############
 paths_p <- c('../../../data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVL V2)
              '../../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
-             '../../../data/phyloseq_Sthlm.RDS')       # CVL V2, (only v4 region)
+             '../../../data/phyloseq_Sthlm.RDS'        # CVL V2, (only v4 region)
+             )       
 
 n <- c("boston_r1", "boston_r2", "Sthlm")
 ps_list <- map(paths_p, ~readRDS(.x)) %>% set_names(n)
@@ -45,7 +49,7 @@ ps_list <- map(paths_p, ~readRDS(.x)) %>% set_names(n)
 ```
 
 
-```{r rarefaction curves, fig.height=6, fig.width=8, fig.asp=0.75,  include=FALSE}
+```{r rarefaction curves, fig.height=6, fig.width=8, fig.asp=0.75}
 ##################
 # FILTER SAMPLES #
 ##################
@@ -129,7 +133,7 @@ raremax <- map(seqtabs, ~min(rowSums(.x)))
 
 ```
 
-```{r Suppl.Fig5 Rarefraction_plot, warning=FALSE, echo=FALSE, fig.align="center", fig.height=6, fig.width=8, fig.asp=0.75,}
+```{r Suppl.Fig5 Rarefraction_plot, warning=FALSE, fig.height=6, fig.width=8, fig.asp=0.75,}
 ### A & B
 ###########################
 # RAREFRACTION CURVE PLOT #

@@ -1,27 +1,30 @@
 ---
 title: "Suppl. Figure 3. & 4. Mirobiome-KEGG correlations."
-output: 
-  pdf_document:
-    fig_caption: yes
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/SupplFigure3_4/", ...)
+    })
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  fig.path="./Figures/",
+  fig.path="./Suppl.Figures/",
+  fig.align = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -35,38 +38,48 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(niceRplots)
 })  })  })
 
+#########
+# PATHS #
+#########
+PATH <- "../../.."
+reprod_files <- "../../data/reprod.Suppl.Fig.3_4/"
+
 #############
 # LODA DATA #
 #############
-#Protein_V3 <- read_csv("../../../data/2020_04_20_LAMIQ_visit_3_singlets.csv") 
-datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-PATH <- "../../.."
-SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+SNN_bacteria <- read.csv("../../results/04_clustering_output/bacteria_SNN_graph.csv",row.names = 1)
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+#datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+#SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
 bac_communities <- read.xlsx("./Suppl.Tbl/Suppl.Tbl.01.xlsx", sheet = "Bacterial Communities")
 
 ```
 
-```{r echo=FALSE}
+```{r eval=FALSE, include=FALSE}
 counts <- t(as.data.frame( lapply(datasets_all_samples,colSums) ))
 counts[is.na(counts)] <- 0
 ```
 
 
-```{r Suppl.Fig.3 Bacterial drivers, warning=FALSE, echo = FALSE,fig.width=12,fig.height=13}
+```{r Suppl.Fig.3 Bacterial drivers, warning=FALSE, fig.width=12, fig.height=13}
 myletter <- letters
 #reprod. <- FALSE
 reprod. <- TRUE
 
-ASV <- list(c("Luminal","ASV_CVL_V3_normalized_batch_corrected"),
-            c("Tissue","ASV_tissue_V3_normalized_batch_corrected")
-               )
+# ASV <- list(c("Luminal","ASV_CVL_V3_normalized_batch_corrected"),
+#             c("Tissue","ASV_tissue_V3_normalized_batch_corrected")
+#             )
+ASV <- list(c("Luminal","ASV_Luminal_normalized"),
+            c("Tissue","ASV_Tissue_normalized")
+            )
 # i <- ASV[[1]]
 for(i in ASV){
   cat(paste0("Correlation between RNAseq and ",i[1], " 16S","\n"))
   
   # because hclust is non reproducible 
   if(reprod. == TRUE){
-    NESes <- read.csv2(paste0("../../../results/",i[1],"_TRX_Bact_norm_enrichment_scores",".csv"), row.names = 1)
+    NESes <- read.csv2(paste0(reprod_files,i[1],"_TRX_Bact_norm_enrichment_scores",".csv"), row.names = 1)
   }else{
     
     TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]

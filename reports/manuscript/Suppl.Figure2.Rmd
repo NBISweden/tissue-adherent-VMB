@@ -1,27 +1,30 @@
 ---
 title: "Suppl. Figure 2. Differential bacterial abundance across Tissue and Luminal microbiome"
-output: 
-  pdf_document:
-    fig_caption: yes
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 header-includes: 
 - \usepackage{float}
 editor_options: 
   chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/SupplFigure2/", ...)
+    })
 ---
 
-```{r setup}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  fig.path="./Figures/",
+  fig.path="./Suppl.Figures/",
+  fig.align = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
-#setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r echo=FALSE}
+```{r Load data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -34,8 +37,12 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 #############
 # LODA DATA #
 #############
-datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+metadata <- read.csv("../../data/metadata.csv", row.names = 1, stringsAsFactors = F)
+
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
+# datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
+# metadata <- read.csv2("../../../results/metadata_integration.csv",row.names = 1, stringsAsFactors = F)
 group_annotation <- factor(setNames(metadata$Luminal_gr,metadata$ID))
 
 #Graph construction  
@@ -50,10 +57,16 @@ pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 ```
 
 
-```{r Suppl.Fig.2 Diff_bact_abundance, eval=T,warning=FALSE, message=FALSE,echo = FALSE,fig.width=10,fig.height=9}
-all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
-                        datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])
-datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ))
+```{r Suppl.Fig.2 Diff_bact_abundance, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
+# all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
+#                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])
+# datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ))
+# datasets <- datasets[ colSums(all_microbiome)>0 ]
+# all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
+
+all_microbiome <- cbind(datasets_all_samples[["ASV_Tissue_normalized"]],
+                        datasets_all_samples[["ASV_Luminal_normalized"]])
+datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_Tissue_normalized"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_Luminal_normalized"]])) ))
 datasets <- datasets[ colSums(all_microbiome)>0 ]
 all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
 
