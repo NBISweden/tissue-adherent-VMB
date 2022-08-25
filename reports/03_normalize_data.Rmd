@@ -1,0 +1,100 @@
+---
+title: "Normalization"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options:
+  chunk_output_type: console
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(results    = "hold",
+                      message    = FALSE,
+                      warning    = FALSE)
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports")
+```
+
+# Load libraries and other scripts
+
+```{r Load data, message=FALSE, warning=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+library(tidyverse)
+})  })  })
+
+#########
+# PATHS #
+#########
+input_dir <- "../results/02_data_preprocessing_output/"
+result_dir <- "../results/03_normalize_data_output/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
+#################
+# DOWNLOAD DATA #
+#################
+## TRX DATA:
+GEO_url <- "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE194276&format=file&file=GSE194276%5FRaw%5Fgene%5Fcounts%5Fmatrix%2Ecsv%2Egz"
+# download.file(GEO_url, paste0("../data/"," Raw_gene_counts_matrix.csv.gz"), method="auto")
+# system("gunzip ../data/*.gz")
+
+## MICROBIOME DATA:
+# if(params$run=="Boston_run1"){
+#   url <- c(
+#     "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR919/001/SRR9198521/SRR9198521.fastq.gz",
+#     "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR919/007/SRR9198517/SRR9198517.fastq.gz",
+#     "ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR919/008/SRR9198518/SRR9198518.fastq.gz"
+#     ) }
+
+# purrr::walk(url, ~download.file(.x, file.path("../data/Fastq/", basename(.x)), method="auto"))
+# system("gunzip ../data/*.gz")
+# 
+
+#############
+# LODA DATA #
+#############
+trx <- read.csv(paste0("../data/","Raw_gene_counts_matrix.csv"))
+
+dataset_names <- c("ASV_Luminal_raw_counts.csv", # Tissue, Boston run 1 (108 samples)
+                   "ASV_Tissue_raw_counts.csv")  # Tissue, Boston run 2+1 (93 sample)
+
+datasets <- map(dataset_names, ~read.csv(paste0(input_dir,.x),row.names = 1)) %>% set_names(., dataset_names)
+```
+
+# normalize and save microbiome datasets
+
+```{r save raw and norm microbiome files, fig.height=5, fig.width=5}
+# normalized files
+datasets <- datasets %>%
+  map(., ~round( t(log2( t(.x) / colSums(.x) * 1000 + 1 )),4))
+
+write.csv( datasets[["ASV_Luminal_raw_counts.csv"]] , paste0(result_dir,"ASV_tissue_normalized.csv"),row.names = T )
+write.csv( datasets[["ASV_Tissue_raw_counts.csv"]] , paste0(result_dir,"ASV_luminal_normalized.csv"),row.names = T )
+```
+
+# normalize and save trx datasets
+
+```{r save raw and norm trx files}
+trx <- rowsum(trx[,-c(1:3)],trx$symbol)
+trx  <- trx[ rownames(trx) != "" , ]
+trx <- trx[ rownames(trx) != "NA" , ]
+trx <- trx[ rowSums(trx > 5) >= 3 , ]
+trx <- t( log2( t( trx ) / colSums(trx) * 1e6 + 1 ) )
+
+write.csv( trx , paste0(result_dir,"Tissue_RNAseq_normalized.csv"),row.names = T )
+```
+
+```{r save RDS}
+normalized_data <- list( datasets[["ASV_Luminal_raw_counts.csv"]], 
+                         datasets[["ASV_Tissue_raw_counts.csv"]], 
+                         trx) %>% 
+  set_names(., c("ASV_Luminal_normalized", "ASV_Tissue_normalized", "Tissue_RNAseq_V3_normalized"))
+
+saveRDS(normalized_data, paste0(result_dir, "datasets_all_samples.RDS"))
+```
+

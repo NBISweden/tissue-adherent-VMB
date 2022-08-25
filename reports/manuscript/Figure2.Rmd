@@ -1,0 +1,332 @@
+---
+title: "Figure 2. Bacterial Communities and Function"
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
+header-includes: 
+- \usepackage{float}
+editor_options: 
+  chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/Figure2/", ...)
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  results = "hold",
+  message    = FALSE,
+  warning    = FALSE,
+  fig.width = 6.6929133858,
+  fig.path="./Figures/",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
+```
+
+```{r Load data, message=FALSE, warning=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(tidyverse)
+  library(edgeR)
+  library(openxlsx)
+  library(scales)
+  library(igraph)
+  library(RColorBrewer)
+  #remotes::install_github("czarnewski/niceRplots",force=T)
+  library(niceRplots)
+})  })  })
+
+#########
+# PATHS #
+#########
+result_dir <- "./Suppl.Tbl/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
+#############
+# LODA DATA #
+#############
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+metadata <- read.csv("../../data/metadata.csv",row.names = 1, stringsAsFactors = F)
+sample_use <- metadata$ID
+group_annotation <- factor(setNames(metadata$Luminal_gr,metadata$ID))
+gr <- "Luminal"
+
+SNN_bacteria <- read.csv("../../results/04_clustering_output/bacteria_SNN_graph.csv",row.names = 1)
+bac_communities <- as.matrix(read.csv("../../results/04_clustering_output/bacterial_communities.csv",row.names = 2))[,2]
+
+picrust_data <- read.table("../../results/05_picrust_output/out_2021-01-20/KO_metagenome_out/pred_metagenome_unstrat.tsv", header = T,row.names = 1)
+ko_names <- readLines('../../resources/picrust_data/ko_info.tsv')
+kegg_names <- read.delim('../../resources/picrust_data/KEGG_pathways_info.tsv',header = F)
+gmt_list <- fgsea::gmtPathways("../../resources/picrust_data/KEGG_pathways_to_KO.tsv")
+source("../../code/enrichment_function.R")
+
+AA <- c("(?<!Phenyl)Alanine " = "Ala", "Arginine" = "Arg", "Asparagine" = "Asn", "Aspartic acid" = "Asp", "Cysteine" = "Cys", "Glutamic acid" = "Glu", "Glutamine" = "Gln", "Glycine" = "Gly", "Histidine" = "His", "Hydroxyproline" = "Hyp", "Isoleucine" = "Ile", "Leucine" = "Leu", "Lysine" = "Lys", "Methionine" = "Met", "Phenylalanine" = "Phe", "Proline" = "Pro", "Pyroglutamatic" = "Glp", "Serine" = "Ser", "Threonine" = "Thr", "Tryptophan" = "Trp", "Tyrosine" = "Tyr", "Valine" = "Val")
+AA_ <- set_names(AA, map_chr(names(AA), ~ paste0("(?i)", .))) # make case insensitive
+
+#################
+# COLOR PALETTS #
+#################
+pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
+taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+bact_pal <- c('#88CCEE', '#44AA99', '#117733', '#332288', '#DDCC77', '#999933','#CC6677', '#882255', '#AA4499', '#DDDDDD')
+```
+
+
+```{r Figure 2, fig.height=8}
+
+layout(matrix(c(1,1,2,2,2,
+                1,1,3,3,3,
+                1,1,4,4,4,
+                5,6,7,8,9,
+                5,6,7,8,10),
+              nrow = 5,ncol = 5,byrow = T), widths = c(.6,1.5,.2,1.9,2),
+       heights = c(.68,.56,.56,1,1.5))
+figlabels <- letters
+
+
+### A
+#########################
+# BACTERIAL COMMUNITIES #
+#########################
+bac_communities <- factor(paste0("BC",sprintf("%02d",bac_communities)))
+gB <- graph_from_adjacency_matrix(as.matrix(SNN_bacteria), mode = "undirected",diag = F,weighted = T)
+ set.seed(1)
+lB <- layout_nicely(gB,niter=3000,start.temp=30)
+
+par(mar=c(0,0,3.5,5))
+plot( gB , vertex.label.cex=0.000001 , vertex.color = bact_pal[factor(bac_communities)] ,
+      edge.width=  ( E(gB)$weight / max(E(gB)$weight)) ,
+      vertex.size=10,
+      edge.color=colorRampPalette(c("grey95","black"))(90) [ round( E(gB)$weight / max(E(gB)$weight) * 88 )+1 ] ,layout=lB)
+title(main = "           Bacterial Communities- Louvain", line = 1, cex.main = 1)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(factor(bac_communities)),xjust = 0,yjust = 1,
+       bty = "n",pch = 21,pt.bg = bact_pal,pt.cex = 1,xpd=T)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+### B
+###################################
+# WET SMEAR BACTERIAL VALIDATION #
+###################################
+par(mar=c(1,5,4,1)) #b,l,t,r
+x <- datasets_all_samples[["ASV_Luminal_normalized"]]
+xL <- rowsum(x , grepl("L.",rownames(x)) )[2,] / sum(grepl("L.",rownames(x)))
+xM <- rowsum(x , grepl("Mobiluncus",rownames(x)) )[2,] / sum(grepl("Mobiluncus",rownames(x)))
+xG <- rowsum(x , grepl("Gardnerella",rownames(x)) )[2,] / sum(grepl("Gardnerella",rownames(x)))
+
+mL <- metadata$BV_Lactobacillus_v3 ; mL[is.na(mL)] <- 0
+mM <- metadata$BV_Monbilicus_v3    ; mM[is.na(mM)] <- 0
+mG <- metadata$BV_Vaginal_Garda_v3 ; mG[is.na(mG)] <- 0
+
+barlist( data = rbind(WS=mL ,
+                      "16S counts"=xL),
+         genes = c("WS","16S counts"),
+         clustering = group_annotation,srt=20,
+         draw_mean_lines=F,col = pal)
+mtext("Lactobacillus", side=3, las = 1, cex = .6, line = .5,xpd=T)
+mtext("Wet Smear Bacteria Validation", side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+par(mar=c(1,5,2,1)) #b,l,t,r
+barlist( data = rbind(WS=mM ,
+                      "16S counts"=xM),
+         genes = c("WS","16S counts"),
+         clustering = group_annotation,srt=20,
+         draw_mean_lines=F,col = pal)
+mtext("Mobiluncus", side=3, las = 1, cex = .6, line = .5,xpd=T)
+
+barlist( data = rbind(WS=mG ,
+                      "16S counts"=xG),
+         genes = c("WS","16S counts"),
+         clustering = group_annotation,srt=20,
+         draw_mean_lines=F,col = pal)
+mtext("Gardnerella", side=3, las = 1, cex = .6, line = .5,xpd=T)
+
+### C
+#####################
+# BACTERIAL PICRUST #
+#####################
+picrust_data <- round(picrust_data[ rowSums(picrust_data>5)>=10, ])
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+sample_use <- intersect(colnames(TRX)[colSums(TRX)!=0], colnames(picrust_data))
+
+ko_names <- strsplit(ko_names,"\t")
+ko_names <- setNames(unlist(lapply(ko_names,function(x){x[2]})), unlist(lapply(ko_names,function(x){x[1]})))
+ko_names <- sub(" [[].*","",ko_names)
+ko_names <- sub(".*; ","",ko_names)
+
+named_picrust_data <- rowsum( picrust_data , group = ko_names[ rownames(picrust_data) ] )
+named_picrust_data <- round(named_picrust_data[ rowSums(named_picrust_data>5)>=5, ])
+
+design <- model.matrix(~ group_annotation+Contraception+HIVstatus, 
+                       data=metadata[sample_use,])
+
+y <- DGEList(counts=named_picrust_data[,sample_use])
+y <- calcNormFactors(y,method = "TMM")
+y <- estimateGLMCommonDisp(y)
+y <- estimateGLMTagwiseDisp(y)
+fit <- glmFit(y, design)
+
+lrt <- glmLRT(fit,coef=2:5)
+top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+colnames(top) <- sub("group_annotation","",colnames(top))
+top <- cbind(LogFC.intercept=0,top) # with intercept
+
+top_dge <- (top$FDR < 1e-5) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+top_dge <- rownames(top)[ top_dge ]
+
+top_picrust_data <- edgeR::cpm(y)[top_dge, ]
+n <- colnames(top_picrust_data)
+top_picrust_data <- t(apply(top_picrust_data,1,function(x){scale(x,T,T)}))
+top_picrust_data[top_picrust_data > 5] <- 5
+colnames(top_picrust_data) <- n
+
+# Dendogram
+par(mar=c(4,.1,4,.2)) #b,l,t,r
+h <- hclust( as.dist( (1- cor(t(top_picrust_data)))/2 ), method = "ward.D2")
+plot( rev(as.dendrogram(h)) ,xlim=c(max(h$height),-1), horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T)
+title(xlab="Height", line=2)
+cutoff <- 4
+abline(v=cutoff,xpd=F,col="red",lty=2)
+gene_module <- cutree(h, h = cutoff)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+points( rep(-.7,length(gene_module)),
+        seq(length(gene_module),1,length.out = length(gene_module)),
+        col=taxa_pal[factor(gene_module[h$order])],
+        pch=15,cex=1,xpd=F)
+
+# Heatmap
+image( t(top_picrust_data[h$order,][nrow(top_picrust_data):1,order(group_annotation[sample_use])]),
+       col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
+       breaks = seq(-5,5,length.out = 100),axes=F)
+mtext("                        Differentially expressed KEGG Ontology terms and pathways", 
+      side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
+title(xlab="Study Groups", line=1)
+
+# Study Group brackets
+end <- table(pal[factor(group_annotation)[ order(group_annotation[sample_use])]] )
+end <- end[order(factor(names(end), levels = pal))]
+end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/ncol(picrust_data[sample_use])-.015) )
+start <- c(0, map_dbl(end[1:4], ~.x+0.017))
+end <- c(end[1:length(end)-1], par("usr")[2]-.005)
+
+axis(1, at = c(start, end), label = F, pos =1.021 , xpd=T, col="white",col.ticks="black")
+map2(start, end, ~lines(x=c(.y, .x), y= c(1.021, 1.021), xpd=T, cex=.8))
+# text labels
+t <- map2(start, end, ~(.x+.y)/2)
+map2(t,levels(factor(group_annotation)), ~text(x=.x, y=1.037, .y,xpd=T, cex=.8))
+
+# Meta bar info
+par(mar=c(3,.1,2,.1)) #bottom, left, top, right  
+map(c(.0021, .006), ~points( seq(0,1,length.out = length(sample_use)),
+        rep(par("usr")[4],length(sample_use))+.x, pch=15, cex=.3,xpd=F,
+        col=pal[factor(group_annotation[sample_use])[ order(group_annotation[sample_use])]]) )
+points( seq(0,1,length.out = ncol(top_picrust_data)), 
+        rep(par("usr")[3],ncol(top_picrust_data))-.008, pch=15, xpd=F,cex=.3,
+        col= c("tomato","orange","#d7d7d7")[as.factor(metadata$BV_Diagnosis_v3)][order( group_annotation[sample_use])] )
+points( seq(0,1,length.out = ncol(top_picrust_data)), 
+        rep(par("usr")[3],ncol(top_picrust_data))-.024, pch=15, xpd=F,cex=.3,
+        col= c("#d7d7d7","tomato")[as.factor(metadata$HIVstatus)][order(group_annotation[sample_use])])
+
+names(gmt_list) <- kegg_names [ match ( names(gmt_list), as.character(kegg_names[,1]) ) , 2 ]
+gmt_list <- lapply(gmt_list , function(x){
+  na.omit(ko_names[x])
+})
+res_list <- lapply( unique( gene_module[h$order] ),function(x){
+  temp <- compute_enrichment(genes = names(gene_module)[gene_module==x],
+                            gmt_list = gmt_list,
+                            min_terms_pathway = 10,
+                            max_terms_pathway = 300,
+                            min_overlap = 3,
+                            sort_by_pvalue = T)
+  temp <- temp[!grepl("REGULATION",rownames(temp)),]
+  return(temp)
+} )
+res <- map(res_list, ~rownames_to_column(.x, var = "Terms")) %>% 
+    set_names(., paste0("module_",  seq_along(res_list))) 
+
+names(res_list) <- unique( gene_module[h$order] )
+
+pvalues <- unlist(lapply(res_list,function(x){ -log10(as.numeric(x$pvalue)) [1:3] }))
+pvalues[is.na(pvalues)] <- 0
+terms <- unlist(lapply(res_list,function(x){ rownames(x) [1:3] }))
+terms[is.na(terms)] <- ""
+terms <- stringr::str_replace_all(string = terms,pattern= AA_)
+genes <- unlist(lapply(res_list,function(x){ x$genes [1:3] }))
+genes[is.na(genes)] <- ""
+
+#pvalues <- setNames(pvalues,paste0(terms," (",genes,")"))
+pvalues <- setNames(pvalues,paste0(terms,""))
+module_color <- unlist(lapply(names(res_list),function(x){ rep(x,3) }))
+
+temp <- factor( rev(gene_module), levels = unique( gene_module[h$order] ))
+df <- data.frame(temp,temp)
+par(mar=c(4,0,4,.1)) #bottom, left, top, right  
+quietly(plot_sankey)( df, pal = taxa_pal[as.numeric(levels(temp))], use_w2 = F, plot_labels = T,gapv = .01,gap2v = 0 ,xaxs="i",yaxs="i",plot_weights = F)$output
+ 
+
+# par("usr")(xmin, ymin, xmax, ymax)
+text(par("usr")[1],par("usr")[3]-.008,labels = "     BV",cex=.6, xpd=T)
+text(par("usr")[1],par("usr")[3]-.024,labels = "      HIV",cex=.6, xpd=T)
+
+par(mar=c(4,.1,4,7))
+barplot( rev(pvalues) , horiz = T , col= taxa_pal[factor(rev(module_color))],
+         xaxs="i",yaxs="i",xlim=c(0,1.2*max(pvalues)),ylab="",las=1,names.arg = "")
+title(xlab="-log10(p-value)", line=2)
+abline(v=2,xpd=F,col="red",lty=2)
+points( rev(pvalues), seq(1,length(pvalues) )*1.2-.5,pch=21,bg=taxa_pal[factor(rev(module_color))] )
+text( rev(pvalues)+strwidth("M") , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=1,xpd=T,
+      labels = rev(gsub("\\(\\)","",names(pvalues)) ),xpd=T)
+text( rev(pvalues)+strwidth("M") , seq(1,length(pvalues) )*1.2-.5, adj=0,cex=1,
+      labels = rev(names(pvalues)),col = paste0(taxa_pal[factor(rev(module_color))],90) ,xpd=T)
+
+
+### D
+################
+# PICRUST UMAP #
+################
+
+# based on 108 samples used in manuscript:
+par(mar=c(2.5,2.5,3,4)) #b,l,t,r
+set.seed(1)
+UMAP_picrust <- uwot::umap(t(named_picrust_data[,sample_use]),n_neighbors = 20,
+                 metric = "correlation",min_dist = .2,spread = .4,
+                 repulsion_strength = .4,negative_sample_rate = 3)
+plot(UMAP_picrust,bg=pal[factor(metadata$Luminal_gr)],
+     pch=21,frame=F,axes=F)
+title(main = "Top Functional Profile- UMAP", line = 0.5, cex.main = 1)
+#mtext("UMAP1", side=1, line=0.7, cex=0.8)
+#mtext("UMAP2", side=2, line=0.7, cex=0.8)
+legend(par("usr")[2],par("usr")[4],title.adj = 0,
+       legend = levels(factor(metadata$Luminal_gr)),xjust = 0,yjust = 1,
+       bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T, cex=1)
+
+#add label
+add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+
+empty_plot()
+```
+
+
+```{r Suppl. Table 2.}
+#saveRDS( y , "../../../results/Picrust_EdgeR_estimations.rds" )
+top <- top %>% as_tibble(rownames="KO Terms") 
+
+pages <- list(list("Across"=top), res) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.02",".xlsx"))
+```
