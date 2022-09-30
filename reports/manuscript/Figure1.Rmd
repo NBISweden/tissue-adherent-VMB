@@ -41,6 +41,8 @@ knitr::opts_chunk$set(
 ##################
 suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(tidyverse)
+  library(magick)
+  library(uwot)
   library(scales)
   library(igraph)
   library(RColorBrewer)
@@ -300,7 +302,9 @@ bac_communities <- bac_communities %>%
 
 pages <- list("Total Relative Abundance"=r ,"Alfa Diversity"=div_stat, "Bacterial Communities"=bac_communities)
 write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.01",".xlsx"))
-alpa_div <- set_names(div_list, c("Luminal","Tissue"))
+alpa_div <- set_names(div_list, c("Luminal","Tissue")) %>%
+  map2(., c("Luminal_gr", "Tissue_gr"), ~left_join(.x, select(metadata, ID, .y), by="ID")) %>%
+  map2(., c("Luminal_gr", "Tissue_gr"), ~select(.x, ID, .y, everything()))
 write.xlsx(alpa_div, file=paste0(result_dir,"alpha_diversity",".xlsx"))
 ```
 

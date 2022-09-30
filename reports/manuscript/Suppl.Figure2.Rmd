@@ -58,12 +58,6 @@ pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 
 
 ```{r Suppl.Fig.2 Diff_bact_abundance, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
-# all_microbiome <- cbind(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]],
-#                         datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])
-# datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_tissue_V3_normalized_batch_corrected"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_CVL_V3_normalized_batch_corrected"]])) ))
-# datasets <- datasets[ colSums(all_microbiome)>0 ]
-# all_microbiome <- all_microbiome[,colSums(all_microbiome)>0]
-
 all_microbiome <- cbind(datasets_all_samples[["ASV_Tissue_normalized"]],
                         datasets_all_samples[["ASV_Luminal_normalized"]])
 datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_Tissue_normalized"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_Luminal_normalized"]])) ))
