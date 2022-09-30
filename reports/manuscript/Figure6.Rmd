@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE, include=FALSE}
+```{r Load data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -200,6 +200,7 @@ top_dpe.fun <- function(top){
 }
 
 # top_PROT_mfi <- t
+# sacale = T
 # gr <- "Luminal_gr"
 # plot_heatmap.fun(t, "Luminal_gr", scale = T)
 plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
@@ -235,11 +236,14 @@ plot_heatmap.fun <- function(top_PROT_mfi, gr, scale = FALSE, layout = "none"){
     #title(xlab="height", line=3)
     mtext( c("Height"), side=1, las = 1, cex = .7, line =1,xpd=T)
     
-    
     if(gr == "Tissue_gr") {
       height <-1.5 
       add_letter("c")
-    }else{height <- round(max(h$height))
+    }else{
+      add_scale_legend(x = par("usr")[1]-0.1, height = 1.5,#diff(par("usr")[3:4])-20,
+                     pal = colorRampPalette(c("navy","grey95","firebrick"))(91),
+                     labels = c("-5","0","5"))
+      height <- round(max(h$height))
       add_letter("a")}
     #lines(x=c(0,height), y=c(0.45,0.45), col="black", lty=1, lwd = 2.5) # only for grob
     
