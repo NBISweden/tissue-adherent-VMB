@@ -34,8 +34,10 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(fgsea)
   library(rafalib)
   library(Rcpp)
+  library(igraph)
   #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
+  library(parallel)
 })  })  })
 
 #########

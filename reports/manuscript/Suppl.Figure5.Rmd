@@ -38,9 +38,9 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 #############
 # LODA DATA #
 #############
-paths_p <- c('../../../data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVL V2)
-             '../../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
-             '../../../data/phyloseq_Sthlm.RDS'        # CVL V2, (only v4 region)
+paths_p <- c('../../data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVL V2)
+             '../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
+             '../../data/phyloseq_Sthlm.RDS'        # CVL V2, (only v4 region)
              )       
 
 n <- c("boston_r1", "boston_r2", "Sthlm")
