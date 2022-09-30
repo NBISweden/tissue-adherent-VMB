@@ -37,6 +37,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(edgeR)
   library(openxlsx)
   library(scales)
+  library(fgsea)
   library(RColorBrewer)
   #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
@@ -202,6 +203,7 @@ pairwise_dge.fun <- function(group, fit, design) {
   top <- c(summary = list(summary), top)
   
 return(list(lrt=lrt, top=top, CONTRASTS=CONTRASTS))
+#return(list(lrt=lrt, top=top, CONTRASTS=CONTRASTS, results=results))
 }
 ################################
 # PAIRWISE ENRICHMENT FUNCTION #
@@ -292,6 +294,20 @@ pages <- list(list(Across=dge_L$top), pairwise=pairwise_dge_L$top) %>% flatten()
 write.xlsx(pages, file=paste0(result_dir,DEG_files[1]))
 
 pages <- list(list(Across=dge_T$top), pairwise=pairwise_dge_T$top) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,DEG_files[2]))
+
+#Files with filtered p-value < 0.01 
+# Have to update the summary table, however the decideTests
+# function does not provide support for p-value cutoffs only FDR
+# therefore I need to write code to get the correct summary
+
+p_L <- map(pairwise_dge_L$top[-1], ~filter(.x, `PValue`<0.01))
+p_T <- map(pairwise_dge_T$top[-1], ~filter(.x, `PValue`<0.01))
+
+pages <- list(list(Across=dge_L$top), pairwise=p_L) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,DEG_files[1]))
+
+pages <- list(list(Across=dge_T$top), pairwise=p_T) %>% flatten()
 write.xlsx(pages, file=paste0(result_dir,DEG_files[2]))
 ```
 

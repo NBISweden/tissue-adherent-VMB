@@ -37,6 +37,7 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
   library(openxlsx)
   library(scales)
   library(igraph)
+  library(fgsea)
   library(RColorBrewer)
   #remotes::install_github("czarnewski/niceRplots",force=T)
   library(niceRplots)
