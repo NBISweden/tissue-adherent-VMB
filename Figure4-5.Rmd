@@ -1,0 +1,774 @@
+---
+title: "Figure 4. & 5. DGE's and Enrichment"
+geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
+header-includes: 
+- \usepackage{float}
+editor_options: 
+  chunk_output_type: console
+knit: (function(inputFile, out_dir, ...) {
+    source("../../code/knit_function.R");
+    custom_knit(inputFile, "../../lab_book/Figure4-5/", ...)
+    })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  results = "hold",
+  message    = FALSE,
+  warning    = FALSE,
+  fig.width = 6.6929133858,
+  fig.path="./Figures/",
+  fig.align = "center",
+  fig.process = function(filename){
+    new_filename <- stringr::str_remove(string = filename, 
+                                        pattern = "-1")
+    fs::file_move(path = filename, new_path = new_filename)
+    ifelse(fs::file_exists(new_filename), new_filename, filename)
+})
+# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
+```
+
+```{r message=FALSE, warning=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+  library(tidyverse)
+  library(edgeR)
+  library(openxlsx)
+  library(scales)
+  library(fgsea)
+  library(RColorBrewer)
+  #remotes::install_github("czarnewski/niceRplots",force=T)
+  library(niceRplots)
+  library(readxl)
+  library(enrichR)
+  library(igraph)
+  library(rafalib)
+})  })  })
+
+#########
+# PATHS #
+#########
+result_dir <- "./Suppl.Tbl/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
+DEG_files <- c("Suppl.Tbl.04 DEGs_Luminal.xlsx",
+               "Suppl.Tbl.08 DEGs_Tissue.xlsx")
+enrichR_files <- c("Suppl.Tbl.07 TF_PPI_Luminal.xlsx",
+                   "Suppl.Tbl.11 TF_PPI_Tissue.xlsx")
+
+#############
+# LODA DATA #
+#############
+datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
+metadata <- read.csv("../../data/metadata.csv",row.names = 1, stringsAsFactors = F)
+sample_use <- metadata$ID
+gr_name <- c("Luminal", "Tissue")
+
+source("../../code/enrichment_function.R")
+GO_database <- fgsea::gmtPathways("../../resources/KEGG_GO_database/c5.bp.v6.2.symbols.gmt.txt")
+KEGG_database <- fgsea::gmtPathways("../../resources/KEGG_GO_database/c2.cp.kegg.v6.2.symbols.gmt.txt")
+
+##################
+# DEFINE CUTOFFS #
+##################
+dge_cutoff <- 0.01 # p-value
+enrich_cutoff <- 0.1 # p-value
+no_genes_cutoff <- 3
+col_name <- paste0("genes_in(pValue<",dge_cutoff,")")
+
+#################
+# COLOR PALETTS #
+#################
+pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
+taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
+```
+
+## Heatmap DGEs and enrichment
+```{r Across functions, message=FALSE, warning=FALSE}
+##################
+# DEG's FUNCTION #
+##################
+#group <- "Tissue_gr"
+#group <- "Luminal_gr"
+edgR_dge.fun <- function(group, confound) {
+  
+  groups <- metadata[sample_use, group]
+  n_gr <- length(na.omit(unique(groups)))
+  
+  if(any(is.na(groups))) {
+    groups <- replace_na(groups, "X")
+  }
+
+  if(confound==FALSE) {
+    c <- "_no_conf"
+    design <- model.matrix(~groups, data=metadata[sample_use,]) # without confounders
+  }else{
+    c <- "_conf"
+    design <- model.matrix(~groups+HIVstatus+Contraception,
+                         data=metadata[sample_use,])
+  }
+  
+  colnames(design) <- sub("groups","",colnames(design))
+  colnames(design) <- sub("\\(Intercept\\)","Intercept",colnames(design))
+  colnames(design) <- sub(" ","_",colnames(design))
+  
+  y <- DGEList(counts=TRX_counts[,sample_use], remove.zeros = T)
+  y <- calcNormFactors(y,method = "TMM")
+  y <- estimateGLMCommonDisp(y,design)
+  y <- estimateGLMTagwiseDisp(y,design)
+  fit <- glmFit(y, design)
+  
+  lrt <- glmLRT(fit,coef=2:n_gr) # with intercept
+  top <- topTags(lrt,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]
+  colnames(top) <- sub(group,"",colnames(top))
+  top <- cbind(LogFC.intercept=0,top) # with intercept
+  top <-  rownames_to_column(top, var = "Genes")
+  
+return(list(design=design, y=y, fit=fit, lrt=lrt, top=top, c=c))
+}
+
+#######################
+# ENRICHMENT FUNCTION #
+#######################
+# group_name <- "Luminal_gr"
+# top <- dge_L$top
+# y <- dge_L$y
+# c <- dge_L$c
+gene_mod_enrich.fun <- function(top, y, c, db, group_name, cuttoff){
+  p_val <- pull(top, "PValue")
+  top_dge <- (p_val < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
+  top_dge <- top$Genes[ top_dge ]
+  
+  top_TRX_counts <- edgeR::cpm(y,normalized.lib.sizes = T,log = T)[top_dge, ]
+  top_TRX_counts <- t(apply(top_TRX_counts,1,function(x){scale(x,T,T)}))
+  top_TRX_counts[top_TRX_counts > 5] <- 5
+  colnames(top_TRX_counts) <- colnames(TRX_counts)
+  
+  
+  h <- hclust( as.dist( (1- cor(t(top_TRX_counts)))/2 ), method = "ward.D2")
+  cuttoff <- cuttoff[names(cuttoff) == db]
+  gene_module <- cutree(h, h=cuttoff)
+  
+  if(db == "GO"){
+  gmt_list <- GO_database}else{
+  gmt_list <- KEGG_database}
+  res_list <- lapply( unique( gene_module[h$order] ),function(x){
+    temp <- compute_enrichment(genes = names(gene_module)[gene_module==x],
+                              gmt_list = gmt_list,
+                              min_terms_pathway = 10,
+                              max_terms_pathway = 300,
+                              min_overlap = 3,
+                              sort_by_pvalue = T)
+    temp <- temp[!grepl("REGULATION",rownames(temp)),]
+    return(temp)
+  } )
+  
+  return(list(res_list=res_list, top_TRX_counts=top_TRX_counts, 
+              gene_module=gene_module, cuttoff=cuttoff, h=h, c=c))
+}
+
+```
+
+```{r Pairwise functions, message=FALSE, warning=FALSE}
+###########################
+# PAIRWISE DEG's FUNCTION #
+###########################
+pairwise_dge.fun <- function(group, fit, design) {
+  groups <- metadata[sample_use, group]
+  levels <- as.character(sort(unique(groups),na.last = NA))
+  
+  # without intercept:
+  n <- combn(levels,2) 
+  g <- map_chr(seq_along(1:ncol(n)), ~paste(n[1,.x], n[2,.x], sep = "-"))
+  s <- seq_along(1:ncol(n)) %>% set_names(g)
+  #name <- map_chr(seq_along(1:ncol(n)), ~paste(str_extract(n[1,.x], "^g."), str_extract(n[2,.x], "^g."), sep = "_"))
+  
+  # with intercept:
+  g <- sub(paste0("^(",levels[1], ")-(.*)"), '-\\2', g)
+  
+  CONTRASTS <- makeContrasts( contrasts=g,
+                              levels = design )
+  
+  #fit2 <- contrasts.fit(fit, CONTRASTS)
+  #lrt_ <- glmLRT(fit2, coef = 2:5)
+  lrt <- map(s, ~ glmLRT(fit, contrast = CONTRASTS[,.x]))
+  top <- map(lrt, ~topTags(.x,adjust.method = "BH",n = "all",sort.by = "p.value")[[1]]) %>% 
+         map(., ~rownames_to_column(.x, var = "Genes"))
+  
+  results <- map_df(lrt, ~decideTests(.x, method="separate", p.value = 0.05))
+  summary <- bind_cols( "FDR<0.05"= c("Down","NotSig","Up"), summary(results))
+  colnames(summary) <- c("FDR<0.05", g)
+  top <- c(summary = list(summary), top)
+  
+return(list(lrt=lrt, top=top, CONTRASTS=CONTRASTS))
+#return(list(lrt=lrt, top=top, CONTRASTS=CONTRASTS, results=results))
+}
+################################
+# PAIRWISE ENRICHMENT FUNCTION #
+################################
+enrich_list <- function(x, gmt_list){
+  temp <- compute_enrichment(genes = x,
+                            gmt_list = gmt_list,
+                            min_terms_pathway = 10,
+                            max_terms_pathway = 300,
+                            min_overlap = 3,
+                            sort_by_pvalue = T)
+  temp <- temp[!grepl("REGULATION",rownames(temp)),]
+  temp <- rownames_to_column(temp, var = "Terms")
+  return(temp)
+} 
+```
+
+```{r Across tables, fig.height=4, fig.width=7, warning=F}
+TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
+TRX_counts <- round(2^TRX - 1)
+TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
+TRX_counts <- TRX_counts[,sample_use]
+
+#########
+# DEG's #
+#########
+dge_L <- edgR_dge.fun("Luminal_gr", confound=T)
+dge_T <- edgR_dge.fun("Tissue_gr", confound=T)
+
+
+###############
+# ENRICHMENT #
+##############
+db <- c("GO", "KEGG") %>% set_names()
+enrich_L <- db %>%
+  map(., ~gene_mod_enrich.fun(dge_L$top,dge_L$y,dge_L$c,
+                              db = .x,
+                              group_name = "Luminal_gr", 
+                              cuttoff = c(GO=2.5, KEGG=2.5)#3
+                              )) 
+enrich_T <- db %>%
+  map(., ~gene_mod_enrich.fun(dge_T$top,dge_T$y,dge_T$c,
+                              db = .x,
+                              group_name = "Tissue_gr",
+                              cuttoff = c(GO=1.6, KEGG=1.6)
+                              ))
+
+```
+
+```{r Pairwise tables}
+##################
+# PAIRWISE DEG's #
+##################
+pairwise_dge_L <- pairwise_dge.fun(group = "Luminal_gr", 
+                                   fit=dge_L$fit, 
+                                   design=dge_L$design )
+pairwise_dge_T <- pairwise_dge.fun(group = "Tissue_gr",
+                                   fit=dge_T$fit,
+                                   design=dge_T$design)
+
+###############################
+# PAIRWISE ENRICHMENT GO/KEGG #
+###############################
+#info_logFC <- map(top_dfs[[1]], ~table(abs(.x$logFC) > 1))
+#info_PValue <- map(top_dfs[[1]], ~table(.$PValue < 0.01))
+
+l_top <- list(Luminal = pairwise_dge_L$top[-1], Tissue = pairwise_dge_T$top[-1])
+# up and down regulated genes seperatly
+t_split <- modify_depth(l_top, 2, ~ .x %>%
+        dplyr::filter(., .$PValue < 0.01) %>%
+        #dplyr::filter(., abs(.$logFC) < 1) %>%
+        mutate(., reg = ifelse(.$logFC > 0, "up", "down")) %>%
+        split(., .$reg)
+  )
+
+## GO enrichment 
+pairwise_GO <- map_depth(t_split, 3, ~enrich_list(.x$Genes, GO_database)) %>%
+  map_depth(., 2, ~bind_rows(.x, .id = "regulation")) 
+## KEGG enrichment
+pairwise_KEGG <- map_depth(t_split, 3, ~enrich_list(.x$Genes, KEGG_database)) %>%
+  map_depth(., 2, ~bind_rows(.x, .id = "regulation")) 
+ 
+```
+
+```{r Suppl. Tbl. 4 & 8}
+# DEG's across and pairwise
+pages <- list(list(Across=dge_L$top), pairwise=pairwise_dge_L$top) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,DEG_files[1]))
+
+pages <- list(list(Across=dge_T$top), pairwise=pairwise_dge_T$top) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,DEG_files[2]))
+
+#Files with filtered p-value < 0.01 
+# Have to update the summary table, however the decideTests
+# function does not provide support for p-value cutoffs only FDR
+# therefore I need to write code to get the correct summary
+
+p_L <- map(pairwise_dge_L$top[-1], ~filter(.x, `PValue`<0.01))
+p_T <- map(pairwise_dge_T$top[-1], ~filter(.x, `PValue`<0.01))
+
+pages <- list(list(Across=dge_L$top), pairwise=p_L) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,DEG_files[1]))
+
+pages <- list(list(Across=dge_T$top), pairwise=p_T) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,DEG_files[2]))
+```
+
+```{r Suppl. Tbl. 5,6 & 9,10, eval=FALSE}
+# Enrichment Across
+df_across <- enframe(list(Luminal=enrich_L, Tissue=enrich_T)) %>%  
+  unnest_longer(value) %>%
+  mutate(res = map(.$value, "res_list")) %>%
+  unnest_longer(res) %>%
+  mutate(res = map(res, ~rownames_to_column(.x, var = "Terms"))) %>%
+  mutate(res = map(res, ~filter(.x, pvalue <= 0.01))) %>%
+  group_by(name, value_id) %>%
+  mutate(mod = row_number()) %>% ungroup() %>%
+  mutate(res = set_names(.$res, paste0(.$value_id,"_gene_module_",.$mod))) %>%
+  group_split(name) %>% set_names(., map(., ~unique(.x$name)))
+
+write.xlsx(df_across[[1]]$res, file=paste0(result_dir,"Suppl.Tbl.05 Enrichment_Across_Luminal",".xlsx"))
+write.xlsx(df_across[[2]]$res, file=paste0(result_dir,"Suppl.Tbl.09 Enrichment_Across_Tissue",".xlsx"))
+
+# Enrichment pairwise
+df_pairwise <- enframe(list(GO=pairwise_GO, KEGG=pairwise_KEGG)) %>%
+  unnest_longer(value) %>%
+  unnest_longer(value, names_repair ="unique") %>%
+  mutate(value = map(value, ~filter(.x, FDR <= 0.05))) %>%
+  mutate(value = set_names(.$value, paste0(.$name,"_",.$value_id...3))) %>%
+  group_split(value_id...4) %>% set_names(., map(., ~unique(.x$value_id...4)))
+  
+write.xlsx(df_pairwise[[1]]$value, file=paste0(result_dir,"Suppl.Tbl.06 Enrichment_Pairwise_Luminal",".xlsx"))
+write.xlsx(df_pairwise[[2]]$value, file=paste0(result_dir,"Suppl.Tbl.10 Enrichment_Pairwise_Tissue",".xlsx"))
+```
+
+```{r TF PPI Analysis function, include=FALSE}
+# filename <- DEG_files[1]
+# gr_name <- gr_name[1]
+# outfile <- enrichR_files[1]
+TF_PPI_analysis.fun <- function(result_dir, filename, gr_name, outfile) {
+  # Get DEG's files and filter p-value < 0.01
+  sheets <- excel_sheets(paste0(result_dir, filename)) %>% set_names(.) %>% .[-c(1:2)]
+  detables <- map(sheets, ~read_xlsx(paste0(result_dir, filename), sheet = .x, col_names = TRUE)) %>%
+    map(.,~mutate(.x, DE = ifelse(.x$PValue > dge_cutoff , 0, ifelse(.x$logFC < 0, -1, 1 )))) %>% 
+    map(.,~filter(., .$PValue <= 0.01))
+    
+    # Running enrichments for up- or down-regulated genes
+    save_l <- list()
+    for(i in sheets ){
+      message(paste0("Processing comparisson   ", i))
+      temp <- detables[[i]]
+      temp <- temp[ !duplicated(temp$Genes) & !is.na(temp$Genes) , ]
+      temp <- mutate(temp, rownames = Genes)
+      temp <- column_to_rownames(temp, var = "rownames") 
+      
+      save_f <- list()
+      for(j in c(1,-1)){
+        gene_list <- temp$Genes[ temp$DE == j ]
+        
+        #Transcription_Factor_PPIs
+        f <- enrichr(genes = gene_list, databases = "Transcription_Factor_PPIs")[[1]]
+        if (is.data.frame(f) && nrow(f)>0){
+          f <- f[order(f$P.value,decreasing = F), -c(5:6)]
+          f <- cbind("Transcription Factor"=f[["Term"]], setNames(list(length(gene_list)), col_name), f[,-c(1)])
+          f <- f[f$P.value < enrich_cutoff & as.numeric(sapply(strsplit(f[,"Overlap"],"/"),"[[", 1)) >= no_genes_cutoff,]
+          f_n <- set_names(list(f), paste0(ifelse(j==1,"up","down"))) 
+          save_f <- append(save_f, f_n)
+
+        }else{if(length(save_f) == 0){save_f <- append(save_f, f_n)} }
+      }
+      l <- bind_rows(save_f, .id = "Regulation") %>%
+        filter(Adjusted.P.value <= 0.05)
+      l <- set_names(list(l), paste0(i))
+      save_l <- append(save_l, l ) 
+    } 
+    write.xlsx(save_l, file=paste0(result_dir, outfile), row.names=FALSE)
+  }
+```
+
+```{r TF PPI Analysis, eval=FALSE, include=FALSE}
+TF_PPI_analysis.fun(result_dir, DEG_files[1], gr_name[1], enrichR_files[1]) # writes Suppl.Tbl.07
+TF_PPI_analysis.fun(result_dir, DEG_files[2], gr_name[2], enrichR_files[2]) # writes Suppl.Tbl.11
+```
+
+
+```{r plot functions, warning=FALSE, include=FALSE}
+############################
+# GO/KEGG HEATMAP FUNCTION #
+############################
+# sample_use <- metadata$ID
+# gr = "Tissue_gr"
+# name = "Tissue"
+# enrich = enrich_T
+# db <- "GO"
+# db <- "KEGG"
+# plot_heatmap.fun(enrich_T, db, "Tissue_gr", "Tissue")
+plot_heatmap.fun <- function(enrich, db, gr, name, N=3, Layout){
+  figlabels <- letters
+  df <- na.omit(metadata[sample_use, c(gr, "ID")])
+  df <- arrange(df, df[1])
+  samples <- df[, "ID"]
+  names(samples) <- df[, gr]
+  
+  conf <- pluck(enrich, db, "c")
+  h <- pluck(enrich, db, "h")
+  cuttoff <- pluck(enrich, db, "cuttoff")
+  res_list <- pluck(enrich, db, "res_list")
+  top_TRX_counts <- pluck(enrich, db, "top_TRX_counts")[,samples]
+  gene_module <- pluck(enrich, db, "gene_module")
+  
+  if(missing(Layout)){
+    layout(matrix(c(1,2,3,4,5,
+                  1,2,3,4, 5),
+                  nrow = 2,ncol = 5,byrow = T),widths = c(1,3.5,.36,8,8))
+  }else{layout(Layout[[1]],Layout[[2]],Layout[[3]])}
+
+  # Dendogram
+  par(mar=c(4,.1,2.5,.1)) #bottom, left, top, right  
+  plot( rev(as.dendrogram(h)) , xlim=c(max(h$height),-.2),horiz = T, leaflab = "none",xaxs="i",yaxs="i",axes=T)
+  title(xlab="Height", line=2)
+  abline(v=cuttoff,xpd=F,col="red",lty=2)
+  points( rep(-.1,length(gene_module)),
+          seq(length(gene_module),1,length.out = length(gene_module)),
+          col=taxa_pal[factor(gene_module[h$order])],
+          pch=15,cex=.5,xpd=F)
+  
+  #add label
+  add_letter(figlabels[1]); figlabels <- figlabels[-1]
+  
+  # Heatmap
+  image( t(top_TRX_counts[h$order,pull(df, "ID")][nrow(top_TRX_counts):1,]),
+         col = colorRampPalette(c("navy","navy","grey95","firebrick4","firebrick4") )(99),
+         breaks = seq(-5,5,length.out = 100),axes=F)
+  mtext("                                                          Differentially expressed genes and KEGG/GO pathways", side=3, las = 1, cex = .7, line =1.5,xpd=T, font = 2)
+  title(xlab="Study Groups", line=1)
+  
+  # Study Group brackets
+  end <- table(pal[factor(names(samples))[ order(df[1])]])
+  end <- end[order(factor(names(end), levels = pal))]
+  end <- map_dbl(cumsum(end), ~ (.x * (par("usr")[2])/length(samples)-.017) )
+  start <- c(0, map_dbl(end[1:4], ~.x+0.017))
+  end <- c(end[1:length(end)-1], par("usr")[2]-.005)
+  
+  axis(1, at = c(start, end), label = F, pos =1.029 , xpd=T, col="white",col.ticks="black")
+  map2(start, end, ~lines(x=c(.y, .x), y= c(1.029, 1.029), xpd=T, cex=.8))
+  # text labels
+  t <- map2(start, end, ~(.x+.y)/2)
+  par(mar=c(3,.2,2,.2)) #bottom, left, top, right  
+  map2(t,levels(factor(names(samples))), ~text(x=.x, y=1.045, .y,xpd=T, cex=.8))
+  
+  ## Meta info bars
+  par(mar=c(3,.1,2,.1)) #bottom, left, top, right  
+  map(c(.0025, .007), ~points( seq(0,1,length.out = length(samples)),rep(par("usr")[4],length(samples))+.x,
+          col=pal[factor(names(samples))[ order(df[1])]],
+          pch=15,xpd=F,cex=.3) )
+  points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.008,
+          col=c("tomato","orange","#d7d7d7")[ factor(metadata[samples,"BV_Diagnosis_v3"][order(df[1])]) ],
+          pch=15,xpd=F,cex=.3) 
+  points( seq(0,1,length.out = ncol(top_TRX_counts)),rep(par("usr")[3],ncol(top_TRX_counts))-.022,
+          col= c("#d7d7d7","tomato")[ factor(metadata[samples,"HIVstatus"][order(df[1])]) ],
+          pch=15,xpd=F,cex=.3)
+  
+  ## Gene module enrichment
+  names(res_list) <- unique( gene_module[h$order] )
+  
+  pvalues <- unlist(lapply(res_list,function(x){ -log10(x$pvalue) [1:N] }))
+  # pvalues <- unlist(lapply(res_list,function(x){ x$jaccard_index [1:N] }))
+  pvalues[is.na(pvalues)] <- 0
+  terms <- unlist(lapply(res_list,function(x){ rownames(x) [1:N] }))
+  terms[is.na(terms)] <- ""
+  terms <- gsub("_", " ", terms)
+  terms <- gsub("(GO |KEGG )|(\\w+)", "\\1\\L\\2", terms, perl = TRUE)
+  terms <- gsub("endoplasmic reticulum", "ER", terms, perl = TRUE)
+  genes <- unlist(lapply(res_list,function(x){ x$genes [1:N] }))
+  genes[is.na(genes)] <- ""
+  
+  #pvalues <- setNames(pvalues,paste0(terms," (",genes,")"))
+  pvalues <- setNames(pvalues,paste0(terms,""))
+  module_color <- unlist(lapply(names(res_list),function(x){ rep(x,N) }))
+  
+  temp <- factor( rev(gene_module), levels = unique( gene_module[h$order] ))
+  par(mar=c(4,0,2.5,.1)) #bottom, left, top, right  
+  plot_sankey( data.frame(temp,temp), pal = taxa_pal[as.numeric(levels(temp))], 
+               use_w2 = F , plot_labels = T ,gapv = .01,gap2v = 0 ,xaxs="i",
+               yaxs="i",plot_weights = F)
+  
+  text(par("usr")[1]+0.008,par("usr")[3]-.008,labels = "     BV",cex=.6, xpd=T)
+  text(par("usr")[1]+0.008,par("usr")[3]-.028,labels = "      HIV",cex=.6, xpd=T)
+  
+  # KEGG
+  if(name == "Tissue")
+  {par(mar=c(4,.1,2.5,13))}else #bottom, left, top, right  
+      {par(mar=c(4,.1,2.5,8))}
+  barplot( rev(pvalues) , horiz = T , col= taxa_pal[factor(rev(module_color))],
+           xaxs="i",yaxs="i",xlim=c(0,1.2*max(pvalues)),ylab="",las=1,
+           names.arg = "",xpd = FALSE)
+  abline(v=2,xpd=F,col="red",lty=2)
+  points( rev(pvalues), seq(1,length(pvalues) )*1.2-.5,pch=21,
+          bg=taxa_pal[factor(rev(module_color))] )
+  title(xlab="-log10(p-value)", line=2)
+  text( rev(pvalues)+strwidth("L") , seq(1,length(pvalues) )*1.2-.5, 
+        adj=0,cex=.9,xpd=T,rev(gsub("\\(\\)","",names(pvalues)) ))
+  text( rev(pvalues)+strwidth("L") , seq(1,length(pvalues) )*1.2-.5, 
+        labels = rev(sub(" [(].*","",names(pvalues)) ), adj=0,cex=.9,
+        col = paste0(taxa_pal[factor(rev(module_color))],90) ,xpd=T)
+  
+  # GO
+  res_list <- pluck(enrich, "GO", "res_list")
+  
+  ## Gene module enrichment
+  names(res_list) <- unique( gene_module[h$order] )
+  pvalues <- unlist(lapply(res_list,function(x){ -log10(x$pvalue) [1:N] }))
+
+  pvalues[is.na(pvalues)] <- 0
+  terms <- unlist(lapply(res_list,function(x){ rownames(x) [1:N] }))
+  terms[is.na(terms)] <- ""
+  terms <- gsub("_", " ", terms)
+  terms <- gsub("(GO |KEGG )|(\\w+)", "\\1\\L\\2", terms, perl = TRUE)
+  terms <- gsub("endoplasmic reticulum", "ER", terms, perl = TRUE)
+  terms <- gsub("establishment of ", "", terms, perl = TRUE)
+  genes <- unlist(lapply(res_list,function(x){ x$genes [1:N] }))
+  genes[is.na(genes)] <- ""
+  pvalues <- setNames(pvalues,paste0(terms,""))
+  module_color <- unlist(lapply(names(res_list),function(x){ rep(x,N) }))
+  
+  barplot( rev(pvalues) , horiz = T , col= taxa_pal[factor(rev(module_color))],
+           xaxs="i",yaxs="i",xlim=c(0,1.2*max(pvalues)),ylab="",las=1,
+           names.arg = "",xpd = FALSE)
+  abline(v=2,xpd=F,col="red",lty=2)
+  points( rev(pvalues), seq(1,length(pvalues) )*1.2-.5,pch=21,
+          bg=taxa_pal[factor(rev(module_color))] )
+  title(xlab="-log10(p-value)", line=2)
+  text( rev(pvalues)+strwidth("L") , seq(1,length(pvalues) )*1.2-.5, 
+        adj=0,cex=.9,xpd=T,rev(gsub("\\(\\)","",names(pvalues)) ))
+  text( rev(pvalues)+strwidth("L") , seq(1,length(pvalues) )*1.2-.5, 
+        labels = rev(sub(" [(].*","",names(pvalues)) ), adj=0,cex=.9,
+        col = paste0(taxa_pal[factor(rev(module_color))],90) ,xpd=T)
+}
+
+
+###########################
+# ASSEMBLE PLOTS FUNCTION #
+###########################
+# comparison <- sheets
+# enrichment_db <- "TF_PPI_enrichment"
+# degs <- enrich_T
+# group <- "Tissue_gr" 
+# gr_name <- "Tissue"
+arrange_plots.fun <- function(degs, group, gr_name, comparison, enrichment_db, file, Layout){
+  
+  ### A
+  ###################
+  # GO/KEGG HEATMAP #
+  ###################
+  plot_heatmap.fun(degs, "KEGG", group, gr_name, Layout=Layout)
+  
+  
+  ### B
+  #####################
+  # TF PPI ENRICHMENT #
+  #####################
+  # Create plot for each enrichment
+  n <- 10
+  for( x in comparison ){
+  for( i in enrichment_db ){
+    DD <- Inf
+    UU <- 0
+    names_DD <- ""
+    names_UU <- ""
+    
+    f_DOWN <- read_xlsx(paste0(result_dir, file), sheet = x) %>% filter(Regulation == "down")
+    f_UP <- read_xlsx(paste0(result_dir, file), sheet = x) %>% filter(Regulation == "up")
+    
+    if (is.data.frame(f_DOWN) && nrow(f_DOWN)>0){
+      tempD_e <- f_DOWN
+      DD <- log10(tempD_e$P.value)[1:min(n,length(tempD_e$P.value))]
+      names_DD <- (as.character(tempD_e$"Transcription Factor"))[1:min(n,length(tempD_e$P.value))]
+    }
+    if (is.data.frame(f_DOWN) && nrow(f_DOWN)>0){
+      tempU_e <- f_UP
+      UU <- rev(-log10(tempU_e$P.value)[1:min(n,length(tempU_e$P.value))])
+      names_UU <- rev(as.character(tempU_e$"Transcription Factor")[1:min(n,length(tempU_e$P.value))])
+    }
+    
+    comb <- c( DD/abs(max(abs(DD))) , UU/abs(max(abs(UU))) )
+    comb <- replace_na(comb, 0)
+  
+    if (identical(comb, c(0,0))){next}
+
+    par(mar = c(1.2, 4.7, 2.2, 1))  #bottom, left, top, right
+    barplot( c(rep(NA, each=20-length(comb)), comb),  
+             xlim=c(-1.1,1.1), cex.names = .9,
+             names.arg = c(rep("", each=20-length(comb)),names_DD, names_UU ), 
+             horiz = T, las= 1, border=NA, xaxt='n', line=-.2,
+             col = c(rep(NA, each=20-length(comb)), 
+                     rev(colorRampPalette( c("firebrick3","gray","navy") )(19))[(comb+1)*9+1])
+    )
+    title(main=paste(x, str_replace_all(i, "_"," "), sep="\n"), line = 0.1, cex.main=1)
+    
+    if(x == "L1-L2" | x == "T1-T2"){add_letter("b")}
+    points_y <- rev(seq(par("usr")[4]-1.45, by=-1.2, length=length(c(UU,DD))))
+             points( comb , points_y,
+                     bg=colorRampPalette( c("navy","gray","firebrick3") )(19)[(comb+1)*9+1],
+                     pch=21, col="black",cex=1.5)
+             lines(x=c(0, 0), y= c(points_y[1]-.6, par("usr")[4]-1)) 
+             lines(x=c(-2/abs(max(abs(DD))),-2/abs(max(abs(DD)))), 
+                   y= c(points_y[1]-.6, par("usr")[4]-1), lty=c(3)) # pval=0.01
+             lines(x=c(2/abs(max(abs(UU))),2/abs(max(abs(UU)))), 
+                   y= c(points_y[1]-.6, par("usr")[4]-1), lty=c(3)) # pval=0.01
+             text(0,points_y[1]-1.5, "-log10 p-value", xpd=T)
+    }
+  }
+}
+```
+
+```{r Figure 4, message=FALSE, warning=FALSE, echo=FALSE, fig.height=6}
+# Layout
+l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
+                         1,2,3,4,4,4,5,5,5,
+                         6,6,6,7,7,8,8,9,9,
+                         10,10,10,11,11,12,12,13,13),
+                nrow = 3,ncol = 9,byrow = T),
+          widths = c(1.14,3.5,.36,2.5,2.5,2.5,2.5,2.5,2.5),
+          heigth = c(1,1,1.5)
+          )
+#layout.show(layout(l[[1]],l[[2]],l[[3]]))
+
+sheets <- excel_sheets(paste0(result_dir, DEG_files[1])) %>% set_names(.) %>% .[-c(1:2)]
+arrange_plots.fun(enrich_L, "Luminal_gr", "Luminal", sheets, "TF_PPI_enrichment", enrichR_files[1], Layout = l)
+
+# test figure
+# dev.copy2pdf(file=paste0("./test.pdf"),
+#     width = 6.6,
+#     height = 6, paper = "a4"
+#     )
+```
+
+```{r Figure 5, message=FALSE, warning=FALSE, echo=FALSE, fig.height=6, crop = TRUE}
+knitr::knit_hooks$set(crop = knitr::hook_pdfcrop)
+# Layout
+l <- list(mat = matrix(c(1,2,3,4,4,4,5,5,5,
+                         1,2,3,4,4,4,5,5,5,
+                         6,6,6,7,7,8,8,9,9,
+                         10,10,10,11,11,12,12,13,13),
+                nrow = 3,ncol = 9,byrow = T),
+          widths = c(1.14,3.5,.36,2.5,2.5,2.5,2.5,2.5,2.5),
+          heigth = c(1,1,1.5)
+          )
+
+sheets <- excel_sheets(paste0(result_dir, DEG_files[2])) %>% set_names(.) %>% .[-c(1:2)]
+arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", enrichR_files[2], Layout = l)
+
+# dev.copy2pdf(file=paste0("./test.pdf"),
+#     width = 6.6,
+#     height = 6, paper = "a4"
+#     )
+```
+
+
+```{r Suppl. Tbl. 12}
+metadata <- metadata %>% 
+  mutate(L_T_groups = paste0(.$Luminal_gr, .$Tissue_gr)) %>%
+  mutate(L_T_groups = ifelse(grepl("L2T2|L2T3", .$L_T_groups), .$L_T_groups, NA))
+
+dge_LT <- edgR_dge.fun("L_T_groups", confound=T)
+enrich_LT <- db %>%
+  map(., ~gene_mod_enrich.fun(dge_LT$top,dge_LT$y,dge_LT$c,
+                              db = .x,
+                              group_name = "L_T_groups",
+                              cuttoff = c(GO=2, KEGG=2) # c(GO=2, KEGG=2.7)
+                              ))
+
+# Plot the L2T2 vs L2T3 heatmap:
+#pal <- c("#54ba63","#ad58c6","#d03e7a","#4cb6a9","#bb6fac","#cca442","#8fb53c","#6a7ecd","#63813e","#c46570","#b3743e","#d35238")
+#plot_heatmap.fun(enrich_LT, "KEGG", "L_T_groups", "L_T_groups")
+
+t <- dge_LT$top %>% filter(PValue <= 0.01)
+
+df_across <- enframe(list(LtoT=enrich_LT)) %>%  
+  unnest_longer(value) %>%
+  mutate(res = map(.$value, "res_list")) %>%
+  unnest_longer(res) %>%
+  mutate(res = map(res, ~rownames_to_column(.x, var = "Terms"))) %>%
+  mutate(res = map(res, ~filter(.x, pvalue <= 0.01))) %>%
+  group_by(name, value_id) %>%
+  mutate(mod = row_number()) %>% ungroup() %>%
+  mutate(res = set_names(.$res, paste0(.$value_id,"_gene_module_",.$mod))) %>%
+  group_split(name) %>% set_names(., map(., ~unique(.x$name)))
+
+
+pages <- list(list("DEGs L2T2 vs L2T3"=t), df_across[[1]]$res) %>% flatten()
+write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrichment.xlsx")) 
+```
+ 
+## igraph network plot
+```{r igraph network, eval=FALSE, warning=FALSE}
+# 1. Change the groups of interest by assigning condition_use
+# 2. Change the number of genes to be included in the network by changing n
+#    look at tempD_i and tempU_i to see how many genes was significant
+# 3. Adjust the size of the gene nodes and text in the graph by changing; square, circle and txt
+
+# combinations
+sheets <- map(DEG_files, ~excel_sheets(paste0(result_dir, .x))[-c(1:2)] ) %>%
+  map(., ~set_names(.x))
+
+# Set enrichment conditions
+n <- 10  # maximum number of TF's to plot
+# sizes:
+square <- 10
+cricle <- 8
+txt <- .7
+  
+# Create a graph from the list of UP and DOWN regulated genes
+i_graph <- function(temp_i, n, square, cricle){
+  temp <- lapply( 1:n, function(x){ strsplit(as.character(temp_i$Genes[x]),split = ";")[[1]]  } )
+  temp <- map(temp, purrr::discard, is.na) %>% compact() # removes NA
+  names(temp) <- temp_i$`Transcription Factor`[1:length(temp)]
+  temp2 <- lapply( names(temp) , function(x){ rep(x,length(temp[[x]])) })
+  temp <- cbind(unlist(temp2),unlist(temp))
+  g <- graph_from_data_frame(temp,directed = F)
+  v_shape <- ifelse( names(V(g)) %in% unique(temp[,1]) , "square" , "circle" )
+  v_color <- ifelse( names(V(g)) %in% unique(temp[,1]) , "honeydew" , "cornsilk" )
+  v_size <- ifelse( names(V(g)) %in% unique(temp[,1]) , square , cricle ) 
+  
+  return(list(g=g, v_shape=v_shape, v_color=v_color, v_size=v_size))
+  }
+
+
+# Test parameters
+# i <- "TF_PPI_Tissue"
+# i <- "TF_TRRUST_enrichment"
+# gr_name <- "Tissue"
+# comp <- sheets
+
+# Save all combination plots in one file
+save_pdf.fun <- function(i, gr_name, comp){
+  temp_i_name <- grep(i,list.files(paste0(result_dir),full.names=F),value=T)
+  p <- map(comp, ~read_xlsx(paste0(result_dir, temp_i_name), sheet = .x)) 
+  
+  p_split <- p %>%
+    imap(., ~.x %>%
+          mutate(Regulation = paste0(.y, "_", .$Regulation)) %>%
+          split(., .$Regulation)
+          ) %>% compact() %>% flatten()
+  
+  obj_igraph <- imap(p_split, ~i_graph(.x, n, square, cricle))
+  
+  
+  par(mar = c(0, 0, .7, 0))  #bottom, left, top, right
+  pdf(file = paste0(result_dir, "Plots/", i, "_network_",".pdf", sep=""))
+    p <- imap(obj_igraph,
+         ~with(.x, 
+                 plot.igraph(g, label=V(g), page = T,
+                 main = paste0(str_replace(.y, "_", " ")," regulated genes"),
+                 layout=layout_with_kk(g), vertex.label.color="black" ,
+                 vertex.size=v_size, vertex.label.cex=txt, vertex.label.font=2, 
+                 vertex.shape=v_shape, vertex.color=v_color, marigin = c(-1,-4,0,0),
+                 vertex.frame.color="grey60", curved=F)
+               
+    ))
+    dev.off()
+}
+
+# if(isFALSE(dir.exists(paste0(result_dir,"")))){dir.create(paste0("../",result.dir),recursive = TRUE)}
+# save_pdf.fun("TF_PPI_Luminal", "Luminal", comp = sheets[[1]])
+# save_pdf.fun("TF_PPI_Tissue", "Tissue", comp = sheets[[2]])
+
+```
