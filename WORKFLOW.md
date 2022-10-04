@@ -170,7 +170,7 @@ input:
 
       "../results/03_normalize_data_output/datasets_all_samples.RDS"
       "../data/metadata.csv"
-      "../../data/Protein_norm_MFI_Bradley_et.al.xlsx"
+      "../../data/Protein_norm_MFI.xlsx"
       "../../data/210125_Cytokines_visit3CVL.csv"
       
 Output:
