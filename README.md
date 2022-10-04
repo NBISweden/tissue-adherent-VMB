@@ -1,8 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
 
 # Distinct human cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels
 
