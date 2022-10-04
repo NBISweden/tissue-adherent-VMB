@@ -4,12 +4,13 @@
 
 This repository contains the code related to the article "Distinct human cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels" [Edfeldt, Kaldhusdal et al (202X)](https://doi.org/)
 
-The analysis can be reproduced by installing `conda` and running the individual rmarkdown scripts. It will download the data sets from the relevant sources as described bellow.
-
 This project used multiple datasets: 
-- Transcriptomics data (bulk mRNA-SEQ)
-- Microbiota data (16S)
-- Protein data (bead-based affinity assay)
+  - Transcriptomics data (bulk mRNA-SEQ)
+  - Microbiota data (16S)
+  - Protein data (bead-based affinity assay)
+
+The analysis can be reproduced by installing `conda` and running the individual rmarkdown scripts. The `WORKFLOW.md` file describes the input and output of each rmarkdown script. The raw counts for the microbiota and the transcriptomics data is downloaded from ENA and GEO respectively in the rmarkdown script named `03_normalize_data.Rmd`. The normalized MFI protein values is downloaded in `Figure_06.Rmd`.
+
 
 ## Data Availability Statement
 
