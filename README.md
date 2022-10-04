@@ -6,9 +6,9 @@ This repository contains the code related to the article "Distinct human cervica
 
 The analysis can be reproduced by installing `conda` and running the individual rmarkdown scripts. It will download the data sets from the relevant sources as described bellow.
 
-This project used multiple datasets \
-- Transcriptomics data (bulk mRNA-SEQ)\
-- Microbiota data (16S)\
+This project used multiple datasets: 
+- Transcriptomics data (bulk mRNA-SEQ)
+- Microbiota data (16S)
 - Protein data (bead-based affinity assay)
 
 ## Data Availability Statement
