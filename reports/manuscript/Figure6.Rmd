@@ -48,11 +48,18 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 result_dir <- "./Suppl.Tbl/"
 if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
 
+prot_url <- "https://doi.org/10.1371/journal.ppat.1010494.s017"
+
+############
+# DOWNLOAD #
+############
+if(isFALSE(file.exists("../../data/Protein_norm_MFI.xlsx"))){download.file(prot_url, paste0("../../data/", "Protein_norm_MFI.xlsx"), method="auto")}
+
 #############
 # LODA DATA #
 #############
 datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
-Protein_V3 <- read_xlsx("../../data/Protein_norm_MFI_Bradley_et.al.xlsx")
+Protein_V3 <- read_xlsx("../../data/Protein_norm_MFI.xlsx", skip = 2) %>% rename(ID="Patient/Sample ID")
 cytokine_data <- read.csv("../../data/210125_Cytokines_visit3CVL.csv")
 metadata <- read.csv("../../data/metadata.csv",row.names = 1, stringsAsFactors = F)
 
