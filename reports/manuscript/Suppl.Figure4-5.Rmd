@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 knit: (function(inputFile, out_dir, ...) {
     source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/SupplFigure3_4/", ...)
+    custom_knit(inputFile, "../../lab_book/SupplFigure4_5/", ...)
     })
 ---
 
@@ -44,16 +44,13 @@ suppressWarnings({suppressMessages({suppressPackageStartupMessages({
 # PATHS #
 #########
 PATH <- "../../.."
-reprod_files <- "../../data/reprod.Suppl.Fig.3_4/"
+reprod_files <- "../../data/reprod.Suppl.Fig.4_5/"
 
 #############
 # LODA DATA #
 #############
 datasets_all_samples <- readRDS("../../results/03_normalize_data_output/datasets_all_samples.RDS")
 SNN_bacteria <- read.csv("../../results/04_clustering_output/bacteria_SNN_graph.csv",row.names = 1)
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/manuscript")
-#datasets_all_samples <- readRDS("../../../results/datasets_all_samples.RDS")
-#SNN_bacteria <- read.csv("../../../results/bacteria_SNN_graph.csv",row.names = 1)
 bac_communities <- read.xlsx("./Suppl.Tbl/Suppl.Tbl.01.xlsx", sheet = "Bacterial Communities")
 
 ```
@@ -69,9 +66,6 @@ myletter <- letters
 #reprod. <- FALSE
 reprod. <- TRUE
 
-# ASV <- list(c("Luminal","ASV_CVL_V3_normalized_batch_corrected"),
-#             c("Tissue","ASV_tissue_V3_normalized_batch_corrected")
-#             )
 ASV <- list(c("Luminal","ASV_Luminal_normalized"),
             c("Tissue","ASV_Tissue_normalized")
             )

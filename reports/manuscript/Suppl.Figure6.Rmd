@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 knit: (function(inputFile, out_dir, ...) {
     source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/SupplFigure5/", ...)
+    custom_knit(inputFile, "../../lab_book/SupplFigure6/", ...)
     })
 ---
 
