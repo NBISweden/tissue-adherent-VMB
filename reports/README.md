@@ -1,38 +1,25 @@
-# Report templates
+# Note on reproducibility
 
-This is the `report` directory, in which templates for NBIS reports can be
-found. While the exact structure and means of creation of these reports do not
-have to conform to a specific standard, there is some [required
-information][report-info] that has to be included.
+### NB!
+  In order to preserve the exact results as submitted to paper
+  you have to use the objects found in the data folder.
+  namly the two phyloseq objects from Gabriellas run that have been cleaned up
+  the number of samples changes slightly the normalization so that when the samples are removed after
+  normalization they still reflect a larger dataset
+  im also not sure if the dada2 script is repoducible
+  might be differences also due to running all and a subset of the samples a s well as
+  different package versions
+  
+```
+paths_p <- c('../../Gabriella_repo/data/phyloseq_boston_r1.RDS', # CVL V3 (2 replicates of one tissue + 27 CVLv2)
+             '../../Gabriella_repo/data/phyloseq_boston_r2.RDS')   # Tissue V3 & CVL V2')  
+```
+             
+The result are reporiducible from the 01_taxonomy_improved.Rmd script, however you have to use the phyloseq objects which contains all the 111 samples from CLVL v3 and 96 samples from Tissue V3.
+Now these two phyloseq objects have been subsetted to only include the samples needed for the manuscript
+they are avilable in the data folder of the repo:
 
-## Included templates
-
-**Sweave** \
-`sweave/report.Rnw` is a Sweave file, a mix between R and LaTeX, and
-can easily to compiled into a nice-looking PDF document.
-
-**RMarkdown** \
-`rmarkdown/report.Rmd` is a RMarkdown file, a mix between R and markdown, which
-can easily to compiled into a nice-looking HTML document.
-
-## Common files
-
-Some files common to all templates are also included in the `common` directory,
-such as NBIS and SciLife logos (`logos`), a test bibliography
-(`references.bib`) and a custom LaTeX bibliography-style (`myunstr.bst`).
-
-## Adding templates
-
-If you want a different template that the ones already provided here, please do
-contribute a new one! Simply create a new directory with a descriptive name,
-in which you include the template itself and its output (*i.e.* a PDF, HTML,
-*etc.*), as well as add any required software packages to the NBIS-SF Conda
-`environment.yml` file. Also include a `README.md` in the template directory,
-specifying how the report should be used. Depending on your file formats you
-may also need to edit the `.gitignore` file.
-
-[*(back to project home directory)*][sf-home]
-
-[knitr-home]: https://yihui.name/knitr/
-[report-info]: https://github.com/NBISweden/NBIS-template-support-reports
-[sf-home]: https://github.com/NBISweden/NBIS-support-framework
+```
+paths_p <- c('../data/phyloseq_boston_r1.RDS',   # 108 Luminal samples, 1 Tissue sample
+             '../data/phyloseq_boston_r2.RDS')   # 92 Tissue samples
+```

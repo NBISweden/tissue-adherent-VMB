@@ -1,0 +1,159 @@
+---
+title: "Merge sequencing runs"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    code_folding: show
+    toc: yes
+    toc_float:
+      collapsed: no
+editor_options:
+  chunk_output_type: console
+---
+
+```{r Setup, echo = FALSE}
+knitr::opts_chunk$set(results    = "hold",
+                      message    = FALSE,
+                      warning    = FALSE)
+
+#setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports")
+```
+
+# Load libraries and other scripts
+
+```{r Load data, message=FALSE, warning=FALSE}
+##################
+# LOAD LIBRARIES #
+##################
+suppressWarnings({suppressMessages({suppressPackageStartupMessages({
+library(tidyverse)
+})  })  })
+
+#########
+# PATHS #
+#########
+#input_dir <- "../../Gabriella_repo/data/"
+input_dir <- "../results/01_taxonomy_improved_output/"
+result_dir <- "../results/02_data_preprocessing_output/"
+if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) }
+
+
+#############
+# LODA DATA #
+#############
+dataset_names <- c("ASV_tissue_V3_B2.csv", # Tissue, Boston run 2 (95 samples)
+                   "ASV_tissue_V3_B1.csv", # Tissue, Boston run 1 (1 sample)
+                   #"ASV_CVL_V2_B1.csv",   # CVL V2, Boston run 1 (27 samples)
+                   #"ASV_CVL_V2_B2.csv",   # CVL V2, Boston run 2 (49 samples)
+                   #"ASV_CVL_V2_S.csv",    # CVL V2, CTMR         (62 samples)
+                    "ASV_CVL_V3_B1.csv")   # CVL V3, Boston run 1 (111 samples)
+
+datasets <- map(dataset_names, ~read.csv(paste0(input_dir,.x))) %>% set_names(., dataset_names)
+trx <- read.csv(paste0("../data/","Raw_gene_counts_matrix.csv"),row.names = 1)
+
+map(datasets, ~dim(.x))
+```
+
+```{r Functions}
+# create "other" taxonomy
+other_taxa.fun <- function(df) {
+  other_taxa <- df %>%
+  unite("taxa_other", Kingdom:Species, sep = ";", remove = F, na.rm = T) %>%
+  mutate(taxa_other = ifelse(is.na(.$Species), paste0(.$taxa_other, ";other"), .$taxa_other)) %>%
+  #mutate(taxa_other = str_replace(.$taxa_other, ";NA.+|;NA", ";other")) %>%
+  mutate(taxa_other = str_extract(.$taxa_other, "([^;]+);([^;]+)$")) %>% # get the two last taxa levels
+  mutate(taxa_other = sub('^(.*);(other)', '\\2;\\1', .$taxa_other)) # place "other" first
+return(other_taxa)
+}
+
+# create genus lacto taxonomy
+genus_lacto.fun <- function(df){
+  genus_lacto <- df %>%
+    mutate(Genus_lacto = .$Genus, .after=Seq_ID) %>% 
+    mutate(Genus_lacto = ifelse(grepl("crispatus",.$Species), paste("L.", "crispatus/acidophilus"), 
+                                ifelse(grepl("reuteri",.$Species), paste("L.", "reuteri/oris/frumenti/antri"),
+                                  ifelse(grepl("gasseri",.$Species), paste("L.","gasseri/johnsonii/taiwanensis"),
+                                    ifelse(grepl("murinus",.$Species), paste("L.","murinus/animalis/apodemi/salivarius"),
+                                      ifelse(grepl("plantarum",.$Species), 
+                                           paste("L.", "plantarum/fabifermentans/composti/paraplantarum/graminis/fuchuensis"),
+                                        ifelse(grepl("Lactobacillus",.$Genus), paste("L.", .$Species), 
+                                              as.character(.$Genus_lacto))))))) )
+  return(genus_lacto)
+} 
+
+aggregate.fun <- function(df, level){
+  level <- enquo(level)
+  aggregated <- df %>%
+    dplyr::rename(Taxonomy = !!level) %>%
+    unite(., "Full_taxonomy", Kingdom:Species, sep = ";") %>%
+    dplyr::select(-any_of(c("Sequence", "Seq_ID", "Genus_lacto", "taxa_other", "Full_taxonomy"))) %>%
+    group_by(Taxonomy) %>%
+    summarise(across(where(is.numeric), sum)) %>%
+    ungroup()
+return(aggregated)
+}
+```
+
+
+# Taxonomy agglomeration
+
+```{r Agglomerate Taxa}
+temp <- map(datasets, ~.x  %>%
+            select(Sequence, Seq_ID, Kingdom:Species, everything()) %>%
+            filter(!(is.na(.$Kingdom))) %>% # Removes any kingdom being NA
+            other_taxa.fun(.) %>% # create "other" taxonomy 
+            genus_lacto.fun(.)  # create genus lacto taxonomy
+            ) %>%  
+        {. ->> temp_ } %>% 
+        map(., ~aggregate.fun(., "Genus_lacto")) # agglomerate on genus/lacto spp. lvl.
+
+
+# Extract taxonomic information to file
+seq_taxa <- bind_rows(temp_, .id = "dataset") %>% select(1:12) %>% unique() 
+#write.csv(seq_taxa, paste0(result_dir,"SeqID_to_gen-lacto_tax-oth",".csv"),row.names = F )
+
+#arrange all datasets to have the same rownames with all bacteria
+common_microbes_fun <- function(x) {
+  t <- bind_rows(temp) %>%
+    select(Taxonomy) %>%
+    unique() %>%
+    left_join(x, by="Taxonomy") %>%
+    mutate(across(Taxonomy, ~replace_na(.x, "Not assigned"))) %>%
+    mutate(across(-Taxonomy, ~replace_na(.x, 0))) %>%
+    column_to_rownames(var = "Taxonomy")
+  return(t)
+}
+datasets <- map(temp, ~common_microbes_fun(.x))
+lapply(datasets,dim)
+
+```
+
+# Merging and renaming
+
+```{r merge sequencing runs}
+names(datasets)
+
+#No batch correction needed in tissue_V3 dataset, only add it to the other samples
+datasets[["ASV_tissue_V3"]] <- cbind( datasets[["ASV_tissue_V3_B2.csv"]],datasets[["ASV_tissue_V3_B1.csv"]] )
+
+datasets <- datasets[-c(1,2)]
+lapply(datasets,dim)
+
+
+```
+
+
+```{r save raw microbiome files, fig.height=5, fig.width=5}
+
+datasets <- lapply(datasets,function(x){
+  x <- x[,sort(colnames(x))]
+  return(x)
+})
+
+# raw files
+n <- c("ASV_Luminal", "ASV_Tissue")
+map2(datasets, n,  ~write.csv(.x, file=paste0(result_dir,.y,"_raw_counts.csv"),row.names = T) )
+
+
+```
+

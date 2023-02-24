@@ -1,41 +1,70 @@
-# NBIS Support Framework
+# Distinct human cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels
 
-## Introduction
+## General info
 
-The NBIS Support Framework (NBIS-SF) is about creating a collaborative
-framework for NBIS support projects and the related data management plans. The
-idea is to have a common framework and knowledge-base that NBIS experts may
-choose to adopt and expand as they perform support-related work. This includes
-tools for reproducibility (*e.g.* Conda, Snakemake), version control (git,
-GitHub), [report templates](reports/) (*e.g.* RMarkdown, LaTeX, KnitR, Jupyter)
-and support-related information ([data management guidelines](
-doc/data-management/), consultation guidelines, contract templates, *etc.*).
-NBIS also has a separate repository for pipelines, which you can find at
-[NBISweden/pipelines][nbis-pipelines].
+This repository contains the code related to the article "Distinct human cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels" [Edfeldt, Kaldhusdal et al (202X)](https://doi.org/)
+
+This project used multiple datasets: 
+  - Transcriptomics data (bulk mRNA-SEQ)
+  - Microbiota data (16S)
+  - Protein data (bead-based affinity assay)
+
+The analysis can be reproduced by installing `conda` and running the individual rmarkdown scripts. The `WORKFLOW.md` file describes the input and output of each rmarkdown script. The raw counts for the microbiota and the transcriptomics data is downloaded from ENA and GEO respectively in the rmarkdown script named `03_normalize_data.Rmd`. The normalized MFI protein values is downloaded in `Figure_06.Rmd`.
+
+
+## Data Availability Statement
+
+The **raw microbiome sequencing data** for this study has been deposited in the European Nucleotide Archive (ENA) at EMBL-EBI under accession number PRJEB50325.
+
+The **processed transcriptomics sequencing data** files can be accessed in the Gene Expression Omnibus public repository, accession ID GSE194276.
+
+The **raw transcriptomic sequencing data** and sociodemographic and clinical characteristics of the study participants cannot be held in a public repository due to the sensitive nature of such personal data. Request for data access can be made to the Karolinska Institutet Research Data Office (contact via rdo\@ki.se), and access will be granted if the request meets the requirements of the data policy.
+
+**Protein data** is previously published in doi: [10.1371/journal.ppat.1010494](https://doi.org/10.1371/journal.ppat.1010494.s017) \
+**Cytokine data** is available upon request
+
+## Dependencies
+
+Project is created with:\
+\* R version: 3.6.2\
+\* RStudio version: 2022.07.1+554
 
 ## Setup
 
-First create a new repository for your project by using NBIS-SF as a template.
-You can do this directly from the NBIS-SF GitHub by pressing the *"Use this
-template"* button. This will take you through the creation of your new repo
-like normal, but it will contain all the content currently available on NBIS-SF
-in a single, initial commit. Name your new repository with the type of project
-it is (LTS, SMS or PP), the Redmine issue number, the year, plus a descriptive
-name and on the [NBISweden GitHub][nbisweden], *e.g.* *SMS-4412-18-mast* or
-*LTS-3939-20-ctcf*. You can then clone your new repository like you would
-normally.
+Conda
 
-## Contributing
+1.  Clone the repo
+2.  If not already installed download mini conda/conda
+3.  In the terminal navigate to the project directory
+4.  create a new environment:<br/> `conda env create -n tissue_adherent_VMB -f ./resources/environment_tissue_adherent_VMB.yml`
+5.  Activate the environment:<br/> `conda activate tissue_adherent_VMB`
+6.  Open your preferred text editor from terminal by :<br/> `/path/to/rstudio &`
+7.  Install niceRplots package from github:<br/> `remotes::install_github("czarnewski/niceRplots",force=T)`
 
-All contributions are welcome, small and large! The central idea behind NBIS-SF
-is to develop an up-to-date framework for NBIS support projects, to share
-knowledge and to streamline common bioinformatics tasks. Anybody working at
-NBIS is welcome to contribute! If you want to contribute something, please see
-the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+## Repo structure
 
-Questions and feedback can be sent to
-[Erik Fasterius](mailto:erik.fasterius@nbis.se?subject=[NBIS-SF]) or
-[Olga Dethlefsen](mailto:olga.dethlefsen@nbis.se?subject=[NBIS-SF]).
+    project
+    │   README.md
+    │  
+    └───code
+    │   │   differential_abundance.R
+    │   │   enrichment_function.R knit_function.R
+    │   │   knit_function.R
+    │   │   Picrust_pipe.sh
+    └───data
+    │ 
+    └───reports
+    │   │   00_Preprocessing.Rmd
+    │   │   02_Analysis.Rmd
+    │   │   ...
+    │   └───manuscript
+    │       │   Figure01.Rmd
+    │       │   Figure02.Rmd
+    │       │   ...
+    └───resources
+    │   └───KEGG_GO_database
+    │   └───OptiVag_BVAB_database
+    │   │   ...
+    │ 
 
-[nbisweden]: https://github.com/NBISweden
-[nbis-pipelines]: https://github.com/NBISweden/pipelines/
+
