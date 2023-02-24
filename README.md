@@ -4,7 +4,11 @@
 
 This repository contains the code related to the article "Distinct cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels in Kenyan sex workers" [Edfeldt, Kaldhusdal et al (2023)](https://doi.org/)
 
-This project used multiple datasets: - Transcriptomics data (bulk mRNA-SEQ) - Microbiota data (16S) - Protein data (bead-based affinity assay) - Cytokine data
+This project used multiple datasets: 
+- Transcriptomics data (bulk mRNA-SEQ)
+- Microbiota data (16S) 
+- Protein data (bead-based affinity assay)
+- Cytokine data
 
 The analysis can be reproduced by installing `conda` and running the individual rmarkdown scripts. The `WORKFLOW.md` file describes the input and output of each rmarkdown script. The raw counts for the transcriptomics data is downloaded from GEO and the raw counts for the microbiota is downloaded from supplement files in the rmarkdown script named `03_normalize_data.Rmd`. The normalized MFI protein values and the cytokine values are downloaded in `Figure_06.Rmd`.
 
@@ -29,24 +33,16 @@ Project is created with:\
 Conda
 
 1.  Clone the repo
-
 2.  If not already installed download mini conda/conda
-
 3.  In the terminal navigate to the project directory
-
 4.  create a new environment:<br/>
-
     `conda env create -n tissue_adherent_VMB -f ./resources/environment_tissue_adherent_VMB.yml`
-
 5.  Activate the environment:<br/>
-
     `conda activate tissue_adherent_VMB`
-
-6.  Open your preferred text editor from terminal by :<br/>
-
+6.  Open your preferred text editor from terminal by :<br/> 
     `/path/to/rstudio &`
-
-7.  Install niceRplots package from github:<br/> `remotes::install_github("czarnewski/niceRplots",force=T)`
+7.  Install niceRplots package from github:<br/> 
+    `remotes::install_github("czarnewski/niceRplots",force=T)`
 
 ## Repo structure
 
