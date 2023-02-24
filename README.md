@@ -10,9 +10,9 @@ This project used multiple datasets:
 - Protein data (bead-based affinity assay)
 - Cytokine data
 
-The analysis can be reproduced by installing `conda` and running the individual rmarkdown scripts.\ 
-The `WORKFLOW.md` file describes the input and output of each rmarkdown script.\ 
-The raw counts for the transcriptomics data is downloaded from GEO and the raw counts for the microbiota is downloaded from supplement files in the rmarkdown script named `03_normalize_data.Rmd`. The normalized MFI protein values and the cytokine values are downloaded in `Figure_06.Rmd`.
+The analysis can be replicated by installing `conda` and running the individual rmarkdown scripts.\
+The `WORKFLOW.md` file describes the input and output of each rmarkdown script.\
+Raw counts for the transcriptomics data is downloaded from GEO and the raw counts for the microbiota is downloaded from supplement files in the rmarkdown script named `03_normalize_data.Rmd`. Normalized MFI protein values and the cytokine values are downloaded in `Figure_06.Rmd`.
 
 ## Data Availability Statement
 
