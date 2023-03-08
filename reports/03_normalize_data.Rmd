@@ -39,7 +39,7 @@ if( isFALSE(dir.exists(result_dir)) ) { dir.create(result_dir,recursive = TRUE) 
 # DOWNLOAD DATA #
 #################
 ## TRX DATA:
-GEO_url <- "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE194276&format=file&file=GSE194276%5FRaw%5Fgene%5Fcounts%5Fmatrix%2Ecsv%2Egz"
+GEO_url <- "https://www.ncbi.nlm.nih.gov/geo/download/?acc=GSE217237"
 # download.file(GEO_url, paste0("../data/"," Raw_gene_counts_matrix.csv.gz"), method="auto")
 # system("gunzip ../data/*.gz")
 
