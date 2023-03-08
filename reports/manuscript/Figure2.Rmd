@@ -13,11 +13,12 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  results = "hold",
+  results    = "hold",
   message    = FALSE,
   warning    = FALSE,
-  fig.width = 6.6929133858,
-  fig.path="./Figures/",
+  fig.width  = 6.6929133858,
+  fig.align  = "center",
+  fig.path   = "./Figures/",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -27,7 +28,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r Load data, message=FALSE, warning=FALSE}
+```{r Load-data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -323,6 +324,7 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 empty_plot()
 ```
 
+**Figure 2. Identification of bacterial communities and functional profiles in the luminal samples.** The luminal study samples were assessed for bacterial communities and functional profiles. **a** Bacterial community embedding of 5-SNN graph clustered using Louvain community detection algorithm based on luminal bacterial abundances. **b** Wet smear counts of the genera Lactobacillus, Mobiluncus, and Gardnerella with corresponding 16S read counts. **c** Differential expression analysis was applied to PICRUSt2 predicted KO terms across the five luminal study groups. Resulting significant (FDR < 1 × 10−5) KO terms were divided into seven modules by hierarchical agglomerative clustering using inverse Pearson’s correlation as distance measure and Ward’s method (“ward. D2”) for linkage. Enrichment analysis was performed on each module and the three most significant KEGG pathways were included in the heatmap. d Uniform Manifold Approximation (UMAP) of the predicted KO terms
 
 ```{r Suppl. Table 2.}
 #saveRDS( y , "../../../results/Picrust_EdgeR_estimations.rds" )
