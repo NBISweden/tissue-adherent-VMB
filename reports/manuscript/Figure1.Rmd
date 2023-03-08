@@ -13,11 +13,12 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  results = "hold",
+  results    = "hold",
   message    = FALSE,
   warning    = FALSE,
-  fig.width = 6.6929133858,
-  fig.path="./Figures/",
+  fig.width  = 6.6929133858,
+  fig.align  = "center",
+  fig.path   = "./Figures/",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -35,7 +36,7 @@ knitr::opts_chunk$set(
 
 ```
 
-```{r Load data}
+```{r Load-data}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -78,7 +79,7 @@ lvl <- c("L. iners", "Gardnerella", "L. crispatus/acidophilus","Prevotella", "At
 
 pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
-# show_col(pal)
+# scales::show_col(taxa_pal)
 ```
 
 
@@ -265,6 +266,8 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```
 
+**Figure 1. Characterization of a highly diversemicrobiome in cervicovaginal (luminal) samples from Kenyan sex workers.** Cervicovaginal lavage (luminal) and ectocervical tissue study samples were assessed by 16S rRNA sequencing, gene expression, and protein profiling. **a** Schematic drawing depicting the sampling scheme and the resulting omics datasets. **b** Bar plots of alpha diversity indices and taxonomy profiles for each individual luminal sample. Color-coded squares above the stacked bar plots indicate bacterial vaginosis (BV, binned Nugent’s scores): Gray: negative, orange: intermediate, red: positive; and HIV diagnosis: Gray: HIV seronegative, red: HIV seropositive. Two12-SNN graphs were constructed using:
+**c** Louvain community detection algorithm, and d Uniform Manifold Approximation (UMAP). The two graphs were overlayed in color with the predefined luminal study groups. The undirected edges are included in gray connecting the nodes
 
 ```{r Suppl. Table 1.}
 # Total Relative Abundance 
