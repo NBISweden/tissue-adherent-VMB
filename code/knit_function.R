@@ -1,4 +1,3 @@
-
 #################
 # KNIT FUNCTION #
 #################
@@ -12,6 +11,7 @@ custom_knit <- function(inputFile, out_dir, ...) {
         dev = c("jpeg", "tiff", "pdf"),
         dpi = 300,
         echo=TRUE,
+        #keep_md = TRUE,
         toc = FALSE,                             
         toc_float = FALSE,
         code_folding = "show",
@@ -19,9 +19,7 @@ custom_knit <- function(inputFile, out_dir, ...) {
       )#;
     # rmarkdown::render(
     #   inputFile,
-    #   output_format = rmarkdown::pdf_document(
-    #     dev = c("pdf", "png"),
-    #     dpi = 300)
+    #   output_format = rmarkdown::pdf_document()
     #   )
 }
 
