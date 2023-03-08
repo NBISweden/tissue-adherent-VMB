@@ -1,5 +1,5 @@
 ---
-title: "Figure 1.Luminal Study Groups"
+title: "Figure 1. Luminal Study Groups"
 geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 header-includes: 
 - \usepackage{float}
