@@ -13,8 +13,8 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  fig.path="./Suppl.Figures/",
-  fig.align = "center",
+  fig.path    = "./Suppl.Figures/",
+  fig.align   = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -24,7 +24,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r Load data, message=FALSE, warning=FALSE}
+```{r Load-data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -43,54 +43,25 @@ datasets_all_samples_ <- readRDS("../../results/03_normalize_data_output/dataset
 #################
 # COLOR PALETTS #
 #################
-Set1 <- c("#4DAF4A", "#377EB8", "#E41A1C", "#FF7F00", "#984EA3", "#FFFF33", "#A65628", "#F781BF", "#999999")
+Set1 <- c("#4DAF4A", "#E41A1C", "#984EA3", "#377EB8","#A6D854", "#FFFF33", "#FF7F00", "#A65628", "#F781BF", "#999999")
 pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
          RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
+
 ```
 
-```{r Suppl.Fig.1 Bacterial_abundance, fig.asp=.5}
-# test to get Paulos code to work with the new files who has less taxa due to filtering after normalization with only selected samples
-# it does not currently work
-# top_all_ <- lapply( datasets_all_samples_[1:2] , function(x){
-#    sort(apply(x,1,var),decreasing = T)[1:20]} )
-# top_ <- unique( sub( ".*[.]" , "" , names(unlist(top_all_)) ) )
-# 
-# x_ <- t(sapply(datasets_all_samples_[1:2],function(x){
-#   c(t(x))
-# }))
-# colnames(x_) <- c(sapply(rownames(datasets_all_samples_[[1]]),
-#                         function(i){rep(i,ncol(datasets_all_samples_[[1]]))}))
-# rownames(datasets_all_samples_[[1]]) == rownames(datasets_all_samples_[[2]])
+### Violin plot
+```{r Suppl.Fig.1, fig.asp=.5}
+x <- datasets_all_samples_[[1]]
+top <- t(t(2^x-1)/colSums(2^x-1)) %>%
+  as_tibble(., rownames ="tax") %>%
+  pivot_longer(cols = -tax, names_to = 'ID') %>%
+  group_by(tax) %>%
+  summarise(mean = mean(value)) %>% 
+  arrange(desc(mean)) %>%
+  filter(!(tax == "Not assigned")) %>%
+  pluck(., "tax") %>%
+  .[1:30]
 
-top_all <- lapply( datasets_all_samples[2:3] , function(x){
-   sort(apply(x,1,var),decreasing = T)[1:20]} )
-top <- unique( sub( ".*[.]" , "" , names(unlist(top_all)) ) )
-
-x <- t(sapply(datasets_all_samples[2:3],function(x){
-  c(t(x))
-}))
-colnames(x) <- c(sapply(rownames(datasets_all_samples[[2]]),
-                        function(i){rep(i,ncol(datasets_all_samples[[2]]))}))
-
-rownames(x) <- c("Tissue", "Luminal")
-
-top <- sort(sapply( unique(colnames(x)),
-               function(i) { mean( x[,colnames(x)==i ] ) } ),decreasing = T)
-top <- names(top)[1:30]
-
-###################################
-# BACTERIAL ABUNDANCE IN DATASETS #
-###################################
-par(mar=c(6.5,2.5,0,0)) #b,l,t,r
-violist(data = x[,colnames(x)%in%top],
-        genes = rownames(x),
-        clustering = factor( colnames(x)[colnames(x)%in%top],levels = top) ,
-        srt=45, cex.axis=0.7, pt.cex=0.2,  smooth = .1,
-        transparency=50,col = pal)
-```
-
-### Paulos code with tidyverse
-```{r New_files, fig.asp=.5}
 Lum <- datasets_all_samples_[[1]][rownames(datasets_all_samples_[[1]])%in%top,]
 Tis <- datasets_all_samples_[[2]][rownames(datasets_all_samples_[[1]])%in%top,]
 
@@ -121,4 +92,4 @@ violist(data = t, smooth = .1,
         transparency = 50,col = pal)
 ```
 
-I belive that the reson for the diference seen in the tissue distribution is that some of the samples was removed later on.
+**Supplementary Figure 1. Abundance distribution of individual taxa in the luminal and tissue microbiome data sets.** Violin plots showing the distribution of relative abundance of the top 30 most abundant taxa in the luminal and tissue-adherent data sets.
