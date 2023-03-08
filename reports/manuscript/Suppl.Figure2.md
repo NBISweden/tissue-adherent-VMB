@@ -1,30 +1,10 @@
----
-title: "Suppl. Figure 2. Differential bacterial abundance across Tissue and Luminal microbiome"
-geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-header-includes: 
-- \usepackage{float}
-editor_options: 
-  chunk_output_type: console
-knit: (function(inputFile, out_dir, ...) {
-    source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/SupplFigure2/", ...)
-    })
----
+Suppl. Figure 2. Differential bacterial abundance across Tissue and
+Luminal microbiome
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  fig.path    = "./Suppl.Figures/",
-  fig.align   = "center",
-  fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-1")
-    fs::file_move(path = filename, new_path = new_filename)
-    ifelse(fs::file_exists(new_filename), new_filename, filename)
-})
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
-```
 
-```{r Load data, message=FALSE, warning=FALSE}
+
+``` r
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -57,7 +37,8 @@ pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 ```
 
 ### Dot plot and bar plot
-```{r Suppl.Fig.2, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
+
+``` r
 all_microbiome <- cbind(datasets_all_samples[["ASV_Tissue_normalized"]],
                         datasets_all_samples[["ASV_Luminal_normalized"]])
 datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_Tissue_normalized"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_Luminal_normalized"]])) ))
@@ -120,8 +101,25 @@ barlist( all_microbiome, names(sort(ord)) , clustering = datasets,
          show_grid = T,cex.main=1,font.main=1,
          cex.axis = .8,srt = 0)
 add_letter("b")
+```
 
+<img src="./Suppl.Figures/Suppl.Fig.2.jpeg" style="display: block; margin: auto;" />
+
+``` r
 dev.off()
 ```
 
-**Suppl. Figure 2. Differential bacterial abundance across the luminal and tissue microbiome datasets.** Differential bacterial abundance was compared between the luminal and tissue-adherent microbiome data sets. The results are shown as **a)** dot plots, and **b)** bar plots, respectively. Bacteria with log2FC above `r fct` and p-value `r pvt` (from the Wilcoxon’s test) were considered significantly different and were sorted by the highest expression. The colour scale indicates the difference in total abundance between the datasets as a proportion, where “max” is the highest abundance of the two datasets, and the other becomes a proportion of this value. The size of the dots indicates the average abundance of the given bacteria in the given data set.
+    ## null device 
+    ##           1
+
+**Suppl. Figure 2. Differential bacterial abundance across the luminal
+and tissue microbiome datasets.** Differential bacterial abundance was
+compared between the luminal and tissue-adherent microbiome data sets.
+The results are shown as **a)** dot plots, and **b)** bar plots,
+respectively. Bacteria with log2FC above 0.25 and p-value 0.01 (from the
+Wilcoxon’s test) were considered significantly different and were sorted
+by the highest expression. The colour scale indicates the difference in
+total abundance between the datasets as a proportion, where “max” is the
+highest abundance of the two datasets, and the other becomes a
+proportion of this value. The size of the dots indicates the average
+abundance of the given bacteria in the given data set.

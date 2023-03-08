@@ -1,42 +1,9 @@
----
-title: "Figure 1. Luminal Study Groups"
-geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-header-includes: 
-- \usepackage{float}
-editor_options: 
-  chunk_output_type: console
-knit: (function(inputFile, out_dir, ...) {
-    source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/Figure1/", ...)
-    })
----
+Figure 1. Luminal Study Groups
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  results    = "hold",
-  message    = FALSE,
-  warning    = FALSE,
-  fig.width  = 6.6929133858,
-  fig.align  = "center",
-  fig.path   = "./Figures/",
-  fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-1")
-    fs::file_move(path = filename, new_path = new_filename)
-    ifelse(fs::file_exists(new_filename), new_filename, filename)
-})
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
-#.libPaths("/Users/vilkal/Applications/miniconda3/envs/Paulos_repo/lib/R/library")
 
-#### Figure requirements Microbiome: ####
-  # - width of 85 mm for half page width figure
-  # - width of 170 mm for full page width figure
-  # - maximum height of 225 mm for figure and legend
-  # - image resolution of approximately 300 dpi (dots per inch) at the final size
 
-```
-
-```{r Load-data}
+``` r
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -82,8 +49,7 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 # scales::show_col(taxa_pal)
 ```
 
-
-```{r Figure 1, fig.align = "center", fig.pos="t", fig.height=6.2}
+``` r
 # , fig.height=6.2
 # fig.height=7, fig.asp=1,
 figlabels <- letters
@@ -263,13 +229,27 @@ title(main = "UMAP", line = -1, cex.main = 1)
 
 #add label
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
-
 ```
 
-**Figure 1. Characterization of a highly diversemicrobiome in cervicovaginal (luminal) samples from Kenyan sex workers.** Cervicovaginal lavage (luminal) and ectocervical tissue study samples were assessed by 16S rRNA sequencing, gene expression, and protein profiling. **a** Schematic drawing depicting the sampling scheme and the resulting omics datasets. **b** Bar plots of alpha diversity indices and taxonomy profiles for each individual luminal sample. Color-coded squares above the stacked bar plots indicate bacterial vaginosis (BV, binned Nugent’s scores): Gray: negative, orange: intermediate, red: positive; and HIV diagnosis: Gray: HIV seronegative, red: HIV seropositive. Two12-SNN graphs were constructed using:
-**c** Louvain community detection algorithm, and d Uniform Manifold Approximation (UMAP). The two graphs were overlayed in color with the predefined luminal study groups. The undirected edges are included in gray connecting the nodes
+<img src="./Figures/Figure 1.jpeg" style="display: block; margin: auto;" />
 
-```{r Suppl. Table 1.}
+**Figure 1. Characterization of a highly diversemicrobiome in
+cervicovaginal (luminal) samples from Kenyan sex workers.**
+Cervicovaginal lavage (luminal) and ectocervical tissue study samples
+were assessed by 16S rRNA sequencing, gene expression, and protein
+profiling. **a** Schematic drawing depicting the sampling scheme and the
+resulting omics datasets. **b** Bar plots of alpha diversity indices and
+taxonomy profiles for each individual luminal sample. Color-coded
+squares above the stacked bar plots indicate bacterial vaginosis (BV,
+binned Nugent’s scores): Gray: negative, orange: intermediate, red:
+positive; and HIV diagnosis: Gray: HIV seronegative, red: HIV
+seropositive. Two12-SNN graphs were constructed using: **c** Louvain
+community detection algorithm, and d Uniform Manifold Approximation
+(UMAP). The two graphs were overlayed in color with the predefined
+luminal study groups. The undirected edges are included in gray
+connecting the nodes
+
+``` r
 # Total Relative Abundance 
 raw <- c("ASV_Luminal", "ASV_Tissue") %>% set_names()
 raw_list <- raw %>%
@@ -314,32 +294,3 @@ alpa_div <- set_names(div_list, c("Luminal","Tissue")) %>%
   map2(., c("Luminal_gr", "Tissue_gr"), ~select(.x, ID, .y, everything()))
 write.xlsx(alpa_div, file=paste0(result_dir,"alpha_diversity",".xlsx"))
 ```
-
-```{r eval=FALSE, include=FALSE}
-#############
-# TOP DGEs #
-#############
-p_val <- pull(top, "PValue")
-top_dge <- (p_val < 0.01) #& (rowSums( abs(top[,grep("logFC",colnames(top))]) >= log2(1.5) ) >= 1)
-top_dge <- top$Genes[ top_dge ]
-
-top_TRX_counts <- edgeR::cpm(y,normalized.lib.sizes = T,log = T)[top_dge, ]
-top_TRX_counts <- t(apply(top_TRX_counts,1,function(x){scale(x,T,T)}))
-top_TRX_counts[top_TRX_counts > 5] <- 5
-colnames(top_TRX_counts) <- colnames(TRX_counts)
-
-##########################
-# UMAP ON TOP DGE RNAseq #
-##########################
-mypar(2,3,mar=c(2,2,2,6))
-set.seed(1)
-UMAP_TRX <- uwot::umap(t(top_TRX_counts),n_neighbors = 10,
-                 metric = "correlation",min_dist = 0.1,spread = 5,
-                 negative_sample_rate = 10)
-plot(UMAP_TRX,bg=pal[group_annotation[sample_use]],main="UMAP on top DGE RNAseq",
-     pch=21,xlab="UMAP1",ylab="UMAP2",frame=F,axes=F)
-legend(par("usr")[2],par("usr")[4],title.adj = 0,
-       legend = levels(factor(group_annotation)),xjust = 0,yjust = 1,
-       bty = "n",pch = 21,pt.bg = pal,pt.cex = 1,xpd=T)
-```
-

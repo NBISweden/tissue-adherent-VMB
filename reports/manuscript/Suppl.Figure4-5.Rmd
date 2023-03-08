@@ -1,5 +1,5 @@
 ---
-title: "Suppl. Figure 3. & 4. Mirobiome-KEGG correlations."
+title: "Suppl. Figure 4. & 5. Mirobiome-KEGG correlations."
 geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
 header-includes: 
 - \usepackage{float}
@@ -13,18 +13,18 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  fig.path="./Suppl.Figures/",
-  fig.align = "center",
+  fig.path    = "./Suppl.Figures/",
+  fig.align   = "center",
   fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-1")
+    new_filename <- stringr::str_replace_all(string = filename, 
+                                        c("4-5-1"="4", "4-5-2"="5"))
     fs::file_move(path = filename, new_path = new_filename)
     ifelse(fs::file_exists(new_filename), new_filename, filename)
 })
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r Load-data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -60,8 +60,8 @@ counts <- t(as.data.frame( lapply(datasets_all_samples,colSums) ))
 counts[is.na(counts)] <- 0
 ```
 
-
-```{r Suppl.Fig.3 Bacterial drivers, warning=FALSE, fig.width=12, fig.height=13}
+### Correlation heatmap
+```{r Suppl.Fig.4-5, warning=FALSE, fig.width=12, fig.height=13}
 myletter <- letters
 #reprod. <- FALSE
 reprod. <- TRUE
@@ -138,7 +138,7 @@ for(i in ASV){
   terms <- gsub("(GO |KEGG )", "", terms, perl = TRUE)
   colnames(NESes) <- terms
   
-  ### Suppl. Figure 3-4
+  ### Suppl. Figure 4-5
   #######################################
   # FUNCTIONAL ASSOCIATION BACT AND TRX #
   #######################################
@@ -155,7 +155,7 @@ for(i in ASV){
 ```
 
 
-**Suppl. Figure 3-4.** Heatmaps showing the functional association of microbiome datasets with the expression profiles in the RNAseq dataset. Briefly, bacterial abundances from each dataset were correlated with the gene expression of the top 5000 highly variable genes from the RNAseq dataset, generating a correlation matrix between bacteria and genes. Then for each bacteria, we rank genes based on their correlation to that bacteria and perform gene set enrichment anlaysis (GSEA) using the KEGG gene annotation database. This, in turn, will result in a matrix associating every bacteria with every KEGG process in the tissue. The heatmap shows the normalized enrichment score (NES). Only enrichments with pvalue below 0.05 are shown.Only bacterium and pathways with at least 10 significant NES scores were included in the heatmap.
+**Suppl. Figure 4-5. Functional associations of the luminal microbiome with host tissue gene expression profiles.** Bacterial abundances in the luminal samples were correlated with gene expression of the top 5,000 highly variable genes from the RNAseq dataset. This generated a correlation matrix between bacteria and genes. For each bacteria, genes were ranked based on their correlation to that bacteria, followed by gene set enrichment anlaysis (GSEA) using the KEGG gene annotation database. The resulting matrix display associations between individual bacterial taxa and corresponding KEGG term as defined in the host tissue sample. The heatmap shows the normalized enrichment score (NES). Only enrichments with p-value < 0.05 are shown. Bacterium and pathways with less than 10 significant NES scores were omitted from the heatmap. Bacteria are grouped according to anatomical/functional activity and marked with different colours per category.
 
 ```{r eval=FALSE, include=FALSE}
 g <- graph_from_adjacency_matrix(as.matrix(SNN_bacteria), mode = "undirected",diag = F,weighted = T)

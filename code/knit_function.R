@@ -1,4 +1,3 @@
-
 #################
 # KNIT FUNCTION #
 #################
@@ -12,6 +11,7 @@ custom_knit <- function(inputFile, out_dir, ...) {
         dev = c("jpeg", "tiff", "pdf"),
         dpi = 300,
         echo=TRUE,
+        #keep_md = TRUE,
         toc = FALSE,                             
         toc_float = FALSE,
         code_folding = "show",
@@ -19,11 +19,52 @@ custom_knit <- function(inputFile, out_dir, ...) {
       )#;
     # rmarkdown::render(
     #   inputFile,
-    #   output_format = rmarkdown::pdf_document(
-    #     dev = c("pdf", "png"),
-    #     dpi = 300)
+    #   output_format = rmarkdown::pdf_document()
     #   )
 }
+
+##################
+# KNIT RMARKDOWN #
+#################
+#### html ####
+knit_gfm_with_job <- function() {
+  rstudioapi::verifyAvailable()
+  
+  job_file <- tempfile(fileext = ".R")
+  
+  active_doc_ctx <- rstudioapi::getSourceEditorContext()
+  rmd_path <- active_doc_ctx$path
+  
+  if (identical(rmd_path, "")) {
+    rstudioapi::showDialog(
+      "Cannot Render Unsaved R Markdown Document",
+      "Please save the current document before rendering."
+    )
+    return(invisible())
+  }
+  
+  rstudioapi::documentSave(active_doc_ctx$id)
+  
+  rmd_path <- normalizePath(rmd_path, mustWork = TRUE)
+  out_file <- paste0(basename(xfun::sans_ext(rmd_path)), '.md')
+  
+  cat(
+    'res <- rmarkdown::render("', rmd_path, '",',
+    '"', out_file, '",',
+    ' output_format = rmarkdown::github_document(html_preview = FALSE, dev = "jpeg")', ')\n',
+    'unlink("', job_file, '")\n',
+    'rstudioapi::viewer(res)',
+    sep = "",
+    file = job_file
+  )
+  
+  rstudioapi::jobRunScript(
+    path = job_file,
+    name = basename(rmd_path),
+    workingDir = dirname(rmd_path),#out_dir,
+    importEnv = FALSE
+  )
+} 
 
 #params = list(print=TRUE, setup=TRUE),
 

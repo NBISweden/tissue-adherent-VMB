@@ -1,34 +1,9 @@
----
-title: "Figure 2. Bacterial Communities and Function"
-geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-header-includes: 
-- \usepackage{float}
-editor_options: 
-  chunk_output_type: console
-knit: (function(inputFile, out_dir, ...) {
-    source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/Figure2/", ...)
-    })
----
+Figure 2. Bacterial Communities and Function
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  results    = "hold",
-  message    = FALSE,
-  warning    = FALSE,
-  fig.width  = 6.6929133858,
-  fig.align  = "center",
-  fig.path   = "./Figures/",
-  fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-1")
-    fs::file_move(path = filename, new_path = new_filename)
-    ifelse(fs::file_exists(new_filename), new_filename, filename)
-})
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
-```
 
-```{r Load-data, message=FALSE, warning=FALSE}
+
+``` r
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -79,9 +54,7 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 bact_pal <- c('#88CCEE', '#44AA99', '#117733', '#332288', '#DDCC77', '#999933','#CC6677', '#882255', '#AA4499', '#DDDDDD')
 ```
 
-
-```{r Figure 2, fig.height=8}
-
+``` r
 layout(matrix(c(1,1,2,2,2,
                 1,1,3,3,3,
                 1,1,4,4,4,
@@ -324,9 +297,63 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 empty_plot()
 ```
 
-**Figure 2. Identification of bacterial communities and functional profiles in the luminal samples.** The luminal study samples were assessed for bacterial communities and functional profiles. **a** Bacterial community embedding of 5-SNN graph clustered using Louvain community detection algorithm based on luminal bacterial abundances. **b** Wet smear counts of the genera Lactobacillus, Mobiluncus, and Gardnerella with corresponding 16S read counts. **c** Differential expression analysis was applied to PICRUSt2 predicted KO terms across the five luminal study groups. Resulting significant (FDR < 1 × 10−5) KO terms were divided into seven modules by hierarchical agglomerative clustering using inverse Pearson’s correlation as distance measure and Ward’s method (“ward. D2”) for linkage. Enrichment analysis was performed on each module and the three most significant KEGG pathways were included in the heatmap. d Uniform Manifold Approximation (UMAP) of the predicted KO terms
+<img src="./Figures/Figure 2.jpeg" style="display: block; margin: auto;" />
 
-```{r Suppl. Table 2.}
+    ## [[1]]
+    ## NULL
+    ## 
+    ## $`#0072B2`
+    ## NULL
+    ## 
+    ## $`#009E73`
+    ## NULL
+    ## 
+    ## $`#D55E00`
+    ## NULL
+    ## 
+    ## $`#CC79A7`
+    ## NULL
+    ## 
+    ## [[1]]
+    ## NULL
+    ## 
+    ## $`#0072B2`
+    ## NULL
+    ## 
+    ## $`#009E73`
+    ## NULL
+    ## 
+    ## $`#D55E00`
+    ## NULL
+    ## 
+    ## $`#CC79A7`
+    ## NULL
+    ## 
+    ## [[1]]
+    ## NULL
+    ## 
+    ## [[2]]
+    ## NULL
+    ## 
+    ## [1] ""
+
+**Figure 2. Identification of bacterial communities and functional
+profiles in the luminal samples.** The luminal study samples were
+assessed for bacterial communities and functional profiles. **a**
+Bacterial community embedding of 5-SNN graph clustered using Louvain
+community detection algorithm based on luminal bacterial abundances.
+**b** Wet smear counts of the genera Lactobacillus, Mobiluncus, and
+Gardnerella with corresponding 16S read counts. **c** Differential
+expression analysis was applied to PICRUSt2 predicted KO terms across
+the five luminal study groups. Resulting significant (FDR \< 1 × 10−5)
+KO terms were divided into seven modules by hierarchical agglomerative
+clustering using inverse Pearson’s correlation as distance measure and
+Ward’s method (“ward. D2”) for linkage. Enrichment analysis was
+performed on each module and the three most significant KEGG pathways
+were included in the heatmap. d Uniform Manifold Approximation (UMAP) of
+the predicted KO terms
+
+``` r
 #saveRDS( y , "../../../results/Picrust_EdgeR_estimations.rds" )
 top <- top %>% as_tibble(rownames="KO Terms") 
 

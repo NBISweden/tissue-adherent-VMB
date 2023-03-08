@@ -1,30 +1,9 @@
----
-title: "Suppl. Figure 1. Bacterial abundance across datasets"
-geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-header-includes: 
-- \usepackage{float}
-editor_options: 
-  chunk_output_type: console
-knit: (function(inputFile, out_dir, ...) {
-    source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/SupplFigure1/", ...)
-    })
----
+Suppl. Figure 1. Bacterial abundance across datasets
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  fig.path    = "./Suppl.Figures/",
-  fig.align   = "center",
-  fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-1")
-    fs::file_move(path = filename, new_path = new_filename)
-    ifelse(fs::file_exists(new_filename), new_filename, filename)
-})
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
-```
 
-```{r Load-data, message=FALSE, warning=FALSE}
+
+``` r
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -46,11 +25,11 @@ datasets_all_samples_ <- readRDS("../../results/03_normalize_data_output/dataset
 Set1 <- c("#4DAF4A", "#E41A1C", "#984EA3", "#377EB8","#A6D854", "#FFFF33", "#FF7F00", "#A65628", "#F781BF", "#999999")
 pal <- c(Set1,RColorBrewer::brewer.pal(8,"Set2"),
          RColorBrewer::brewer.pal(9,"Pastel1"),RColorBrewer::brewer.pal(8,"Pastel2")) #color pallete for plots
-
 ```
 
 ### Violin plot
-```{r Suppl.Fig.1, fig.asp=.5}
+
+``` r
 x <- datasets_all_samples_[[1]]
 top <- t(t(2^x-1)/colSums(2^x-1)) %>%
   as_tibble(., rownames ="tax") %>%
@@ -80,7 +59,12 @@ Luminal <- set_names(xx$value.x, xx$tax)
 Tissue <- set_names(xx_$value.y, xx_$tax) 
 
 t <- rbind(Tissue, Luminal)
+```
 
+    ## Warning in rbind(Tissue, Luminal): number of columns of result is not a multiple
+    ## of vector length (arg 1)
+
+``` r
 ###################################
 # BACTERIAL ABUNDANCE IN DATASETS #
 ###################################
@@ -92,4 +76,9 @@ violist(data = t, smooth = .1,
         transparency = 50,col = pal)
 ```
 
-**Supplementary Figure 1. Abundance distribution of individual taxa in the luminal and tissue microbiome data sets.** Violin plots showing the distribution of relative abundance of the top 30 most abundant taxa in the luminal and tissue-adherent data sets.
+<img src="./Suppl.Figures/Suppl.Fig.1.jpeg" style="display: block; margin: auto;" />
+
+**Supplementary Figure 1. Abundance distribution of individual taxa in
+the luminal and tissue microbiome data sets.** Violin plots showing the
+distribution of relative abundance of the top 30 most abundant taxa in
+the luminal and tissue-adherent data sets.

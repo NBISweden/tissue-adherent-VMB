@@ -2,7 +2,7 @@
 
 ## General info
 
-This repository contains the code related to the article "Distinct cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels in Kenyan sex workers" [Edfeldt, Kaldhusdal et al (2023)](https://doi.org/)
+This repository contains the code related to the article "Distinct cervical tissue-adherent and luminal microbiome communities correlate with mucosal host gene expression and protein levels in Kenyan sex workers" [Edfeldt, Kaldhusdal et al (2023)](https://doi.org/10.1186/s40168-023-01502-4)
 
 This project used multiple datasets: 
 - Transcriptomics data (bulk mRNA-SEQ)

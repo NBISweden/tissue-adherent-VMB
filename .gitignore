@@ -8,12 +8,10 @@
 *-env/
 
 # Partially ignored directories
-**/data/*
 **/results/*
 data/
 results/
 
-reports/*
 reports/knitr-pdf/*
 
 **/scratch/*
@@ -34,3 +32,4 @@ reports/knitr-pdf/*
 !reports/*/*.pdf
 
 !scratch/README.md
+.Rproj.user

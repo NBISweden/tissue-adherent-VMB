@@ -1,56 +1,9 @@
----
-title: "Suppl. Figure 6. Rarefaction curves"
-geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-header-includes: 
-- \usepackage{float}
-editor_options: 
-  chunk_output_type: console
-knit: (function(inputFile, out_dir, ...) {
-    source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/SupplFigure6/", ...)
-    })
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  fig.path    = "./Suppl.Figures/",
-  fig.align   = "center",
-  fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-.")
-    fs::file_move(path = filename, new_path = new_filename)
-    ifelse(fs::file_exists(new_filename), new_filename, filename)
-})
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
-```
-
-```{r message=FALSE, warning=FALSE, include=FALSE}
-##################
-# LOAD LIBRARIES #
-##################
-suppressWarnings({suppressMessages({suppressPackageStartupMessages({
-  library(tidyverse)
-  library(vegan)
-  library(phyloseq)
-  library(ggpubr)
-})  })  })
-
-#############
-# LODA DATA #
-#############
-data_folder <- "/Users/vilkal/work/Brolidens_work/Projects/Gabriella_repo/reports/rmarkdown/"
-paths_p <- c('../../data/phyloseq_boston_r1.RDS',   # CVL V3 (2 replicates of one tissue + 27 CVL V2)
-             '../../data/phyloseq_boston_r2.RDS',   # Tissue V3 & CVL V2
-             '../../data/phyloseq_Sthlm.RDS'        # CVL V2, (only v4 region)
-             )    
-
-n <- c("boston_r1", "boston_r2", "Sthlm")
-ps_list <- map(paths_p, ~readRDS(paste0(data_folder, .x))) %>% set_names(n)
-  
-```
+Suppl. Figure 6. Rarefaction curves
+================
 
 
-```{r rarefaction curves, results = 'hide', fig.asp=0.75, fig.height=6, fig.width=8}
+
+``` r
 ##################
 # FILTER SAMPLES #
 ##################
@@ -78,7 +31,11 @@ seqtabs <- map(ps_types, ~data.frame(.x@otu_table@.Data))
 rare_runs <- map(seqtabs, ~ .x %>%
              rarecurve(., step = 20, label = FALSE)
 )
+```
 
+<img src="./Suppl.Figures/rarefaction curves.jpeg" style="display: block; margin: auto;" /><img src="./Suppl.Figures/rarefaction curves.jpeg" style="display: block; margin: auto;" /><img src="./Suppl.Figures/rarefaction curves.jpeg" style="display: block; margin: auto;" /><img src="./Suppl.Figures/rarefaction curves.jpeg" style="display: block; margin: auto;" /><img src="./Suppl.Figures/rarefaction curves.jpeg" style="display: block; margin: auto;" /><img src="./Suppl.Figures/rarefaction curves.jpeg" style="display: block; margin: auto;" />
+
+``` r
 ggplot_df_fun <- function(rare_obj, count) {
   # Add sample names
   names(rare_obj) <- c(paste0("sample",sprintf("%03.0f", 1:length(rare_obj))))
@@ -132,11 +89,11 @@ raremax <- map(seqtabs, ~min(rowSums(.x)))
 #        path = paste0("../../../results/"),
 #        width = 10, height = 5,)
 #)
-
 ```
 
 ### Rarefraction plot
-```{r Suppl.Fig.6, warning=FALSE, fig.height=6, fig.width=8, fig.asp=0.75,}
+
+``` r
 ### A & B
 ###########################
 # RAREFRACTION CURVE PLOT #
@@ -150,11 +107,23 @@ plot <- ggarrange(
           labels = c("a","b","c","d")
           )
 print(plot)
+```
 
+<img src="./Suppl.Figures/Suppl.Fig.6.jpeg" style="display: block; margin: auto;" />
+
+``` r
 # ggsave(filename = paste0('Suppl.Figures6.pdf'), plot = plot,
 #        path = paste0("./Suppl.Figures/"),
 #        width = 8, height = 6
 # )
 ```
 
-**Supp. Figure 6. Rarefraction curves**. Rarefaction curves showing number of unique ASVs detected in each sample when simulating increasing sequencing depth. Low abundant taxa may be undetected at low sequencing depth but are expected to be detected with an increased sequencing depth (x-axis). When the curve flattens out, all taxa in the sample are considered detected. **a)** The Luminal sequencing run and **b)** the Tissue sequencing run. The sequencing depth was > `r as.character(count[4])` reads in all but `r filter(read_counts$CVLv3, Counts == "< 40 000") %>% nrow()` samples for the Luminal dataset while `r filter(read_counts$tissue, Counts == "< 2 500") %>% nrow()` samples had fewer than `r as.character(count[6])` reads in the tissue-adherent microbiome dataset. 
+**Supp. Figure 6. Rarefraction curves**. Rarefaction curves showing
+number of unique ASVs detected in each sample when simulating increasing
+sequencing depth. Low abundant taxa may be undetected at low sequencing
+depth but are expected to be detected with an increased sequencing depth
+(x-axis). When the curve flattens out, all taxa in the sample are
+considered detected. **a)** The Luminal sequencing run and **b)** the
+Tissue sequencing run. The sequencing depth was \> 40000 reads in all
+but 9 samples for the Luminal dataset while 16 samples had fewer than
+2500 reads in the tissue-adherent microbiome dataset.

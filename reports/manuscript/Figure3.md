@@ -1,34 +1,9 @@
----
-title: "Figure 3. Tissue Microbiome Abundances"
-geometry: "left=2cm,right=2cm,top=2cm,bottom=2cm"
-header-includes: 
-- \usepackage{float}
-editor_options: 
-  chunk_output_type: console
-knit: (function(inputFile, out_dir, ...) {
-    source("../../code/knit_function.R");
-    custom_knit(inputFile, "../../lab_book/Figure3/", ...)
-    })
----
+Figure 3. Tissue Microbiome Abundances
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  results    = "hold",
-  message    = FALSE,
-  warning    = FALSE,
-  fig.width  = 6.6929133858,
-  fig.align  = "center",
-  fig.path   ="./Figures/",
-  fig.process = function(filename){
-    new_filename <- stringr::str_remove(string = filename, 
-                                        pattern = "-1")
-    fs::file_move(path = filename, new_path = new_filename)
-    ifelse(fs::file_exists(new_filename), new_filename, filename)
-})
-# setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
-```
 
-```{r Load-data, message=FALSE, warning=FALSE}
+
+``` r
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -71,10 +46,9 @@ group_annotation <- factor(setNames(metadata$Tissue_gr,metadata$ID))
 lvl <- c("L. iners", "Gardnerella", "L. crispatus/acidophilus","Prevotella", "Atopobium","Sneathia", "L. jensenii", "Megasphaera", "Streptococcus", "Anaerococcus", "BVAB2", "Escherichia/Shigella", "BVAB1", "Dialister", "Mycoplasma", "Bifidobacterium", "Other")
 pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"Pastel1"),"grey90")
-
 ```
 
-```{r Figure 3, warning=FALSE, message=FALSE, fig.pos="t"}
+``` r
 # fig.asp=1, fig.height=7,
 ### A
 #############################
@@ -261,7 +235,18 @@ legend(x = par("usr")[c(1)],
          legend = lvl[13:17],xjust = 0,yjust = 1,
          bty = "n",pch = 22,pt.cex = 2,cex = 1,xpd=T,
          pt.bg = taxa_pal[13:17])
-
 ```
 
-**Fig. 3 Identification of a distinct ectocervical tissue-adherent microbiome.** Ectocervical tissue samples were assessed for presence of a tissue-adherent microbiome. a Bar plots of alpha diversity indices and taxonomy profiles for each individual tissue sample. Color-coded squares above the stacked bar plots show bacterial vaginosis (BV, binned Nugent’s scores) and HIV diagnosis, respectively. Gray: negative, orange: intermediate, red: positive BV; Gray: HIV seronegative, red: HIV seropositive. b Total relative abundance in the luminal and tissue microbiome datasets. All taxa with a total relative abundance < 0.55 are included in the “other” category. c Microbiome profile shift between luminal and tissue
+<img src="./Figures/Figure 3.jpeg" style="display: block; margin: auto;" />
+
+**Fig. 3 Identification of a distinct ectocervical tissue-adherent
+microbiome.** Ectocervical tissue samples were assessed for presence of
+a tissue-adherent microbiome. a Bar plots of alpha diversity indices and
+taxonomy profiles for each individual tissue sample. Color-coded squares
+above the stacked bar plots show bacterial vaginosis (BV, binned
+Nugent’s scores) and HIV diagnosis, respectively. Gray: negative,
+orange: intermediate, red: positive BV; Gray: HIV seronegative, red: HIV
+seropositive. b Total relative abundance in the luminal and tissue
+microbiome datasets. All taxa with a total relative abundance \< 0.55
+are included in the “other” category. c Microbiome profile shift between
+luminal and tissue
