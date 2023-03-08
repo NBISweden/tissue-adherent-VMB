@@ -13,8 +13,8 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  fig.path="./Suppl.Figures/",
-  fig.align = "center",
+  fig.path    = "./Suppl.Figures/",
+  fig.align   = "center",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -56,8 +56,8 @@ min_pct <- .05 # minimun level of detected bacteria in each sample group
 pal <- c( "#0072B2", "#009E73","#D55E00", "#CC79A7", "#E69F00", "#999999")
 ```
 
-
-```{r Suppl.Fig.2 Diff_bact_abundance, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
+### Dot plot and bar plot
+```{r Suppl.Fig.2, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
 all_microbiome <- cbind(datasets_all_samples[["ASV_Tissue_normalized"]],
                         datasets_all_samples[["ASV_Luminal_normalized"]])
 datasets <- factor(c( rep("Tissue",ncol(datasets_all_samples[["ASV_Tissue_normalized"]])) , rep("Luminal",ncol(datasets_all_samples[["ASV_Luminal_normalized"]])) ))
@@ -124,4 +124,4 @@ add_letter("b")
 dev.off()
 ```
 
-**Suppl. Figure 2.** Differential bacterial abundance across tissue and CVL microbiome week3 datasets. The results are shown both as **a)** Dot plots and **b)** barplots Bacteria with log2FC above `r fct` and p-value below `r pvt` (from the wilcoxon test) were considered significant and were sorted by the highest expression. The colour scale indicates the difference in total abundance between the datsets as a proportion, where Max is the higest abundace of the two datasets and the other becomes a proportion of this value.The size of the dots indicates the average abundance of the given bacteria in the given dataset. 
+**Suppl. Figure 2. Differential bacterial abundance across the luminal and tissue microbiome datasets.** Differential bacterial abundance was compared between the luminal and tissue-adherent microbiome data sets. The results are shown as **a)** dot plots, and **b)** bar plots, respectively. Bacteria with log2FC above `r fct` and p-value `r pvt` (from the Wilcoxon’s test) were considered significantly different and were sorted by the highest expression. The colour scale indicates the difference in total abundance between the datasets as a proportion, where “max” is the highest abundance of the two datasets, and the other becomes a proportion of this value. The size of the dots indicates the average abundance of the given bacteria in the given data set.
