@@ -231,7 +231,7 @@ title(main = "UMAP", line = -1, cex.main = 1)
 add_letter(figlabels[1]); figlabels <- figlabels[-1]
 ```
 
-<img src="./Figures/Figure 1.png" style="display: block; margin: auto;" />
+<img src="./Figures/Figure 1.jpeg" style="display: block; margin: auto;" />
 
 **Figure 1. Characterization of a highly diversemicrobiome in
 cervicovaginal (luminal) samples from Kenyan sex workers.**

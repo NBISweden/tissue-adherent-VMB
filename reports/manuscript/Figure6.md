@@ -208,7 +208,7 @@ title(main = "Tissue gr. Cytokines", line = 0.7, cex.main = 1.1)
 add_letter("d")
 ```
 
-<img src="./Figures/Figure 6.png" style="display: block; margin: auto;" />
+<img src="./Figures/Figure 6.jpeg" style="display: block; margin: auto;" />
 
 **Figure 6. Characterization of the host protein profile as stratified
 by the luminal and tissue-adherent microbiome study groups.** All study

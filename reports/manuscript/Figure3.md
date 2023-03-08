@@ -237,7 +237,7 @@ legend(x = par("usr")[c(1)],
          pt.bg = taxa_pal[13:17])
 ```
 
-<img src="./Figures/Figure 3.png" style="display: block; margin: auto;" />
+<img src="./Figures/Figure 3.jpeg" style="display: block; margin: auto;" />
 
 **Fig. 3 Identification of a distinct ectocervical tissue-adherent
 microbiome.** Ectocervical tissue samples were assessed for presence of

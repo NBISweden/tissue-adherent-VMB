@@ -86,7 +86,7 @@ taxa_pal <- c(RColorBrewer::brewer.pal(8,"Pastel2"),RColorBrewer::brewer.pal(8,"
 ```
 
 ## Heatmap DGEs and enrichment
-```{r Across functions, message=FALSE, warning=FALSE}
+```{r Across-functions, message=FALSE, warning=FALSE}
 ##################
 # DEG's FUNCTION #
 ##################

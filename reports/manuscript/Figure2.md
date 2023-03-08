@@ -297,7 +297,7 @@ add_letter(figlabels[1]); figlabels <- figlabels[-1]
 empty_plot()
 ```
 
-<img src="./Figures/Figure 2.png" style="display: block; margin: auto;" />
+<img src="./Figures/Figure 2.jpeg" style="display: block; margin: auto;" />
 
     ## [[1]]
     ## NULL

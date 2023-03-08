@@ -312,9 +312,9 @@ write.xlsx(df_pairwise[[1]]$value, file=paste0(result_dir,"Suppl.Tbl.06 Enrichme
 write.xlsx(df_pairwise[[2]]$value, file=paste0(result_dir,"Suppl.Tbl.10 Enrichment_Pairwise_Tissue",".xlsx"))
 ```
 
-<img src="./Figures/Figure 4.png" style="display: block; margin: auto;" />
+<img src="./Figures/Figure 4.jpeg" style="display: block; margin: auto;" />
 
-<img src="./Figures/Figure 5.png" style="display: block; margin: auto;" />
+<img src="./Figures/Figure 5.jpeg" style="display: block; margin: auto;" />
 
 **Figure. 4-5. Characterization of the host transcriptome as stratified
 by the luminal microbiome study groups.** The luminal samples were
