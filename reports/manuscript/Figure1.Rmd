@@ -122,6 +122,10 @@ for(i in ASV){
   x <- datasets_all_samples[[i[2]]]
   gr <- factor(setNames(metadata[[i[1]]],metadata$ID))
 
+  dim(x)
+  x <- x[ rowSums(x>0) >= 3 ,  ]
+  #x_ <- x[ rowSums(x>0) ,  ]
+  dim(x)
   temp <- t(t(2^x-1)/colSums(2^x-1))
 
   shann <- vegan::diversity(t(temp),index = c("shannon") )
