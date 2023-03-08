@@ -13,12 +13,12 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  results = "hold",
+  results    = "hold",
   message    = FALSE,
   warning    = FALSE,
-  fig.width = 6.6929133858,
-  fig.path="./Figures/",
-  fig.align = "center",
+  fig.width  = 6.6929133858,
+  fig.align  = "center",
+  fig.path   = "./Figures/",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r Load-data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -171,7 +171,7 @@ gene_mod_enrich.fun <- function(top, y, c, db, group_name, cuttoff){
 
 ```
 
-```{r Pairwise functions, message=FALSE, warning=FALSE}
+```{r Pairwise-functions, message=FALSE, warning=FALSE}
 ###########################
 # PAIRWISE DEG's FUNCTION #
 ###########################
@@ -221,7 +221,7 @@ enrich_list <- function(x, gmt_list){
 } 
 ```
 
-```{r Across tables, fig.height=4, fig.width=7, warning=F}
+```{r Across-tables, fig.height=4, fig.width=7, warning=F}
 TRX <- datasets_all_samples[["Tissue_RNAseq_V3_normalized"]]
 TRX_counts <- round(2^TRX - 1)
 TRX_counts <- TRX_counts [ rowSums(TRX_counts>0)>= 1 , ]
@@ -253,7 +253,7 @@ enrich_T <- db %>%
 
 ```
 
-```{r Pairwise tables}
+```{r Pairwise-tables}
 ##################
 # PAIRWISE DEG's #
 ##################
@@ -339,7 +339,7 @@ write.xlsx(df_pairwise[[1]]$value, file=paste0(result_dir,"Suppl.Tbl.06 Enrichme
 write.xlsx(df_pairwise[[2]]$value, file=paste0(result_dir,"Suppl.Tbl.10 Enrichment_Pairwise_Tissue",".xlsx"))
 ```
 
-```{r TF PPI Analysis function, include=FALSE}
+```{r TF-PPI-Analysis-function, include=FALSE}
 # filename <- DEG_files[1]
 # gr_name <- gr_name[1]
 # outfile <- enrichR_files[1]
@@ -383,13 +383,13 @@ TF_PPI_analysis.fun <- function(result_dir, filename, gr_name, outfile) {
   }
 ```
 
-```{r TF PPI Analysis, eval=FALSE, include=FALSE}
+```{r TF-PPI-Analysis, eval=FALSE, include=FALSE}
 TF_PPI_analysis.fun(result_dir, DEG_files[1], gr_name[1], enrichR_files[1]) # writes Suppl.Tbl.07
 TF_PPI_analysis.fun(result_dir, DEG_files[2], gr_name[2], enrichR_files[2]) # writes Suppl.Tbl.11
 ```
 
 
-```{r plot functions, warning=FALSE, include=FALSE}
+```{r plot-functions, warning=FALSE, include=FALSE}
 ############################
 # GO/KEGG HEATMAP FUNCTION #
 ############################
@@ -662,6 +662,7 @@ arrange_plots.fun(enrich_T, "Tissue_gr", "Tissue", sheets, "TF_PPI_enrichment", 
 #     )
 ```
 
+**Figure. 4-5. Characterization of the host transcriptome as stratified by the luminal microbiome study groups.** The luminal samples were assessed for differential gene expression across the study groups. **a** Differential gene expression analysis was applied across the five luminal study groups. Significant DEGs (p-value < 0.01) were divided into six modules by hierarchical agglomerative clustering using inverse Pearson’s correlation as distance measure and Ward’s method (“ward. D2”) for linkage. Enrichment analysis was performed on each module using both the KEGG and GO databases. The three most significant terms were included in the heatmap. **b** Pairwise enrichment analysis of protein-protein interactions of transcription factors (TF-PPI). Top-10 up- and down regulated transcription factors with p-value < 0.01 were included in the bar plots
 
 ```{r Suppl. Tbl. 12}
 metadata <- metadata %>% 
@@ -699,7 +700,7 @@ write.xlsx(pages, file=paste0(result_dir,"Suppl.Tbl.12 L2T2_L2T3_DEGs_and_enrich
 ```
  
 ## igraph network plot
-```{r igraph network, eval=FALSE, warning=FALSE}
+```{r igraph-network, eval=FALSE, warning=FALSE}
 # 1. Change the groups of interest by assigning condition_use
 # 2. Change the number of genes to be included in the network by changing n
 #    look at tempD_i and tempU_i to see how many genes was significant
