@@ -13,12 +13,12 @@ knit: (function(inputFile, out_dir, ...) {
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
-  results = "hold",
+  results    = "hold",
   message    = FALSE,
   warning    = FALSE,
-  fig.width = 6.6929133858,
-  fig.path="./Figures/",
-  fig.align = "center",
+  fig.width  = 6.6929133858,
+  fig.align  = "center",
+  fig.path   ="./Figures/",
   fig.process = function(filename){
     new_filename <- stringr::str_remove(string = filename, 
                                         pattern = "-1")
@@ -28,7 +28,7 @@ knitr::opts_chunk$set(
 # setwd("/Users/vilkal/work/Brolidens_work/Projects/broliden_5325/reports/manuscript")
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r Load-data, message=FALSE, warning=FALSE}
 ##################
 # LOAD LIBRARIES #
 ##################
@@ -264,3 +264,4 @@ legend(x = par("usr")[c(1)],
 
 ```
 
+**Fig. 3 Identification of a distinct ectocervical tissue-adherent microbiome.** Ectocervical tissue samples were assessed for presence of a tissue-adherent microbiome. a Bar plots of alpha diversity indices and taxonomy profiles for each individual tissue sample. Color-coded squares above the stacked bar plots show bacterial vaginosis (BV, binned Nugent’s scores) and HIV diagnosis, respectively. Gray: negative, orange: intermediate, red: positive BV; Gray: HIV seronegative, red: HIV seropositive. b Total relative abundance in the luminal and tissue microbiome datasets. All taxa with a total relative abundance < 0.55 are included in the “other” category. c Microbiome profile shift between luminal and tissue
