@@ -21,8 +21,9 @@ Raw counts for the transcriptomics data is downloaded from GEO and the raw count
 **Transcriptomics count data** can be accessed in the Gene Expression Omnibus public repository, SuperSeries ID GSE217237. The raw transcriptomic sequencing data cannot be held in a public repository due to the sensitive nature of such personal data. Request for data access can be made to the Karolinska Institutet Research Data Office (contact via rdo\@ki.se), and access will be granted if the request meets the requirements of the data policy.
 
 **Protein data** is previously published in doi: [10.1371/journal.ppat.1010494](https://doi.org/10.1371/journal.ppat.1010494.s017)\
-**Cytokine data** Can be downloaded from Suppl. Table 14 here\
-**Sociodemographic and clinical characteristics** Can be downloaded from Suppl. Table 2 here
+**Cytokine data** Can be downloaded from Suppl. Table 14 [here](https://static-content.springer.com/esm/art%3A10.1186%2Fs40168-023-01502-4/MediaObjects/40168_2023_1502_MOESM2_ESM.zip)\
+**Sociodemographic and clinical characteristics** Can be downloaded from Suppl. Table 2 [here](https://static-content.springer.com/esm/art%3A10.1186%2Fs40168-023-01502-4/MediaObjects/40168_2023_1502_MOESM2_ESM.zip)\
+
 
 ## Dependencies
 
@@ -51,7 +52,7 @@ Project is created with:\
     │  
     └───code
     │   │   differential_abundance.R
-    │   │   enrichment_function.R knit_function.R
+    │   │   enrichment_function.R 
     │   │   knit_function.R
     │   │   Picrust_pipe.sh
     └───data
