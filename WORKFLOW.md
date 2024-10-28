@@ -12,7 +12,6 @@ input:
       
 Output:
 
-      "../../results/00_dada2_script.Rmd"
       "../../results/filtered/samplename.filt.fastq"  # filtered fastq files
       "../results/dada2_output/Error_rates_fwd_2019_02_25_v1.pdf"
       "../results/dada2_output/Read_quality_aggregate_fwd_2019_02_25_v1.pdf"
