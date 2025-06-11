@@ -26,6 +26,27 @@ Raw counts for the transcriptomics data is downloaded from GEO and the raw count
 
 Supplementary material can be downloaded [here](https://static-content.springer.com/esm/art%3A10.1186%2Fs40168-023-01502-4/MediaObjects/40168_2023_1502_MOESM2_ESM.zip)
 
+## Workflow
+
+### Analysis scripts
+
+0.  [00_dada2_script_run1](https://vildeka.github.io/tissue-adherent-VMB/00_dada2_script_run1)
+1.  [01_taxonomy_improved](https://vildeka.github.io/tissue-adherent-VMB/01_taxonomy_improved)
+2.  [02_data_preprocessing](https://vildeka.github.io/tissue-adherent-VMB/02_data_preprocessing)
+3.  [03_normalize_data](https://vildeka.github.io/tissue-adherent-VMB/03_normalize_data)
+4.  [04_clustering](https://vildeka.github.io/tissue-adherent-VMB/04_clustering)
+
+### Manuscript figures
+1. [Figure1.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure1)
+2. [Figure2.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure2)
+3. [Figure3.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure3)
+4. [Figure4-5.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure4-5)
+5. [Figure6.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure6)
+6. [Suppl.Figure1.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure1)
+7. [Suppl.Figure2.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure3)
+8. [Suppl.Figure4-5.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure4-5)
+9. [Suppl.Figure6.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure6)
+
 ## Dependencies
 
 Project is created with:\
