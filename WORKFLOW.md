@@ -12,20 +12,19 @@ input:
       
 Output:
 
-      "../../results/00_dada2_script.Rmd"
-      "../../results/filtered/samplename.filt.fastq"  # filtered fastq files
+      "../results/filtered/samplename.filt.fastq"  # filtered fastq files
       "../results/dada2_output/Error_rates_fwd_2019_02_25_v1.pdf"
       "../results/dada2_output/Read_quality_aggregate_fwd_2019_02_25_v1.pdf"
       "../results/dada2_output/MiSeq_2019_02_25_v1_fwd_read_tracking_log.txt"
       "../results/dada2_output/read_track_fwd_L10_R225_2019_02_25_v1.pdf"
       "../results/dada2_output/MiSeq_2019_02_25_v1_preprocessing_single_nochim.RDS"
-      "../../data/phyloseq_Boston_run1.RDS"         
+      "../data/phyloseq_Boston_run1.RDS"         
 
 ### 01_taxonomy_improved
 input: 
 
-      "../../data/phyloseq_boston_r1.RDS",   
-      "../../data/phyloseq_boston_r2.RDS",   
+      "../data/phyloseq_boston_r1.RDS",   
+      "../data/phyloseq_boston_r2.RDS",   
       "https://raw.githubusercontent.com/ctmrbio/BVAB-and-Lac-sequences/master/BVAB_rRNA_database.fa",
       "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_db.fasta.gz",
       "https://github.com/ctmrbio/optivag/raw/master/database/db/16S/v0.1/optivag_seqinfo.csv"
