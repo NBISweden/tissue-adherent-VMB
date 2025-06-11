@@ -30,23 +30,23 @@ Supplementary material can be downloaded [here](https://static-content.springer.
 
 ### Analysis scripts
 
-0.  [00_dada2_script_run1](https://vildeka.github.io/tissue-adherent-VMB/00_dada2_script_run1)
-0.  [00_dada2_script_run2](https://vildeka.github.io/tissue-adherent-VMB/00_dada2_script_run2)
-1.  [01_taxonomy_improved](https://vildeka.github.io/tissue-adherent-VMB/01_taxonomy_improved)
-2.  [02_data_preprocessing](https://vildeka.github.io/tissue-adherent-VMB/02_data_preprocessing)
-3.  [03_normalize_data](https://vildeka.github.io/tissue-adherent-VMB/03_normalize_data)
-4.  [04_clustering](https://vildeka.github.io/tissue-adherent-VMB/04_clustering)
+0.  [00_dada2_script_run1](https://nbisweden.github.io/tissue-adherent-VMB/00_dada2_script_run1)
+0.  [00_dada2_script_run2](https://nbisweden.github.io/tissue-adherent-VMB/00_dada2_script_run2)
+1.  [01_taxonomy_improved](https://nbisweden.github.io/tissue-adherent-VMB/01_taxonomy_improved)
+2.  [02_data_preprocessing](https://nbisweden.github.io/tissue-adherent-VMB/02_data_preprocessing)
+3.  [03_normalize_data](https://nbisweden.github.io/tissue-adherent-VMB/03_normalize_data)
+4.  [04_clustering](https://nbisweden.github.io/tissue-adherent-VMB/04_clustering)
 
 ### Manuscript figures
-1. [Figure1.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure1)
-2. [Figure2.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure2)
-3. [Figure3.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure3)
-4. [Figure4-5.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure4-5)
-5. [Figure6.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Figure6)
-6. [Suppl.Figure1.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure1)
-7. [Suppl.Figure2.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure3)
-8. [Suppl.Figure4-5.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure4-5)
-9. [Suppl.Figure6.Rmd](https://vildeka.github.io/tissue-adherent-VMB/Suppl.Figure6)
+1. [Figure1.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Figure1)
+2. [Figure2.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Figure2)
+3. [Figure3.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Figure3)
+4. [Figure4-5.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Figure4-5)
+5. [Figure6.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Figure6)
+6. [Suppl.Figure1.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Suppl.Figure1)
+7. [Suppl.Figure2.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Suppl.Figure3)
+8. [Suppl.Figure4-5.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Suppl.Figure4-5)
+9. [Suppl.Figure6.Rmd](https://nbisweden.github.io/tissue-adherent-VMB/Suppl.Figure6)
 
 ## Dependencies
 
